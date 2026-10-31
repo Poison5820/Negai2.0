@@ -1,0 +1,152 @@
+name: Build Android APK & Release
+
+on:
+  push:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Configure Android SDK & Licenses
+        run: |
+          SDK_DIR="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          if [ -d "$SDK_DIR" ]; then
+            sudo chown -R "$(id -u):$(id -g)" "$SDK_DIR" 2>/dev/null || true
+          else
+            mkdir -p "$SDK_DIR"
+          fi
+
+          SDKMANAGER=""
+          if [ -x "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" ]; then
+            SDKMANAGER="$SDK_DIR/cmdline-tools/latest/bin/sdkmanager"
+          else
+            SDKMANAGER=$(find "$SDK_DIR/cmdline-tools" -maxdepth 3 -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1 || true)
+          fi
+
+          if [ -z "$SDKMANAGER" ]; then
+            mkdir -p "$SDK_DIR/cmdline-tools"
+            curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/cmdtools.zip
+            unzip -q /tmp/cmdtools.zip -d /tmp/cmdtools-extract
+            mv /tmp/cmdtools-extract/cmdline-tools "$SDK_DIR/cmdline-tools/latest"
+            SDKMANAGER="$SDK_DIR/cmdline-tools/latest/bin/sdkmanager"
+          fi
+
+          echo "ANDROID_HOME=$SDK_DIR" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_DIR" >> "$GITHUB_ENV"
+          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+          echo "$SDK_DIR/platform-tools" >> "$GITHUB_PATH"
+
+          (yes || true) | "$SDKMANAGER" --sdk_root="$SDK_DIR" --licenses >/dev/null || true
+          (yes || true) | "$SDKMANAGER" --sdk_root="$SDK_DIR" "platform-tools" >/dev/null || true
+          (yes || true) | "$SDKMANAGER" --sdk_root="$SDK_DIR" "build-tools;36.0.0" >/dev/null || true
+          (yes || true) | "$SDKMANAGER" --sdk_root="$SDK_DIR" "platforms;android-36.1" >/dev/null || \
+            (yes || true) | "$SDKMANAGER" --sdk_root="$SDK_DIR" "platforms;android-36" >/dev/null || true
+          (yes || true) | "$SDKMANAGER" --sdk_root="$SDK_DIR" --licenses >/dev/null || true
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+          validate-wrappers: false
+
+      - name: Prepare debug keystore
+        run: |
+          if [ -f debug.keystore.base64 ] && [ ! -f debug.keystore ]; then
+            tr -d '[:space:]' < debug.keystore.base64 | base64 -d > debug.keystore
+          elif [ ! -f debug.keystore ]; then
+            keytool -genkeypair -v \
+              -keystore debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Ensure .env exists
+        run: |
+          if [ ! -f .env ] && [ -f .env.example ]; then
+            cp .env.example .env
+          elif [ ! -f .env ]; then
+            touch .env
+          fi
+
+      - name: Build Debug APK
+        run: gradle :app:assembleDebug --no-daemon --no-configuration-cache -Pandroid.builder.sdkDownload=true --stacktrace
+
+      - name: Prepare negai.apk
+        run: |
+          APK_PATH=$(find app/build/outputs/apk/debug -type f -name "*.apk" | head -n 1)
+          if [ -z "$APK_PATH" ] || [ ! -s "$APK_PATH" ]; then
+            echo "Error: Signed APK not found or empty in app/build/outputs/apk/debug"
+            exit 1
+          fi
+          cp "$APK_PATH" negai.apk
+          ls -lh negai.apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: negai-apk
+          path: negai.apk
+
+      - name: Create GitHub Release & Upload negai.apk
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if [ ! -s negai.apk ]; then
+            echo "Error: negai.apk is missing before release upload!"
+            exit 1
+          fi
+
+          TAG="v2.0.${GITHUB_RUN_NUMBER}"
+          SHORT_SHA="${GITHUB_SHA::7}"
+          APK_SIZE=$(du -h negai.apk | cut -f1)
+
+          NOTES=$(printf "Автоматическая сборка **negai v2.0** (\`%s\`).\n\n- **Файл установки:** \`negai.apk\` (%s)\n- **Коммит:** \`%s\` (ветка \`%s\`)\n- **Прямая ссылка на свежую сборку:** [Скачать negai.apk](https://github.com/%s/releases/latest/download/negai.apk)" "$TAG" "$APK_SIZE" "$SHORT_SHA" "$GITHUB_REF_NAME" "$GITHUB_REPOSITORY")
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" negai.apk --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "negai ${TAG}" \
+              --notes "$NOTES" \
+              --latest
+          else
+            gh release create "$TAG" negai.apk \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "negai ${TAG}" \
+              --notes "$NOTES" \
+              --latest
+          fi
+
+          REL_URL=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url -q .url)
+          echo "Published GitHub Release: $REL_URL"
+
+          {
+            echo "## GitHub Release опубликован"
+            echo "- **Релиз:** [${TAG}](${REL_URL})"
+            echo "- **APK:** \`negai.apk\` (${APK_SIZE})"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,8 @@
+{
+  "name": "Remix VisionCore Player",
+  "description": "Advanced video player with hardware decoding, PiP controls, external audio support, auto-matching, and anime-focused visual upscaling.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

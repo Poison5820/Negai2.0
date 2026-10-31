@@ -1,0 +1,95 @@
+<resources>
+    <string name="app_name">negai</string>
+    <string name="app_tagline">Аппаратный плеер • Anime4K • Субтитры SRT/ASS</string>
+
+    <!-- Navigation -->
+    <string name="nav_folders">Папки</string>
+    <string name="nav_recent">Недавние</string>
+    <string name="nav_torrents">Торренты</string>
+    <string name="nav_settings">Настройки</string>
+
+    <!-- Torrents & TorrServer -->
+    <string name="torrents_search_placeholder">Поиск: RuTracker, Rutor и другие трекеры…</string>
+    <string name="action_watch_torrent">Смотреть</string>
+    <string name="action_open_external_torrent">В другом приложении</string>
+    <string name="action_open_magnet_or_file">Magnet / .torrent</string>
+    <string name="action_saved_torrserver_list">Торренты сервера</string>
+    <string name="torrserver_online_badge">TorrServer онлайн</string>
+    <string name="torrserver_offline_badge">TorrServer не подключён</string>
+
+    <!-- Library, Storage & Exclusions -->
+    <string name="action_grant_storage">Разрешить доступ к хранилищу</string>
+    <string name="storage_access_title">Доступ ко всему хранилищу</string>
+    <string name="storage_access_subtitle">Разрешите доступ к памяти устройства, чтобы все папки с фильмами, аниме, внешними озвучками (.mka, .mp3, .flac) и субтитрами (.srt, .ass) появились автоматически. Лишние папки легко убрать в исключения.</string>
+    <string name="scanning_storage_title">Сканирование хранилища…</string>
+    <string name="scanning_storage_subtitle">Поиск папок с видео, внешних аудиодорожек и субтитров</string>
+    <string name="empty_storage_title">Видеофайлы на устройстве не найдены</string>
+    <string name="empty_storage_subtitle">Скопируйте фильмы или сериалы в память устройства либо подключите внешнюю папку (USB / SD).</string>
+    <string name="action_add_folder">Доп. папка</string>
+    <string name="action_open_file">Открыть файл</string>
+    <string name="action_open_url">Открыть URL</string>
+    <string name="action_rescan">Обновить библиотеку</string>
+    <string name="search_folders_placeholder">Поиск папок и серий…</string>
+    <string name="exclusions_title">Исключения</string>
+    <string name="exclusions_empty">Список исключений пуст. Любую ненужную папку можно добавить в исключения через меню карточки или выбрать вручную.</string>
+    <string name="action_add_to_exclusions">В исключения</string>
+    <string name="action_pick_exclusion_folder">Добавить папку в исключения</string>
+    <string name="action_remove_from_exclusions">Вернуть</string>
+    <string name="folder_excluded_snackbar">Папка добавлена в исключения</string>
+    <string name="action_undo">Отменить</string>
+
+    <!-- Episodes & Resume -->
+    <string name="action_continue_watching">Продолжить просмотр</string>
+    <string name="last_played_continue_from">Продолжить с %1$s</string>
+    <string name="last_played_open_file">Последний воспроизведённый файл</string>
+    <string name="last_played_missing_snackbar">Последний воспроизведённый файл больше не существует</string>
+    <string name="player_resumed_from">Продолжено с %1$s</string>
+    <string name="player_restart_from_beginning">С начала</string>
+    <string name="settings_resume_playback_title">Воспроизведение с последней точки</string>
+    <string name="settings_resume_playback_subtitle">Автоматически продолжать видео с места остановки при открытии</string>
+    <string name="badge_auto_audio">Авто-аудио</string>
+    <string name="badge_auto_subs">Субтитры</string>
+
+    <!-- Settings Categories -->
+    <string name="settings_cat_appearance">Оформление и интерфейс</string>
+    <string name="settings_cat_playback">Воспроизведение и таймлайн</string>
+    <string name="settings_cat_gestures">Жесты и управление</string>
+    <string name="settings_cat_video">Видео, декодер и Anime4K</string>
+    <string name="settings_cat_audio">Аудио и озвучка</string>
+    <string name="settings_cat_subtitles">Субтитры (SRT / ASS)</string>
+    <string name="settings_cat_torrserver">TorrServer и торренты</string>
+    <string name="settings_cat_storage">Хранилище и исключения</string>
+
+    <!-- Player & PiP & Notifications -->
+    <string name="pip_rewind_10">Назад</string>
+    <string name="pip_forward_10">Вперёд</string>
+    <string name="pip_play">Воспроизвести</string>
+    <string name="pip_pause">Пауза</string>
+    <string name="notif_prev_episode">Предыдущая серия</string>
+    <string name="notif_next_episode">Следующая серия</string>
+    <string name="player_enter_pip">Картинка в картинке (PiP)</string>
+    <string name="player_audio_tracks">Аудио</string>
+    <string name="player_subtitles">Субтитры</string>
+    <string name="player_anime4k">Anime4K</string>
+    <string name="player_decoder_settings">Декодер</string>
+    <string name="player_attach_external_audio">Подключить внешнюю аудиодорожку</string>
+    <string name="player_load_external_subtitle">Загрузить субтитры (.SRT / .ASS)</string>
+
+    <!-- Subtitle Controls -->
+    <string name="subtitle_off">Выключены</string>
+    <string name="subtitle_delay_label">Задержка субтитров</string>
+    <string name="subtitle_font_size_label">Размер шрифта</string>
+    <string name="subtitle_color_label">Цвет субтитров</string>
+    <string name="subtitle_bg_label">Темная подложка под текстом</string>
+
+    <!-- Anime4K Controls -->
+    <string name="anime4k_title">Anime4K — Реалтайм апскейлинг</string>
+    <string name="anime4k_enable">Включить улучшение Anime4K</string>
+    <string name="anime4k_strength">Интенсивность линий и резкости</string>
+    <string name="anime4k_split_compare">Режим сравнения До / После</string>
+
+    <!-- Decoder -->
+    <string name="decoder_hw_plus">Аппаратное (HW+)</string>
+    <string name="decoder_hw_strict">Строго аппаратное (HW)</string>
+    <string name="decoder_sw_prefer">Программное (SW)</string>
+</resources>
