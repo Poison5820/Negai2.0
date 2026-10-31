@@ -176,13 +176,39 @@ enum class PlayerControlsTheme(
     val id: String,
     val title: String,
     val shortBadge: String,
-    val subtitle: String
+    val subtitle: String,
+    val isAccentFree: Boolean = false,
+    val isFrameless: Boolean = false
 ) {
     CLASSIC_OLED(
         id = "CLASSIC_OLED",
         title = "Классический OLED",
         shortBadge = "Классика",
         subtitle = "Компактные матово-стеклянные кнопки с акцентной клавишей Пуск и тонкая полоса"
+    ),
+    PURE_ICONS(
+        id = "PURE_ICONS",
+        title = "Чистые иконки (без фона)",
+        shortBadge = "Без фона",
+        subtitle = "Полностью прозрачные кнопки без подложек, рамок и цветных акцентов",
+        isAccentFree = true,
+        isFrameless = true
+    ),
+    MONOCHROME_MIST(
+        id = "MONOCHROME_MIST",
+        title = "Монохром (без акцентов)",
+        shortBadge = "Монохром",
+        subtitle = "Спокойное тёмно-серое стекло и белые иконки без ярких отвлекающих цветов",
+        isAccentFree = true,
+        isFrameless = false
+    ),
+    GHOST_OUTLINE(
+        id = "GHOST_OUTLINE",
+        title = "Призрачный контур",
+        shortBadge = "Контур",
+        subtitle = "Прозрачные кнопки без заливки с тонким нейтральным контуром без акцентов",
+        isAccentFree = true,
+        isFrameless = true
     ),
     GLASS_CAPSULE(
         id = "GLASS_CAPSULE",

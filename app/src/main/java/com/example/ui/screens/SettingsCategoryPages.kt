@@ -212,8 +212,8 @@ internal fun AppearanceSettingsPage(
     SettingsSectionCard(
         title = tr("Тема кнопок и полосы плеера", "Player Controls & Timeline Theme"),
         subtitle = tr(
-            "Визуальный стиль центральных кнопок Play/Pause, чипов и таймлайна в плеере (6 вариантов)",
-            "Visual style of center Play/Pause controls, action chips, and timeline in the player (6 presets)"
+            "Визуальный стиль центральных кнопок Play/Pause, чипов и таймлайна в плеере (8 вариантов, включая без фона и без акцентов)",
+            "Visual style of center Play/Pause controls, action chips, and timeline in the player (8 presets, including frameless and accent-free)"
         ),
         icon = Icons.Default.Tune
     ) {

@@ -136,6 +136,8 @@ internal fun PlayerQuickActionsBar(
         }
 
         item(key = "customize_quick_actions_btn") {
+            val accentFree = settings.playerControlsTheme.isAccentFree
+            val frameless = settings.playerControlsTheme.isFrameless
             AssistChip(
                 onClick = onOpenCustomizer,
                 label = {
@@ -149,14 +151,20 @@ internal fun PlayerQuickActionsBar(
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = tr("Настроить быстрые клавиши плеера", "Customize player quick actions"),
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = if (accentFree) Color.White.copy(alpha = 0.88f) else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(17.dp)
                     )
                 },
                 colors = AssistChipDefaults.assistChipColors(
-                    containerColor = Color.White.copy(alpha = 0.14f)
+                    containerColor = if (frameless) Color.Transparent else Color.White.copy(alpha = 0.14f)
                 ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)),
+                border = if (frameless) {
+                    null
+                } else if (accentFree) {
+                    BorderStroke(1.dp, Color.White.copy(alpha = 0.24f))
+                } else {
+                    BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f))
+                },
                 modifier = Modifier.testTag("player_customize_quick_actions_button")
             )
         }
@@ -179,11 +187,21 @@ private fun resolveQuickChipVisuals(
     orientationMode: PlayerOrientationMode
 ): QuickChipVisualState {
     val isEnglish = LocalIsEnglish.current
-    val primary = MaterialTheme.colorScheme.primary
-    val secondary = MaterialTheme.colorScheme.secondary
-    val activePrimaryBg = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f)
-    val activeSecondaryBg = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.78f)
-    val neutralBg = Color.White.copy(alpha = 0.12f)
+    val accentFree = settings.playerControlsTheme.isAccentFree
+    val frameless = settings.playerControlsTheme.isFrameless
+    val primary = if (accentFree) Color.White.copy(alpha = 0.90f) else MaterialTheme.colorScheme.primary
+    val secondary = if (accentFree) Color.White.copy(alpha = 0.90f) else MaterialTheme.colorScheme.secondary
+    val activePrimaryBg = when {
+        frameless -> Color.Transparent
+        accentFree -> Color.White.copy(alpha = 0.20f)
+        else -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f)
+    }
+    val activeSecondaryBg = when {
+        frameless -> Color.Transparent
+        accentFree -> Color.White.copy(alpha = 0.20f)
+        else -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.78f)
+    }
+    val neutralBg = if (frameless) Color.Transparent else Color.White.copy(alpha = 0.12f)
 
     return when (action) {
         PlayerQuickAction.SPEED -> {

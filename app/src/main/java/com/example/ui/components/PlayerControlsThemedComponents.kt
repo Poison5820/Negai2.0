@@ -840,6 +840,376 @@ fun ThemedPlayerCenterTransport(
                 }
             }
         }
+
+        PlayerControlsTheme.PURE_ICONS -> {
+            val softGlyphShadow = Brush.radialGradient(
+                colors = listOf(Color.Black.copy(alpha = 0.28f), Color.Transparent)
+            )
+            Row(
+                modifier = modifier,
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                TransportButtonBox(
+                    onClick = onPreviousEpisode,
+                    enabled = hasPlaylist,
+                    contentDescription = tr("Предыдущая серия", "Previous episode"),
+                    testTag = "player_prev_episode_button",
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(softGlyphShadow, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SkipPrevious,
+                            contentDescription = null,
+                            tint = if (hasPlaylist) Color.White.copy(alpha = 0.94f) else Color.White.copy(alpha = 0.28f),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                TransportButtonBox(
+                    onClick = onRewind,
+                    enabled = true,
+                    contentDescription = rewindDesc,
+                    testTag = "player_rewind_10_button",
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(softGlyphShadow, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = rewindIcon,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.96f),
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+                }
+
+                TransportButtonBox(
+                    onClick = onTogglePlayPause,
+                    enabled = true,
+                    contentDescription = playPauseDesc,
+                    testTag = "player_play_pause_button",
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(54.dp)
+                            .background(softGlyphShadow, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = playPauseIcon,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
+                }
+
+                TransportButtonBox(
+                    onClick = onForward,
+                    enabled = true,
+                    contentDescription = forwardDesc,
+                    testTag = "player_forward_10_button",
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(softGlyphShadow, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = forwardIcon,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.96f),
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+                }
+
+                TransportButtonBox(
+                    onClick = onNextEpisode,
+                    enabled = hasNextEpisode,
+                    contentDescription = tr("Следующая серия", "Next episode"),
+                    testTag = "player_next_episode_button",
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(softGlyphShadow, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SkipNext,
+                            contentDescription = null,
+                            tint = if (hasNextEpisode) Color.White.copy(alpha = 0.94f) else Color.White.copy(alpha = 0.28f),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        PlayerControlsTheme.MONOCHROME_MIST -> {
+            val monoSideBg = Color(0x6612151C)
+            val monoMainBg = Color(0x801A1E28)
+            Row(
+                modifier = modifier,
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                TransportButtonBox(
+                    onClick = onPreviousEpisode,
+                    enabled = hasPlaylist,
+                    contentDescription = tr("Предыдущая серия", "Previous episode"),
+                    testTag = "player_prev_episode_button",
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(monoSideBg, CircleShape)
+                            .border(
+                                1.dp,
+                                Color.White.copy(alpha = if (hasPlaylist) 0.22f else 0.10f),
+                                CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SkipPrevious,
+                            contentDescription = null,
+                            tint = if (hasPlaylist) Color.White.copy(alpha = 0.90f) else Color.White.copy(alpha = 0.28f),
+                            modifier = Modifier.size(21.dp)
+                        )
+                    }
+                }
+
+                TransportButtonBox(
+                    onClick = onRewind,
+                    enabled = true,
+                    contentDescription = rewindDesc,
+                    testTag = "player_rewind_10_button",
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(monoSideBg, CircleShape)
+                            .border(1.dp, Color.White.copy(alpha = 0.26f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = rewindIcon,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.92f),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+
+                TransportButtonBox(
+                    onClick = onTogglePlayPause,
+                    enabled = true,
+                    contentDescription = playPauseDesc,
+                    testTag = "player_play_pause_button",
+                    modifier = Modifier
+                        .size(54.dp)
+                        .background(monoMainBg, CircleShape)
+                        .border(1.2.dp, Color.White.copy(alpha = 0.38f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = playPauseIcon,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+
+                TransportButtonBox(
+                    onClick = onForward,
+                    enabled = true,
+                    contentDescription = forwardDesc,
+                    testTag = "player_forward_10_button",
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(monoSideBg, CircleShape)
+                            .border(1.dp, Color.White.copy(alpha = 0.26f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = forwardIcon,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.92f),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+
+                TransportButtonBox(
+                    onClick = onNextEpisode,
+                    enabled = hasNextEpisode,
+                    contentDescription = tr("Следующая серия", "Next episode"),
+                    testTag = "player_next_episode_button",
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(monoSideBg, CircleShape)
+                            .border(
+                                1.dp,
+                                Color.White.copy(alpha = if (hasNextEpisode) 0.22f else 0.10f),
+                                CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SkipNext,
+                            contentDescription = null,
+                            tint = if (hasNextEpisode) Color.White.copy(alpha = 0.90f) else Color.White.copy(alpha = 0.28f),
+                            modifier = Modifier.size(21.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        PlayerControlsTheme.GHOST_OUTLINE -> {
+            Row(
+                modifier = modifier,
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                TransportButtonBox(
+                    onClick = onPreviousEpisode,
+                    enabled = hasPlaylist,
+                    contentDescription = tr("Предыдущая серия", "Previous episode"),
+                    testTag = "player_prev_episode_button",
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .border(
+                                1.dp,
+                                Color.White.copy(alpha = if (hasPlaylist) 0.28f else 0.12f),
+                                CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SkipPrevious,
+                            contentDescription = null,
+                            tint = if (hasPlaylist) Color.White.copy(alpha = 0.90f) else Color.White.copy(alpha = 0.28f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                TransportButtonBox(
+                    onClick = onRewind,
+                    enabled = true,
+                    contentDescription = rewindDesc,
+                    testTag = "player_rewind_10_button",
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .border(1.dp, Color.White.copy(alpha = 0.34f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = rewindIcon,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.92f),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+
+                TransportButtonBox(
+                    onClick = onTogglePlayPause,
+                    enabled = true,
+                    contentDescription = playPauseDesc,
+                    testTag = "player_play_pause_button",
+                    modifier = Modifier
+                        .size(54.dp)
+                        .border(1.3.dp, Color.White.copy(alpha = 0.50f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = playPauseIcon,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+
+                TransportButtonBox(
+                    onClick = onForward,
+                    enabled = true,
+                    contentDescription = forwardDesc,
+                    testTag = "player_forward_10_button",
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .border(1.dp, Color.White.copy(alpha = 0.34f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = forwardIcon,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.92f),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+
+                TransportButtonBox(
+                    onClick = onNextEpisode,
+                    enabled = hasNextEpisode,
+                    contentDescription = tr("Следующая серия", "Next episode"),
+                    testTag = "player_next_episode_button",
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .border(
+                                1.dp,
+                                Color.White.copy(alpha = if (hasNextEpisode) 0.28f else 0.12f),
+                                CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SkipNext,
+                            contentDescription = null,
+                            tint = if (hasNextEpisode) Color.White.copy(alpha = 0.90f) else Color.White.copy(alpha = 0.28f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1217,6 +1587,134 @@ fun ThemedPlayerSeekBar(
                         topLeft = Offset(activeX - needleW / 2f, cy - needleH / 2f),
                         size = Size(needleW, needleH),
                         cornerRadius = CornerRadius(needleW / 2f, needleW / 2f)
+                    )
+                }
+
+                PlayerControlsTheme.PURE_ICONS -> {
+                    val lineH = if (isScrubbing) 3.5.dp.toPx() else 2.2.dp.toPx()
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.22f),
+                        start = Offset(trackStart, cy),
+                        end = Offset(trackEnd, cy),
+                        strokeWidth = lineH,
+                        cap = StrokeCap.Round
+                    )
+                    if (activeX > trackStart) {
+                        drawLine(
+                            color = Color.White.copy(alpha = 0.90f),
+                            start = Offset(trackStart, cy),
+                            end = Offset(activeX, cy),
+                            strokeWidth = lineH,
+                            cap = StrokeCap.Round
+                        )
+                    }
+                    drawAbSpan(abStartFrac, abEndFrac, trackStart, trackWidth, cy, 6.dp.toPx(), Color.White.copy(alpha = 0.75f))
+                    drawChapterTicks(
+                        enabled = showChapterMarkers && durationMs > 0L,
+                        chapters = chapters,
+                        durationMs = safeDuration,
+                        positionMs = positionMs,
+                        trackStart = trackStart,
+                        trackWidth = trackWidth,
+                        cy = cy,
+                        halfTickPx = 3.2.dp.toPx(),
+                        passedColor = Color.White.copy(alpha = 0.92f),
+                        upcomingColor = Color.White.copy(alpha = 0.55f)
+                    )
+                    val dotR = if (isScrubbing) 7.5.dp.toPx() else 5.2.dp.toPx()
+                    drawCircle(
+                        color = Color.White,
+                        radius = dotR,
+                        center = Offset(activeX, cy)
+                    )
+                }
+
+                PlayerControlsTheme.MONOCHROME_MIST -> {
+                    val h = if (isScrubbing) 5.5.dp.toPx() else 3.8.dp.toPx()
+                    val r = CornerRadius(h / 2f, h / 2f)
+                    drawRoundRect(
+                        color = Color.White.copy(alpha = 0.22f),
+                        topLeft = Offset(trackStart, cy - h / 2f),
+                        size = Size(trackWidth, h),
+                        cornerRadius = r
+                    )
+                    if (activeX > trackStart) {
+                        drawRoundRect(
+                            color = Color.White.copy(alpha = 0.85f),
+                            topLeft = Offset(trackStart, cy - h / 2f),
+                            size = Size(activeX - trackStart, h),
+                            cornerRadius = r
+                        )
+                    }
+                    drawAbSpan(abStartFrac, abEndFrac, trackStart, trackWidth, cy, h + 4.dp.toPx(), Color.White.copy(alpha = 0.72f))
+                    drawChapterTicks(
+                        enabled = showChapterMarkers && durationMs > 0L,
+                        chapters = chapters,
+                        durationMs = safeDuration,
+                        positionMs = positionMs,
+                        trackStart = trackStart,
+                        trackWidth = trackWidth,
+                        cy = cy,
+                        halfTickPx = 4.dp.toPx(),
+                        passedColor = Color.White.copy(alpha = 0.90f),
+                        upcomingColor = Color.White.copy(alpha = 0.58f)
+                    )
+                    val thumbR = if (isScrubbing) 8.5.dp.toPx() else 6.5.dp.toPx()
+                    drawCircle(
+                        color = Color(0xFF141820),
+                        radius = thumbR,
+                        center = Offset(activeX, cy)
+                    )
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.94f),
+                        radius = thumbR,
+                        center = Offset(activeX, cy),
+                        style = Stroke(width = 2.dp.toPx())
+                    )
+                }
+
+                PlayerControlsTheme.GHOST_OUTLINE -> {
+                    val lineH = if (isScrubbing) 2.6.dp.toPx() else 1.8.dp.toPx()
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.24f),
+                        start = Offset(trackStart, cy),
+                        end = Offset(trackEnd, cy),
+                        strokeWidth = lineH,
+                        cap = StrokeCap.Round
+                    )
+                    if (activeX > trackStart) {
+                        drawLine(
+                            color = Color.White.copy(alpha = 0.86f),
+                            start = Offset(trackStart, cy),
+                            end = Offset(activeX, cy),
+                            strokeWidth = lineH,
+                            cap = StrokeCap.Round
+                        )
+                    }
+                    drawAbSpan(abStartFrac, abEndFrac, trackStart, trackWidth, cy, 6.dp.toPx(), Color.White.copy(alpha = 0.70f))
+                    drawChapterTicks(
+                        enabled = showChapterMarkers && durationMs > 0L,
+                        chapters = chapters,
+                        durationMs = safeDuration,
+                        positionMs = positionMs,
+                        trackStart = trackStart,
+                        trackWidth = trackWidth,
+                        cy = cy,
+                        halfTickPx = 3.2.dp.toPx(),
+                        passedColor = Color.White.copy(alpha = 0.88f),
+                        upcomingColor = Color.White.copy(alpha = 0.52f)
+                    )
+                    val ringR = if (isScrubbing) 8.dp.toPx() else 6.dp.toPx()
+                    drawCircle(
+                        color = Color.Black.copy(alpha = 0.65f),
+                        radius = ringR,
+                        center = Offset(activeX, cy)
+                    )
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.88f),
+                        radius = ringR,
+                        center = Offset(activeX, cy),
+                        style = Stroke(width = 1.6.dp.toPx())
                     )
                 }
             }

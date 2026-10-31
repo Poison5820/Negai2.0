@@ -243,6 +243,9 @@ fun AppThemeMode.localizedSubtitle(isEnglish: Boolean): String = if (!isEnglish)
 
 fun PlayerControlsTheme.localizedTitle(isEnglish: Boolean): String = if (!isEnglish) title else when (this) {
     PlayerControlsTheme.CLASSIC_OLED -> "Classic OLED"
+    PlayerControlsTheme.PURE_ICONS -> "Pure Icons (Frameless)"
+    PlayerControlsTheme.MONOCHROME_MIST -> "Monochrome (No Accents)"
+    PlayerControlsTheme.GHOST_OUTLINE -> "Ghost Outline"
     PlayerControlsTheme.GLASS_CAPSULE -> "Glass Capsule"
     PlayerControlsTheme.CYBER_NEON -> "Cyber Neon"
     PlayerControlsTheme.MINIMAL_RING -> "Minimal Ring"
@@ -251,6 +254,9 @@ fun PlayerControlsTheme.localizedTitle(isEnglish: Boolean): String = if (!isEngl
 
 fun PlayerControlsTheme.localizedSubtitle(isEnglish: Boolean): String = if (!isEnglish) subtitle else when (this) {
     PlayerControlsTheme.CLASSIC_OLED -> "Compact frosted-glass buttons with an accent Play key and slim timeline"
+    PlayerControlsTheme.PURE_ICONS -> "Completely transparent buttons without backgrounds, borders, or accent colors"
+    PlayerControlsTheme.MONOCHROME_MIST -> "Calm dark-gray smoked glass and white icons with zero distracting accent colors"
+    PlayerControlsTheme.GHOST_OUTLINE -> "Frameless transparent buttons with a subtle neutral outline and no accent colors"
     PlayerControlsTheme.GLASS_CAPSULE -> "Translucent frosted pills with specular edge highlights and capsule bar"
     PlayerControlsTheme.CYBER_NEON -> "Frosted glass with neon accent glow and laser halo seek bar"
     PlayerControlsTheme.MINIMAL_RING -> "Compact airy rings with glass haze and minimalist thread timeline"
@@ -259,6 +265,9 @@ fun PlayerControlsTheme.localizedSubtitle(isEnglish: Boolean): String = if (!isE
 
 fun PlayerControlsTheme.localizedBadge(isEnglish: Boolean): String = if (!isEnglish) shortBadge else when (this) {
     PlayerControlsTheme.CLASSIC_OLED -> "Classic"
+    PlayerControlsTheme.PURE_ICONS -> "Frameless"
+    PlayerControlsTheme.MONOCHROME_MIST -> "Monochrome"
+    PlayerControlsTheme.GHOST_OUTLINE -> "Outline"
     PlayerControlsTheme.GLASS_CAPSULE -> "Glass"
     PlayerControlsTheme.CYBER_NEON -> "Neon"
     PlayerControlsTheme.MINIMAL_RING -> "Ring"

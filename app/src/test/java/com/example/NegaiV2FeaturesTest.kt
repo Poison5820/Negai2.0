@@ -142,11 +142,17 @@ class NegaiV2FeaturesTest {
 
     @Test
     fun playerControlsThemes_and_videoResolutionFormatter_workAccurately() {
-        assertEquals(5, PlayerControlsTheme.entries.size)
+        assertEquals(8, PlayerControlsTheme.entries.size)
         PlayerControlsTheme.entries.forEach { theme ->
             assertEquals(theme, PlayerControlsTheme.fromId(theme.id.lowercase()))
         }
         assertEquals(PlayerControlsTheme.CLASSIC_OLED, PlayerSettings().playerControlsTheme)
+        assertTrue(PlayerControlsTheme.PURE_ICONS.isFrameless)
+        assertTrue(PlayerControlsTheme.PURE_ICONS.isAccentFree)
+        assertTrue(PlayerControlsTheme.MONOCHROME_MIST.isAccentFree)
+        assertFalse(PlayerControlsTheme.MONOCHROME_MIST.isFrameless)
+        assertTrue(PlayerControlsTheme.GHOST_OUTLINE.isAccentFree)
+        assertTrue(PlayerControlsTheme.GHOST_OUTLINE.isFrameless)
 
         assertEquals("4K", VideoResolutionFormatter.formatBadge(3840, 2160, "ep01.mkv"))
         assertEquals("1440p", VideoResolutionFormatter.formatBadge(2560, 1440, "ep01.mkv"))

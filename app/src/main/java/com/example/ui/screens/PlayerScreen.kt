@@ -956,6 +956,16 @@ fun PlayerScreen(
                         }
                     }
 
+                    val accentFreeHud = settings.playerControlsTheme.isAccentFree
+                    val framelessHud = settings.playerControlsTheme.isFrameless
+                    val hudAccentColor = if (accentFreeHud) Color.White.copy(alpha = 0.90f) else MaterialTheme.colorScheme.primary
+                    val hudPillBorder = when {
+                        framelessHud -> null
+                        accentFreeHud -> BorderStroke(1.dp, Color.White.copy(alpha = 0.24f))
+                        else -> BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f))
+                    }
+                    val hudPillBg = if (framelessHud) Color.Transparent else Color.White.copy(alpha = 0.14f)
+
                     // Direct immediate access to Episodes in Player Top Bar
                     if (settings.showEpisodesButtonInHud) {
                         val epButtonLabel = if (playbackState.playlist.size > 1) {
@@ -967,9 +977,9 @@ fun PlayerScreen(
                             tr("Серии", "Episodes")
                         }
                         Surface(
-                            color = Color.White.copy(alpha = 0.14f),
+                            color = hudPillBg,
                             shape = RoundedCornerShape(10.dp),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)),
+                            border = hudPillBorder,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
                                 .clickable {
@@ -986,7 +996,7 @@ fun PlayerScreen(
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.PlaylistPlay,
                                     contentDescription = epButtonLabel,
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = hudAccentColor,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Text(
@@ -1002,13 +1012,14 @@ fun PlayerScreen(
 
                     // Decoder button moved to Top Bar for fast access
                     Surface(
-                        color = if (playbackState.isHardwareAccelerated) {
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f)
-                        } else {
-                            Color.White.copy(alpha = 0.14f)
+                        color = when {
+                            framelessHud -> Color.Transparent
+                            accentFreeHud -> Color.White.copy(alpha = 0.16f)
+                            playbackState.isHardwareAccelerated -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f)
+                            else -> Color.White.copy(alpha = 0.14f)
                         },
                         shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)),
+                        border = hudPillBorder,
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
                             .clickable {
@@ -1028,7 +1039,7 @@ fun PlayerScreen(
                                     "Декодер: ${playbackState.activeDecoderMode.shortBadge}",
                                     "Decoder: ${playbackState.activeDecoderMode.shortBadge}"
                                 ),
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = hudAccentColor,
                                 modifier = Modifier.size(15.dp)
                             )
                             Text(
@@ -1069,7 +1080,7 @@ fun PlayerScreen(
                             }
                         }
                         Surface(
-                            color = Color.White.copy(alpha = 0.14f),
+                            color = hudPillBg,
                             shape = RoundedCornerShape(9.dp),
                             modifier = Modifier
                                 .clip(RoundedCornerShape(9.dp))
@@ -1082,7 +1093,7 @@ fun PlayerScreen(
                             Text(
                                 text = badgeLabel,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = hudAccentColor,
                                 modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp)
                             )
                         }
@@ -1106,7 +1117,7 @@ fun PlayerScreen(
                                     "Ориентация экрана: ${orientationMode.title}",
                                     "Screen orientation: ${orientationMode.localizedTitle(true)}"
                                 ),
-                                tint = if (orientationMode != PlayerOrientationMode.AUTO) {
+                                tint = if (orientationMode != PlayerOrientationMode.AUTO && !accentFreeHud) {
                                     MaterialTheme.colorScheme.primary
                                 } else {
                                     Color.White
