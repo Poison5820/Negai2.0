@@ -4,7 +4,7 @@
 [![Platform](https://img.shields.io/badge/platform-Android_8.0%2B_(API_26%2B)-3DDC84?style=flat-square&logo=android)](#)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.x_%7C_Jetpack_Compose-7F52FF?style=flat-square&logo=kotlin)](#)
 [![Media3](https://img.shields.io/badge/Media3-ExoPlayer_%2B_OpenGL_ES-FF6D00?style=flat-square)](#)
-[![Obtainium](https://img.shields.io/badge/Obtainium-Добавить_%2F_Add_to_Obtainium-6750A4?style=for-the-badge&logo=android&logoColor=white)](https://obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/OWNER/negai)
+[![Obtainium](https://img.shields.io/badge/Obtainium-Добавить_%2F_Add_to_Obtainium-6750A4?style=for-the-badge&logo=android&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Poison5820/Negai2.0)
 
 **Languages / Языки:** [🇷🇺 Русский](#-русский) • [🇬🇧 English](#-english)
 
@@ -14,12 +14,9 @@
 
 **negai** — производительный локальный и сетевой видеоплеер для Android с поддержкой аппаратного декодирования 4K / 10-bit HEVC / AV1, шейдерного апскейлинга **Anime4K**, адаптивного управления частотой экрана **LTPO (24–120 Гц)** и **интерполяции кадров (MEMC)**, автоматической синхронизации задержки звука для **Bluetooth-наушников**, внешних звуковых дорожек и субтитров, а также прямой интеграцией с **TorrServer**.
 
-### 📲 Установка и автообновление через Obtainium
+### 📲 Obtainium
 
-[![Добавить в Obtainium](https://img.shields.io/badge/Obtainium-Добавить_в_Obtainium-6750A4?style=for-the-badge&logo=android&logoColor=white)](https://obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/OWNER/negai)
-
-1. Нажмите кнопку **«Добавить в Obtainium»** выше на Android-устройстве с установленным [Obtainium](https://github.com/ImranR98/Obtainium) (при необходимости подставьте URL вашего форка GitHub-репозитория: `https://obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/<ВАШ_ПРОФИЛЬ>/negai`).
-2. Obtainium автоматически отслеживает новые релизы (`vX.Y.Z`) в GitHub Releases и скачивает подписанный артефакт `negai.apk`.
+[![Добавить в Obtainium](https://img.shields.io/badge/Obtainium-Добавить_в_отслеживание-6750A4?style=for-the-badge&logo=android&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Poison5820/Negai2.0)
 
 ### ✨ Основные возможности
 
@@ -65,12 +62,9 @@ gradle :app:testDebugUnitTest
 
 **negai** is a high-performance local and network video player for Android featuring hardware-accelerated 4K / 10-bit HEVC / AV1 decoding, real-time **Anime4K** OpenGL ES shader upscaling, **LTPO adaptive display refresh rate (24–120 Hz)**, **Frame Interpolation (MEMC)**, automatic **Bluetooth audio latency compensation**, external audio & subtitle auto-binding, and native **TorrServer** streaming.
 
-### 📲 Install & Auto-Update with Obtainium
+### 📲 Obtainium
 
-[![Add to Obtainium](https://img.shields.io/badge/Obtainium-Add_to_Obtainium-6750A4?style=for-the-badge&logo=android&logoColor=white)](https://obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/OWNER/negai)
-
-1. Tap the **Add to Obtainium** button above on an Android device with [Obtainium](https://github.com/ImranR98/Obtainium) installed (replace `OWNER/negai` with your GitHub repository URL if using a fork: `https://obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/<YOUR_USER>/negai`).
-2. Obtainium automatically tracks semantic releases (`vX.Y.Z`) on GitHub Releases and installs the signed `negai.apk` package.
+[![Add to Obtainium](https://img.shields.io/badge/Obtainium-Add_to_Obtainium-6750A4?style=for-the-badge&logo=android&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Poison5820/Negai2.0)
 
 ### ✨ Key Features
 
