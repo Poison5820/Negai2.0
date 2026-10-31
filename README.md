@@ -1,6 +1,6 @@
 # negai — Hardware 4K / HDR Video & Anime Player for Android
 
-[![Version](https://img.shields.io/badge/version-2.1.0-00E5FF?style=flat-square)](#)
+[![Version](https://img.shields.io/badge/version-2.2.0-00E5FF?style=flat-square)](#)
 [![Platform](https://img.shields.io/badge/platform-Android_8.0%2B_(API_26%2B)-3DDC84?style=flat-square&logo=android)](#)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.x_%7C_Jetpack_Compose-7F52FF?style=flat-square&logo=kotlin)](#)
 [![Media3](https://img.shields.io/badge/Media3-ExoPlayer_%2B_OpenGL_ES-FF6D00?style=flat-square)](#)

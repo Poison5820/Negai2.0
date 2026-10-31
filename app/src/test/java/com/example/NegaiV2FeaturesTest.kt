@@ -24,9 +24,9 @@ class NegaiV2FeaturesTest {
 
     @Test
     fun version2BuildConfig_and_frameInterpolationUserFacingLabels() {
-        assertEquals(3, BuildConfig.VERSION_CODE)
-        assertEquals("2.1.0", BuildConfig.VERSION_NAME)
-        assertEquals("v2.1.0", com.example.model.AppVersionInfo.BADGE_TEXT)
+        assertEquals(4, BuildConfig.VERSION_CODE)
+        assertEquals("2.2.0", BuildConfig.VERSION_NAME)
+        assertEquals("v2.2.0", com.example.model.AppVersionInfo.BADGE_TEXT)
 
         assertEquals(com.example.model.AppLanguage.SYSTEM, com.example.model.AppLanguage.fromId("system"))
         assertEquals(com.example.model.AppLanguage.RU, com.example.model.AppLanguage.fromId("ru"))

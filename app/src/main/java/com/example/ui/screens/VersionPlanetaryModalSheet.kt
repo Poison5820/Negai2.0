@@ -447,7 +447,7 @@ fun VersionPlanetaryModalSheet(
                 }
             }
 
-            // Release v2.1.0 Changelog Card
+            // Release v2.2.0 Changelog Card
             Surface(
                 color = MaterialTheme.colorScheme.surfaceContainer,
                 shape = RoundedCornerShape(14.dp),
@@ -459,25 +459,25 @@ fun VersionPlanetaryModalSheet(
                     verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     Text(
-                        text = tr("Что нового в релизе v2.1.0", "What's New in Release v2.1.0"),
+                        text = tr("Что нового в релизе v2.2.0", "What's New in Release v2.2.0"),
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.primary
                     )
                     val notes = if (isEnglish) {
                         listOf(
-                            "• Artifact-free MEMC interpolation (exact 128/255 zero-motion encoding & highp bidirectional warp)",
-                            "• Audio synchronization & delay ±5s (±50/250ms steps + instant stream resync)",
-                            "• Dedicated independent modal sheets for Episodes and Embedded Chapters",
-                            "• Frosted-glass compact player transport controls & top-bar hardware Decoder switch",
-                            "• Multi-language interface support (System Auto / Русский / English)"
+                            "• High refresh rate (120Hz) enabled across library, folders, and settings",
+                            "• Instant dynamic 120Hz boost when touching screen or opening player controls",
+                            "• Ultra-fast 100ms lightweight player HUD appearance without stutters or frame drops",
+                            "• Dynamic Bluetooth latency auto-tracking & earbud Gaming Mode auto-detection",
+                            "• Live hardware latency monitor in Audio Tracks modal sheet"
                         )
                     } else {
                         listOf(
-                            "• Устранены артефакты MEMC-интерполяции (точный нулевой вектор 128/255 и highp-варпинг)",
-                            "• Синхронизация и задержка аудио ±5 с (шаги ±50/250 мс + быстрая ресинхронизация потока)",
-                            "• Раздельные независимые окна для «Серий» и встроенных «Глав»",
-                            "• Компактные кнопки управления из матового стекла и вынос декодера в верхнюю панель",
-                            "• Поддержка переключения языков интерфейса (Системный / Русский / English)"
+                            "• Высокая герцовка (120 Гц) в библиотеке, папках и настройках",
+                            "• Мгновенный буст герцовки дисплея до максимума (120 Гц) при касании и открытии интерфейса плеера",
+                            "• Мгновенный отклик и лёгкий переход кнопок плеера (100 мс) без просадок кадров",
+                            "• Авто-подстройка задержки Bluetooth и распознавание игрового режима (Gaming Mode) наушников",
+                            "• Отображение измеренной аппаратной задержки в меню аудиодорожек"
                         )
                     }
                     notes.forEach { line ->
