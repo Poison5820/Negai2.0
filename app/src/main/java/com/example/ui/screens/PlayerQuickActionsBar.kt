@@ -58,6 +58,11 @@ import com.example.model.VideoScaleMode
 import com.example.player.PlaybackRuntimeState
 import com.example.ui.components.ResolutionBadgeChip
 import com.example.ui.components.formatTimeMs
+import com.example.ui.i18n.LocalIsEnglish
+import com.example.ui.i18n.localizedBadge
+import com.example.ui.i18n.localizedShortLabel
+import com.example.ui.i18n.localizedTitle
+import com.example.ui.i18n.tr
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -135,7 +140,7 @@ internal fun PlayerQuickActionsBar(
                 onClick = onOpenCustomizer,
                 label = {
                     Text(
-                        text = if (visibleActions.isEmpty()) "Настроить кнопки" else "Кнопки",
+                        text = if (visibleActions.isEmpty()) tr("Настроить кнопки", "Customize buttons") else tr("Кнопки", "Buttons"),
                         color = Color.White,
                         maxLines = 1
                     )
@@ -143,7 +148,7 @@ internal fun PlayerQuickActionsBar(
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Edit,
-                        contentDescription = "Настроить быстрые клавиши плеера",
+                        contentDescription = tr("Настроить быстрые клавиши плеера", "Customize player quick actions"),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(17.dp)
                     )
@@ -173,6 +178,7 @@ private fun resolveQuickChipVisuals(
     scaleMode: VideoScaleMode,
     orientationMode: PlayerOrientationMode
 ): QuickChipVisualState {
+    val isEnglish = LocalIsEnglish.current
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
     val activePrimaryBg = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f)
@@ -184,7 +190,7 @@ private fun resolveQuickChipVisuals(
             val isModified = abs(playbackState.playbackSpeed - 1.0f) >= 0.02f
             val speedStr = formatPlaybackSpeedLabel(playbackState.playbackSpeed)
             QuickChipVisualState(
-                label = "Скорость • $speedStr",
+                label = if (isEnglish) "Speed • $speedStr" else "Скорость • $speedStr",
                 iconTint = if (isModified) primary else Color.White,
                 containerColor = if (isModified) activePrimaryBg else neutralBg,
                 testTag = "player_quick_chip_SPEED"
@@ -192,9 +198,10 @@ private fun resolveQuickChipVisuals(
         }
 
         PlayerQuickAction.AUDIO -> {
+            val unit = if (isEnglish) "ms" else "мс"
             val delaySuffix = when {
-                playbackState.audioDelayMs > 0L -> " • +${playbackState.audioDelayMs}мс"
-                playbackState.audioDelayMs < 0L -> " • ${playbackState.audioDelayMs}мс"
+                playbackState.audioDelayMs > 0L -> " • +${playbackState.audioDelayMs}$unit"
+                playbackState.audioDelayMs < 0L -> " • ${playbackState.audioDelayMs}$unit"
                 else -> ""
             }
             val boostSuffix = if (playbackState.audioBoostPercent > 100) {
@@ -203,8 +210,9 @@ private fun resolveQuickChipVisuals(
                 ""
             }
             val modified = playbackState.audioDelayMs != 0L || playbackState.audioBoostPercent > 100
+            val prefix = if (isEnglish) "Audio" else "Аудио"
             QuickChipVisualState(
-                label = "Аудио (${playbackState.audioTrackOptions.size})$delaySuffix$boostSuffix",
+                label = "$prefix (${playbackState.audioTrackOptions.size})$delaySuffix$boostSuffix",
                 iconTint = primary,
                 containerColor = if (modified) activePrimaryBg else neutralBg,
                 testTag = "player_open_audio_sheet_chip"
@@ -214,7 +222,11 @@ private fun resolveQuickChipVisuals(
         PlayerQuickAction.SUBTITLES -> {
             val subActive = playbackState.selectedSubtitleId != "off"
             QuickChipVisualState(
-                label = if (subActive) "Субтитры • Вкл" else "Субтитры",
+                label = if (isEnglish) {
+                    if (subActive) "Subtitles • ON" else "Subtitles"
+                } else {
+                    if (subActive) "Субтитры • Вкл" else "Субтитры"
+                },
                 iconTint = if (subActive) primary else Color.White,
                 containerColor = if (subActive) activePrimaryBg else neutralBg,
                 testTag = "player_open_subtitles_sheet_chip"
@@ -223,7 +235,7 @@ private fun resolveQuickChipVisuals(
 
         PlayerQuickAction.DECODER -> {
             QuickChipVisualState(
-                label = "Декодер • ${playbackState.activeDecoderMode.shortBadge}",
+                label = (if (isEnglish) "Decoder • " else "Декодер • ") + playbackState.activeDecoderMode.shortBadge,
                 iconTint = primary,
                 containerColor = neutralBg,
                 testTag = "player_open_decoder_sheet_chip"
@@ -234,7 +246,11 @@ private fun resolveQuickChipVisuals(
             val activeMemc = settings.effectiveFrameInterpolationMode
             val isOn = activeMemc != FrameInterpolationMode.OFF
             QuickChipVisualState(
-                label = if (isOn) "Плавность • ${activeMemc.badgeLabel}" else "Плавность • Выкл",
+                label = if (isEnglish) {
+                    if (isOn) "Smooth • ${activeMemc.badgeLabel}" else "Smooth • OFF"
+                } else {
+                    if (isOn) "Плавность • ${activeMemc.badgeLabel}" else "Плавность • Выкл"
+                },
                 iconTint = if (isOn) primary else Color.White,
                 containerColor = if (isOn) activePrimaryBg else neutralBg,
                 testTag = "player_quick_chip_FRAME_INTERPOLATION"
@@ -245,7 +261,7 @@ private fun resolveQuickChipVisuals(
             val activePreset = settings.effectiveAnime4KPreset
             val isOn = activePreset != Anime4KPreset.OFF
             QuickChipVisualState(
-                label = if (isOn) "Anime4K • ${activePreset.badgeLabel}" else "Anime4K • Выкл",
+                label = if (isOn) "Anime4K • ${activePreset.badgeLabel}" else if (isEnglish) "Anime4K • OFF" else "Anime4K • Выкл",
                 iconTint = if (isOn) secondary else Color.White,
                 containerColor = if (isOn) activeSecondaryBg else neutralBg,
                 testTag = "player_open_anime4k_sheet_chip"
@@ -256,7 +272,7 @@ private fun resolveQuickChipVisuals(
             val total = playbackState.playlist.size.coerceAtLeast(1)
             val currentNum = (playbackState.currentEpisodeIndex + 1).coerceIn(1, total)
             QuickChipVisualState(
-                label = "Серии ($currentNum/$total)",
+                label = if (isEnglish) "Episodes ($currentNum/$total)" else "Серии ($currentNum/$total)",
                 iconTint = primary,
                 containerColor = neutralBg,
                 testTag = "player_quick_chip_EPISODES"
@@ -266,7 +282,11 @@ private fun resolveQuickChipVisuals(
         PlayerQuickAction.CHAPTERS -> {
             val chapterCount = playbackState.chapters.size
             QuickChipVisualState(
-                label = if (chapterCount > 0) "Главы ($chapterCount)" else "Главы",
+                label = if (isEnglish) {
+                    if (chapterCount > 0) "Chapters ($chapterCount)" else "Chapters"
+                } else {
+                    if (chapterCount > 0) "Главы ($chapterCount)" else "Главы"
+                },
                 iconTint = if (chapterCount > 0) primary else Color.White,
                 containerColor = if (chapterCount > 0) activePrimaryBg else neutralBg,
                 testTag = "player_quick_chip_CHAPTERS"
@@ -276,7 +296,7 @@ private fun resolveQuickChipVisuals(
         PlayerQuickAction.SCALE -> {
             val isZoomed = scaleMode != VideoScaleMode.FIT
             QuickChipVisualState(
-                label = scaleMode.shortBadge,
+                label = scaleMode.localizedShortLabel(isEnglish),
                 iconTint = if (isZoomed) primary else Color.White,
                 containerColor = if (isZoomed) activePrimaryBg else neutralBg,
                 testTag = "player_quick_chip_SCALE"
@@ -286,7 +306,7 @@ private fun resolveQuickChipVisuals(
         PlayerQuickAction.AUDIO_BOOST -> {
             val boosted = playbackState.audioBoostPercent > 100
             QuickChipVisualState(
-                label = "Усиление • ${playbackState.audioBoostPercent}%",
+                label = if (isEnglish) "Boost • ${playbackState.audioBoostPercent}%" else "Усиление • ${playbackState.audioBoostPercent}%",
                 iconTint = if (boosted) primary else Color.White,
                 containerColor = if (boosted) activePrimaryBg else neutralBg,
                 testTag = "player_quick_chip_AUDIO_BOOST"
@@ -296,9 +316,9 @@ private fun resolveQuickChipVisuals(
         PlayerQuickAction.SLEEP_TIMER -> {
             val active = playbackState.isSleepTimerActive
             val text = when {
-                playbackState.sleepTimerPreset.stopAtEndOfEpisode -> "Сон • До конца"
-                active -> "Сон • ${formatTimeMs(playbackState.sleepTimerRemainingMs)}"
-                else -> "Таймер сна"
+                playbackState.sleepTimerPreset.stopAtEndOfEpisode -> if (isEnglish) "Sleep • End of ep." else "Сон • До конца"
+                active -> if (isEnglish) "Sleep • ${formatTimeMs(playbackState.sleepTimerRemainingMs)}" else "Сон • ${formatTimeMs(playbackState.sleepTimerRemainingMs)}"
+                else -> if (isEnglish) "Sleep Timer" else "Таймер сна"
             }
             QuickChipVisualState(
                 label = text,
@@ -312,9 +332,9 @@ private fun resolveQuickChipVisuals(
             val hasA = playbackState.abLoopStartMs != null
             val hasB = playbackState.abLoopEndMs != null
             val text = when {
-                hasA && hasB -> "A–B • Цикл"
-                hasA -> "A–B • Задать B"
-                else -> "Повтор A–B"
+                hasA && hasB -> if (isEnglish) "A–B • Loop" else "A–B • Цикл"
+                hasA -> if (isEnglish) "A–B • Set B" else "A–B • Задать B"
+                else -> if (isEnglish) "A–B Loop" else "Повтор A–B"
             }
             QuickChipVisualState(
                 label = text,
@@ -326,7 +346,7 @@ private fun resolveQuickChipVisuals(
 
         PlayerQuickAction.SKIP_INTRO -> {
             QuickChipVisualState(
-                label = "+85с Опенинг",
+                label = if (isEnglish) "+85s Intro" else "+85с Опенинг",
                 iconTint = primary,
                 containerColor = neutralBg,
                 testTag = "player_quick_chip_SKIP_INTRO"
@@ -336,7 +356,7 @@ private fun resolveQuickChipVisuals(
         PlayerQuickAction.ORIENTATION -> {
             val lockedOrient = orientationMode != PlayerOrientationMode.AUTO
             QuickChipVisualState(
-                label = "Экран • ${orientationMode.shortBadge}",
+                label = if (isEnglish) "Rotate • ${orientationMode.localizedBadge(true)}" else "Экран • ${orientationMode.shortBadge}",
                 iconTint = if (lockedOrient) primary else Color.White,
                 containerColor = if (lockedOrient) activePrimaryBg else neutralBg,
                 testTag = "player_quick_chip_ORIENTATION"
@@ -345,7 +365,7 @@ private fun resolveQuickChipVisuals(
 
         PlayerQuickAction.LOCK -> {
             QuickChipVisualState(
-                label = "Блокировка",
+                label = if (isEnglish) "Lock" else "Блокировка",
                 iconTint = Color.White,
                 containerColor = neutralBg,
                 testTag = "player_quick_chip_LOCK"
@@ -366,9 +386,9 @@ private fun resolveQuickChipVisuals(
                 playbackState.isAbLoopActive ||
                 playbackState.audioBoostPercent > 100
             val toolsLabel = when {
-                playbackState.sleepTimerPreset.stopAtEndOfEpisode -> "Ещё • До конца"
-                playbackState.isSleepTimerActive -> "Ещё • ${formatTimeMs(playbackState.sleepTimerRemainingMs)}"
-                else -> "Ещё"
+                playbackState.sleepTimerPreset.stopAtEndOfEpisode -> if (isEnglish) "More • End of ep." else "Ещё • До конца"
+                playbackState.isSleepTimerActive -> if (isEnglish) "More • ${formatTimeMs(playbackState.sleepTimerRemainingMs)}" else "Ещё • ${formatTimeMs(playbackState.sleepTimerRemainingMs)}"
+                else -> if (isEnglish) "More" else "Ещё"
             }
             QuickChipVisualState(
                 label = toolsLabel,
@@ -424,7 +444,10 @@ internal fun SpeedQuickModalSheet(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
-                    Text("Скорость воспроизведения", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        tr("Скорость воспроизведения", "Playback Speed"),
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 }
 
                 Surface(
@@ -470,7 +493,7 @@ internal fun SpeedQuickModalSheet(
                     onClick = { onSelectSpeed(1.0f) },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("1.0x Норма")
+                    Text(tr("1.0x Норма", "1.0x Normal"))
                 }
 
                 OutlinedButton(
@@ -536,7 +559,7 @@ internal fun EpisodesQuickModalSheet(
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Серии в плейлисте (${playlist.size})",
+                    text = tr("Серии в плейлисте (${playlist.size})", "Episodes in Playlist (${playlist.size})"),
                     style = MaterialTheme.typography.titleLarge
                 )
             }
@@ -651,7 +674,10 @@ internal fun AudioBoostQuickModalSheet(
                 onSetAudioBoostPercent = onSetAudioBoostPercent
             )
             Text(
-                text = "Использует системный DSP LoudnessEnhancer для усиления тихих озвучек без изменения скорости речи.",
+                text = tr(
+                    "Использует системный DSP LoudnessEnhancer для усиления тихих озвучек без изменения скорости речи.",
+                    "Uses system DSP LoudnessEnhancer to amplify quiet voiceovers without altering speech pitch or speed."
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -670,6 +696,7 @@ internal fun SleepTimerQuickModalSheet(
     onSetSleepTimer: (SleepTimerPreset) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val isEnglish = LocalIsEnglish.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -695,12 +722,12 @@ internal fun SleepTimerQuickModalSheet(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
-                    Text("Таймер сна", style = MaterialTheme.typography.titleLarge)
+                    Text(tr("Таймер сна", "Sleep Timer"), style = MaterialTheme.typography.titleLarge)
                 }
 
                 if (sleepTimerPreset != SleepTimerPreset.OFF) {
                     val statusText = if (sleepTimerPreset.stopAtEndOfEpisode) {
-                        "До конца серии"
+                        tr("До конца серии", "Until end of episode")
                     } else {
                         formatTimeMs(sleepTimerRemainingMs)
                     }
@@ -728,7 +755,7 @@ internal fun SleepTimerQuickModalSheet(
                     FilterChip(
                         selected = sleepTimerPreset == preset,
                         onClick = { onSetSleepTimer(preset) },
-                        label = { Text(preset.label) },
+                        label = { Text(preset.localizedTitle(isEnglish)) },
                         modifier = Modifier.testTag("sleep_sheet_chip_${preset.id}")
                     )
                 }

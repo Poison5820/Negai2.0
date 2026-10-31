@@ -142,8 +142,8 @@ enum class FrameInterpolationMode(
         motionStrength = 1.0f,
         isAnimeContourProtected = false
     ),
-    SVP_MAX(
-        id = "SVP_MAX",
+    MAX_FPS(
+        id = "MAX_FPS",
         title = "Максимум экрана (90–165 Гц)",
         badgeLabel = "MEMC MAX",
         description = "Фазово-синхронизированная интерполяция каждого кадра под частоту дисплея 90 / 120 / 144 / 165 Гц.",
@@ -166,7 +166,7 @@ enum class FrameInterpolationMode(
 
     companion object {
         fun fromId(id: String): FrameInterpolationMode {
-            if (id.equals("MEMC_MAX", ignoreCase = true)) return SVP_MAX
+            if (id.equals("MEMC_MAX", ignoreCase = true) || id.equals("MAX_FPS", ignoreCase = true)) return MAX_FPS
             return entries.firstOrNull { it.id.equals(id, ignoreCase = true) } ?: OFF
         }
     }
@@ -556,18 +556,65 @@ enum class SleepTimerPreset(
     END_OF_EPISODE("END_OF_EPISODE", "До конца серии", 0, stopAtEndOfEpisode = true)
 }
 
+object AppVersionInfo {
+    const val VERSION_NAME = "2.1.0"
+    const val VERSION_CODE = 3
+    const val BADGE_TEXT = "v2.1.0"
+    const val RELEASE_TAG = "v2.1.0"
+}
+
+enum class AppLanguage(
+    val id: String,
+    val titleRu: String,
+    val titleEn: String,
+    val shortBadge: String,
+    val localeTag: String?
+) {
+    SYSTEM(
+        id = "SYSTEM",
+        titleRu = "Системный (Авто)",
+        titleEn = "System (Auto)",
+        shortBadge = "AUTO",
+        localeTag = null
+    ),
+    RU(
+        id = "RU",
+        titleRu = "Русский",
+        titleEn = "Русский (Russian)",
+        shortBadge = "RU",
+        localeTag = "ru"
+    ),
+    EN(
+        id = "EN",
+        titleRu = "English (Английский)",
+        titleEn = "English",
+        shortBadge = "EN",
+        localeTag = "en"
+    );
+
+    fun localizedTitle(isEnglish: Boolean): String = if (isEnglish) titleEn else titleRu
+
+    companion object {
+        fun fromId(id: String?): AppLanguage =
+            entries.firstOrNull { it.id.equals(id?.trim(), ignoreCase = true) } ?: SYSTEM
+    }
+}
+
 enum class SettingsCategory(
     val id: String,
-    val title: String
+    val title: String,
+    val titleEn: String
 ) {
-    APPEARANCE("APPEARANCE", "Оформление и интерфейс"),
-    PLAYBACK("PLAYBACK", "Воспроизведение и таймлайн"),
-    GESTURES("GESTURES", "Жесты и управление"),
-    VIDEO_ANIME4K("VIDEO_ANIME4K", "Видео, LTPO герцовка, интерполяция и Anime4K"),
-    AUDIO("AUDIO", "Аудио и озвучка"),
-    SUBTITLES("SUBTITLES", "Субтитры (SRT / ASS)"),
-    TORRSERVER("TORRSERVER", "TorrServer и торренты"),
-    STORAGE("STORAGE", "Хранилище и исключения")
+    APPEARANCE("APPEARANCE", "Оформление и интерфейс", "Appearance & Interface"),
+    PLAYBACK("PLAYBACK", "Воспроизведение и таймлайн", "Playback & Timeline"),
+    GESTURES("GESTURES", "Жесты и управление", "Gestures & Controls"),
+    VIDEO_ANIME4K("VIDEO_ANIME4K", "Видео, LTPO герцовка, интерполяция и Anime4K", "Video, LTPO Refresh, MEMC & Anime4K"),
+    AUDIO("AUDIO", "Аудио и озвучка", "Audio & Voiceover"),
+    SUBTITLES("SUBTITLES", "Субтитры (SRT / ASS)", "Subtitles (SRT / ASS)"),
+    TORRSERVER("TORRSERVER", "TorrServer и торренты", "TorrServer & Torrents"),
+    STORAGE("STORAGE", "Хранилище и исключения", "Storage & Exclusions");
+
+    fun localizedTitle(isEnglish: Boolean): String = if (isEnglish) titleEn else title
 }
 
 @Immutable
@@ -584,6 +631,7 @@ data class VideoChapter(
 @Immutable
 data class PlayerSettings(
     // Appearance & Interface
+    val appLanguage: AppLanguage = AppLanguage.SYSTEM,
     val themeMode: AppThemeMode = AppThemeMode.OLED_BLACK,
     val playerControlsTheme: PlayerControlsTheme = PlayerControlsTheme.CLASSIC_OLED,
     val compactUiMode: Boolean = true,
@@ -631,6 +679,8 @@ data class PlayerSettings(
     val autoBindExternalAudio: Boolean = true,
     val preferExternalAudioOnStart: Boolean = true,
     val defaultAudioBoostPercent: Int = 100,
+    val bluetoothAudioAutoSync: Boolean = true,
+    val bluetoothAudioOffsetMs: Long = -150L,
 
     // Subtitles
     val autoBindExternalSubtitles: Boolean = true,

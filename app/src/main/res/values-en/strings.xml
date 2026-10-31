@@ -1,0 +1,96 @@
+<resources>
+    <string name="app_name">negai</string>
+    <string name="app_tagline">Hardware Player • Anime4K • SRT/ASS Subtitles</string>
+
+    <!-- Navigation -->
+    <string name="nav_folders">Folders</string>
+    <string name="nav_recent">Recent</string>
+    <string name="nav_torrents">Torrents</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Torrents & TorrServer -->
+    <string name="torrents_search_placeholder">Search: RuTracker, Rutor &amp; anime trackers…</string>
+    <string name="action_watch_torrent">Watch</string>
+    <string name="action_open_external_torrent">Open in external app</string>
+    <string name="action_open_magnet_or_file">Magnet / .torrent</string>
+    <string name="action_saved_torrserver_list">Server Torrents</string>
+    <string name="torrserver_online_badge">TorrServer Online</string>
+    <string name="torrserver_offline_badge">TorrServer Offline</string>
+    <string name="toast_magnet_copied_no_app">No external torrent client found — Magnet link copied</string>
+
+    <!-- Library, Storage & Exclusions -->
+    <string name="action_grant_storage">Grant storage access</string>
+    <string name="storage_access_title">Full Storage Access</string>
+    <string name="storage_access_subtitle">Grant storage access so all movie and anime folders, external audio tracks (.mka, .mp3, .flac), and subtitles (.srt, .ass) are discovered automatically. Unwanted folders can be excluded anytime.</string>
+    <string name="scanning_storage_title">Scanning storage…</string>
+    <string name="scanning_storage_subtitle">Searching for video folders, external audio tracks, and subtitles</string>
+    <string name="empty_storage_title">No video files found on device</string>
+    <string name="empty_storage_subtitle">Copy movies or series to your device storage or attach an external folder (USB / SD).</string>
+    <string name="action_add_folder">Add folder</string>
+    <string name="action_open_file">Open file</string>
+    <string name="action_open_url">Open URL</string>
+    <string name="action_rescan">Rescan library</string>
+    <string name="search_folders_placeholder">Search folders &amp; episodes…</string>
+    <string name="exclusions_title">Exclusions</string>
+    <string name="exclusions_empty">Exclusion list is empty. You can exclude any folder via its card menu or pick one manually.</string>
+    <string name="action_add_to_exclusions">Exclude</string>
+    <string name="action_pick_exclusion_folder">Add folder to exclusions</string>
+    <string name="action_remove_from_exclusions">Restore</string>
+    <string name="folder_excluded_snackbar">Folder added to exclusions</string>
+    <string name="action_undo">Undo</string>
+
+    <!-- Episodes & Resume -->
+    <string name="action_continue_watching">Continue watching</string>
+    <string name="last_played_continue_from">Resume from %1$s</string>
+    <string name="last_played_open_file">Last played file</string>
+    <string name="last_played_missing_snackbar">Last played file no longer exists</string>
+    <string name="player_resumed_from">Resumed from %1$s</string>
+    <string name="player_restart_from_beginning">From start</string>
+    <string name="settings_resume_playback_title">Resume from last position</string>
+    <string name="settings_resume_playback_subtitle">Automatically continue video from where you left off</string>
+    <string name="badge_auto_audio">Auto-Audio</string>
+    <string name="badge_auto_subs">Subtitles</string>
+
+    <!-- Settings Categories -->
+    <string name="settings_cat_appearance">Appearance &amp; Interface</string>
+    <string name="settings_cat_playback">Playback &amp; Timeline</string>
+    <string name="settings_cat_gestures">Gestures &amp; Controls</string>
+    <string name="settings_cat_video">Video, Decoder &amp; Anime4K</string>
+    <string name="settings_cat_audio">Audio &amp; Voiceover</string>
+    <string name="settings_cat_subtitles">Subtitles (SRT / ASS)</string>
+    <string name="settings_cat_torrserver">TorrServer &amp; Torrents</string>
+    <string name="settings_cat_storage">Storage &amp; Exclusions</string>
+
+    <!-- Player & PiP & Notifications -->
+    <string name="pip_rewind_10">Rewind</string>
+    <string name="pip_forward_10">Forward</string>
+    <string name="pip_play">Play</string>
+    <string name="pip_pause">Pause</string>
+    <string name="notif_prev_episode">Previous episode</string>
+    <string name="notif_next_episode">Next episode</string>
+    <string name="player_enter_pip">Picture-in-Picture (PiP)</string>
+    <string name="player_audio_tracks">Audio</string>
+    <string name="player_subtitles">Subtitles</string>
+    <string name="player_anime4k">Anime4K</string>
+    <string name="player_decoder_settings">Decoder</string>
+    <string name="player_attach_external_audio">Attach external audio track</string>
+    <string name="player_load_external_subtitle">Load subtitles (.SRT / .ASS)</string>
+
+    <!-- Subtitle Controls -->
+    <string name="subtitle_off">Off</string>
+    <string name="subtitle_delay_label">Subtitle delay</string>
+    <string name="subtitle_font_size_label">Font size</string>
+    <string name="subtitle_color_label">Subtitle color</string>
+    <string name="subtitle_bg_label">Dark background box</string>
+
+    <!-- Anime4K Controls -->
+    <string name="anime4k_title">Anime4K — Real-Time Upscaling</string>
+    <string name="anime4k_enable">Enable Anime4K enhancement</string>
+    <string name="anime4k_strength">Line reconstruction &amp; sharpness</string>
+    <string name="anime4k_split_compare">Before / After split comparison</string>
+
+    <!-- Decoder -->
+    <string name="decoder_hw_plus">Hardware (HW+)</string>
+    <string name="decoder_hw_strict">Strict Hardware (HW)</string>
+    <string name="decoder_sw_prefer">Software (SW)</string>
+</resources>

@@ -12,6 +12,7 @@ import com.example.data.LibraryRootEntity
 import com.example.data.PlaybackProgressEntity
 import com.example.data.PlaybackResumeHelper
 import com.example.model.Anime4KPreset
+import com.example.model.AppLanguage
 import com.example.model.AppThemeMode
 import com.example.model.DecoderMode
 import com.example.model.EpisodeItem
@@ -410,6 +411,12 @@ class KinoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // Settings Setters
+    fun setAppLanguage(language: AppLanguage) {
+        viewModelScope.launch {
+            repository.preferencesRepository.updateAppLanguage(language)
+        }
+    }
+
     fun setThemeMode(mode: AppThemeMode) {
         viewModelScope.launch {
             repository.preferencesRepository.updateThemeMode(mode)
@@ -670,6 +677,18 @@ class KinoViewModel(application: Application) : AndroidViewModel(application) {
     fun setDefaultAudioBoostPercent(percent: Int) {
         viewModelScope.launch {
             repository.preferencesRepository.updateDefaultAudioBoostPercent(percent)
+        }
+    }
+
+    fun setBluetoothAudioAutoSync(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.preferencesRepository.updateBluetoothAudioAutoSync(enabled)
+        }
+    }
+
+    fun setBluetoothAudioOffsetMs(offsetMs: Long) {
+        viewModelScope.launch {
+            repository.preferencesRepository.updateBluetoothAudioOffsetMs(offsetMs)
         }
     }
 

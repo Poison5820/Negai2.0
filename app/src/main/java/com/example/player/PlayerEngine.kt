@@ -113,6 +113,11 @@ data class PlaybackRuntimeState(
     val activeSubtitleCues: List<SubtitleCue> = emptyList(),
     val audioBoostPercent: Int = 100,
     val audioDelayMs: Long = 0L,
+    val bluetoothAudioRoute: BluetoothAudioRouteState = BluetoothAudioRouteState(),
+    val bluetoothAutoSyncEnabled: Boolean = true,
+    val bluetoothConfiguredOffsetMs: Long = BluetoothAudioSyncController.DEFAULT_BT_OFFSET_MS,
+    val bluetoothAppliedOffsetMs: Long = 0L,
+    val effectiveAudioDelayMs: Long = 0L,
     val playbackEndMode: PlaybackEndMode = PlaybackEndMode.AUTO_NEXT,
     val sleepTimerPreset: SleepTimerPreset = SleepTimerPreset.OFF,
     val sleepTimerRemainingMs: Long = 0L,
@@ -164,7 +169,7 @@ class PlayerEngine private constructor(
         get() = ensureExoPlayer()
 
     private var configuredDecoderMode: DecoderMode = DecoderMode.HW_PLUS
-    private var highRefreshOrSvpActive: Boolean = true
+    private var highRefreshOrInterpActive: Boolean = true
 
     private var boundSurface: Surface? = null
     private var controllerFuture: ListenableFuture<MediaController>? = null
@@ -176,6 +181,12 @@ class PlayerEngine private constructor(
 
     private val audioBoostController = AudioBoostController()
     private val audioDelayProcessor = AudioDelayProcessor()
+    private var manualAudioDelayMs: Long = 0L
+    private var bluetoothAutoSyncEnabled: Boolean = true
+    private var bluetoothConfiguredOffsetMs: Long = BluetoothAudioSyncController.DEFAULT_BT_OFFSET_MS
+    private val bluetoothSyncController = BluetoothAudioSyncController(appContext) {
+        recalculateEffectiveAudioDelay(resyncIfPlaying = true)
+    }
     private var activeExternalSubtitleDoc: ParsedSubtitleDocument? = null
     private var latestEmbeddedCues: List<SubtitleCue> = emptyList()
     private var positionTickerJob: Job? = null
@@ -484,19 +495,28 @@ class PlayerEngine private constructor(
         // until ensureExoPlayer() is invoked when actual video playback begins!
         val boot = repository.preferencesRepository.readBootSettingsSnapshot()
         configuredDecoderMode = boot.decoderMode
-        highRefreshOrSvpActive = boot.highRefreshRateEnabled || boot.effectiveFrameInterpolationMode.isEnabled
+        highRefreshOrInterpActive = boot.highRefreshRateEnabled || boot.effectiveFrameInterpolationMode.isEnabled
+        bluetoothAutoSyncEnabled = boot.bluetoothAudioAutoSync
+        bluetoothConfiguredOffsetMs = boot.bluetoothAudioOffsetMs
         _state.update {
             it.copy(
                 activeDecoderMode = boot.decoderMode,
-                playbackEndMode = boot.playbackEndMode
+                playbackEndMode = boot.playbackEndMode,
+                bluetoothAutoSyncEnabled = boot.bluetoothAudioAutoSync,
+                bluetoothConfiguredOffsetMs = boot.bluetoothAudioOffsetMs
             )
         }
+        recalculateEffectiveAudioDelay(resyncIfPlaying = false)
 
         engineScope.launch {
             repository.settingsFlow.collect { s ->
                 val prevChaptersEnabled = enableEmbeddedChapters
+                val prevBtAuto = bluetoothAutoSyncEnabled
+                val prevBtOffset = bluetoothConfiguredOffsetMs
                 preferExternalAudioOnStart = s.preferExternalAudioOnStart
                 enableEmbeddedChapters = s.enableEmbeddedChapters
+                bluetoothAutoSyncEnabled = s.bluetoothAudioAutoSync
+                bluetoothConfiguredOffsetMs = s.bluetoothAudioOffsetMs
                 latestTorrServerBaseUrl = TorrServerClient.normalizeBaseUrl(s.torrServerUrl)
                 latestTorrServerAuthHeader = TorrServerClient.buildBasicAuthHeader(
                     s.torrServerUsername,
@@ -504,9 +524,12 @@ class PlayerEngine private constructor(
                 )
                 val wantNoRateSwitch = s.effectiveFrameInterpolationMode.isEnabled ||
                     (s.highRefreshRateEnabled && !s.ltpoAdaptiveRefreshEnabled)
-                highRefreshOrSvpActive = wantNoRateSwitch
+                highRefreshOrInterpActive = wantNoRateSwitch
                 _exoPlayer?.let { activePlayer ->
                     applyFrameRateStrategy(activePlayer, wantNoRateSwitch)
+                }
+                if (prevBtAuto != s.bluetoothAudioAutoSync || prevBtOffset != s.bluetoothAudioOffsetMs) {
+                    recalculateEffectiveAudioDelay(resyncIfPlaying = false)
                 }
                 if (prevChaptersEnabled != s.enableEmbeddedChapters) {
                     if (!s.enableEmbeddedChapters) {
@@ -525,7 +548,7 @@ class PlayerEngine private constructor(
         _exoPlayer?.let { return it }
         val player = createConfiguredExoPlayer(configuredDecoderMode)
         _exoPlayer = player
-        applyFrameRateStrategy(player, highRefreshOrSvpActive)
+        applyFrameRateStrategy(player, highRefreshOrInterpActive)
         applyPlaybackEndModeToExo(_state.value.playbackEndMode)
         audioBoostController.onAudioSessionIdChanged(player.audioSessionId)
         boundSurface?.let { surf ->
@@ -554,6 +577,52 @@ class PlayerEngine private constructor(
                     .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
                     .setAudioProcessors(arrayOf(audioDelayProcessor))
                     .build()
+            }
+
+            override fun buildAudioRenderers(
+                context: Context,
+                extensionRendererMode: Int,
+                mediaCodecSelector: MediaCodecSelector,
+                enableDecoderFallback: Boolean,
+                audioSink: AudioSink,
+                eventHandler: android.os.Handler,
+                eventListener: androidx.media3.exoplayer.audio.AudioRendererEventListener,
+                out: java.util.ArrayList<androidx.media3.exoplayer.Renderer>
+            ) {
+                super.buildAudioRenderers(
+                    context,
+                    extensionRendererMode,
+                    mediaCodecSelector,
+                    enableDecoderFallback,
+                    audioSink,
+                    eventHandler,
+                    eventListener,
+                    out
+                )
+                for (i in out.indices) {
+                    if (out[i] is androidx.media3.exoplayer.audio.MediaCodecAudioRenderer) {
+                        out[i] = object : androidx.media3.exoplayer.audio.MediaCodecAudioRenderer(
+                            context,
+                            codecAdapterFactory,
+                            mediaCodecSelector,
+                            enableDecoderFallback,
+                            eventHandler,
+                            eventListener,
+                            audioSink
+                        ) {
+                            override fun getPositionUs(): Long {
+                                val baseUs = super.getPositionUs()
+                                if (baseUs == C.TIME_UNSET || baseUs == Long.MIN_VALUE) return baseUs
+                                val offsetUs = audioDelayProcessor.mediaClockOffsetUs
+                                return if (offsetUs < 0L) {
+                                    (baseUs + offsetUs).coerceAtLeast(0L)
+                                } else {
+                                    baseUs
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }.apply {
             when (mode) {
@@ -649,6 +718,10 @@ class PlayerEngine private constructor(
 
         engineScope.launch {
             val settings = repository.settingsFlow.first()
+            bluetoothAutoSyncEnabled = settings.bluetoothAudioAutoSync
+            bluetoothConfiguredOffsetMs = settings.bluetoothAudioOffsetMs
+            bluetoothSyncController.refreshRouteState()
+            recalculateEffectiveAudioDelay(resyncIfPlaying = false)
             if (settings.decoderMode != configuredDecoderMode) {
                 switchDecoderMode(settings.decoderMode)
             }
@@ -1257,7 +1330,7 @@ class PlayerEngine private constructor(
         boundSurface?.let { existingPlayer.clearVideoSurface(it) }
 
         val freshPlayer = createConfiguredExoPlayer(newMode)
-        applyFrameRateStrategy(freshPlayer, highRefreshOrSvpActive)
+        applyFrameRateStrategy(freshPlayer, highRefreshOrInterpActive)
         freshPlayer.playbackParameters = PlaybackParameters(speed)
         boundSurface?.let { freshPlayer.setVideoSurface(it) }
         _exoPlayer = freshPlayer
@@ -1477,17 +1550,57 @@ class PlayerEngine private constructor(
     }
 
     fun adjustAudioDelayMs(deltaMs: Long) {
-        setAudioDelayMs(_state.value.audioDelayMs + deltaMs)
+        setAudioDelayMs(manualAudioDelayMs + deltaMs)
     }
 
     fun setAudioDelayMs(delayMs: Long) {
-        val clamped = AudioDelayProcessor.clampDelayMs(delayMs)
-        audioDelayProcessor.setDelayMs(clamped)
-        _state.update { it.copy(audioDelayMs = clamped) }
+        manualAudioDelayMs = AudioDelayProcessor.clampDelayMs(delayMs)
+        recalculateEffectiveAudioDelay(resyncIfPlaying = false)
+    }
+
+    fun refreshBluetoothAudioRoute() {
+        bluetoothSyncController.refreshRouteState()
+        recalculateEffectiveAudioDelay(resyncIfPlaying = false)
+    }
+
+    private fun recalculateEffectiveAudioDelay(resyncIfPlaying: Boolean) {
+        val route = bluetoothSyncController.currentRouteState
+        val btApplied = BluetoothAudioSyncController.computeAutoBluetoothOffsetMs(
+            route = route,
+            autoSyncEnabled = bluetoothAutoSyncEnabled,
+            userConfiguredA2dpOffsetMs = bluetoothConfiguredOffsetMs
+        )
+        val totalEffective = BluetoothAudioSyncController.computeTotalEffectiveDelayMs(
+            manualDelayMs = manualAudioDelayMs,
+            route = route,
+            autoSyncEnabled = bluetoothAutoSyncEnabled,
+            userConfiguredBtOffsetMs = bluetoothConfiguredOffsetMs
+        )
+        audioDelayProcessor.setDelayMs(totalEffective)
+        _state.update {
+            it.copy(
+                audioDelayMs = manualAudioDelayMs,
+                bluetoothAudioRoute = route,
+                bluetoothAutoSyncEnabled = bluetoothAutoSyncEnabled,
+                bluetoothConfiguredOffsetMs = bluetoothConfiguredOffsetMs,
+                bluetoothAppliedOffsetMs = btApplied,
+                effectiveAudioDelayMs = totalEffective
+            )
+        }
+        if (resyncIfPlaying && _exoPlayer?.isPlaying == true) {
+            engineScope.launch {
+                delay(220L)
+                if (_exoPlayer?.isPlaying == true) {
+                    resyncAudioStream()
+                }
+            }
+        }
     }
 
     fun resyncAudioStream() {
         val player = _exoPlayer ?: return
+        bluetoothSyncController.refreshRouteState()
+        recalculateEffectiveAudioDelay(resyncIfPlaying = false)
         audioDelayProcessor.forceResyncFlush()
         val pos = player.currentPosition.coerceAtLeast(0L)
         val idx = player.currentMediaItemIndex.coerceAtLeast(0)

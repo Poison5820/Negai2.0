@@ -22,7 +22,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class SvpOrientationAndChaptersTest {
+class InterpolationOrientationAndChaptersTest {
 
     @Test
     fun defaultOrientationFollowsVideoAspect_horizontalLandscapeAndVerticalPortrait() {
@@ -180,9 +180,9 @@ class SvpOrientationAndChaptersTest {
     }
 
     @Test
-    fun svpShadersAndQuickActions_serializeAndContainValidMemcUniforms() {
+    fun frameInterpolationShadersAndQuickActions_serializeAndContainValidMemcUniforms() {
         assertEquals(FrameInterpolationMode.ANIME, FrameInterpolationMode.fromId("anime"))
-        assertEquals(FrameInterpolationMode.SVP_MAX, FrameInterpolationMode.fromId("SVP_MAX"))
+        assertEquals(FrameInterpolationMode.MAX_FPS, FrameInterpolationMode.fromId("MAX_FPS"))
         assertTrue(FrameInterpolationShaders.MEMC_MOTION_ESTIMATE_FRAGMENT.contains("uPrevTex"))
         assertTrue(FrameInterpolationShaders.MEMC_MOTION_SMOOTH_FRAGMENT.contains("uMotionTex"))
         assertTrue(FrameInterpolationShaders.MEMC_SYNTHESIZE_FRAGMENT.contains("uAlpha"))

@@ -107,6 +107,7 @@ import com.example.data.HiddenFolderEntity
 import com.example.data.LibraryRootEntity
 import com.example.data.PlaybackProgressEntity
 import com.example.model.Anime4KPreset
+import com.example.model.AppVersionInfo
 import com.example.model.FolderSortOption
 import com.example.model.FrameInterpolationMode
 import com.example.model.PlayerSettings
@@ -117,6 +118,7 @@ import com.example.ui.HomeTab
 import com.example.ui.TorrentsUiState
 import com.example.ui.components.LastPlayedFileButton
 import com.example.ui.components.formatFileSize
+import com.example.ui.i18n.tr
 import com.example.ui.theme.NegaiBrandFontFamily
 import kotlinx.coroutines.launch
 
@@ -162,6 +164,7 @@ fun LibraryScreen(
     var showExclusionsSheet by rememberSaveable { mutableStateOf(false) }
     var showStreamDialog by rememberSaveable { mutableStateOf(false) }
     var showQuickThemeSheet by rememberSaveable { mutableStateOf(false) }
+    var showVersionPlanetarySheet by rememberSaveable { mutableStateOf(false) }
     var showSortSheet by rememberSaveable { mutableStateOf(false) }
     var showManualTorrentDialog by rememberSaveable { mutableStateOf(false) }
     var showTorrServerConfigDialog by rememberSaveable { mutableStateOf(false) }
@@ -260,28 +263,31 @@ fun LibraryScreen(
                             )
                             Surface(
                                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                shape = RoundedCornerShape(7.dp),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                                modifier = Modifier.testTag("app_version_badge")
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { showVersionPlanetarySheet = true }
+                                    .testTag("app_version_badge")
                             ) {
-                                Text(
-                                    text = "v2.0",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                            Surface(
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = RoundedCornerShape(7.dp)
-                            ) {
-                                Text(
-                                    text = settings.decoderMode.shortBadge,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(5.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.primary)
+                                    )
+                                    Text(
+                                        text = AppVersionInfo.BADGE_TEXT,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
                             if (settings.effectiveFrameInterpolationMode != FrameInterpolationMode.OFF) {
                                 Surface(
@@ -355,10 +361,10 @@ fun LibraryScreen(
                             icon = {
                                 Icon(
                                     if (currentTab == HomeTab.FOLDERS) Icons.Filled.Folder else Icons.Outlined.Folder,
-                                    contentDescription = "Папки"
+                                    contentDescription = stringResource(R.string.nav_folders)
                                 )
                             },
-                            label = { Text("Папки") },
+                            label = { Text(stringResource(R.string.nav_folders)) },
                             modifier = Modifier.testTag("nav_tab_folders")
                         )
                         NavigationBarItem(
@@ -367,10 +373,10 @@ fun LibraryScreen(
                             icon = {
                                 Icon(
                                     if (currentTab == HomeTab.RECENT) Icons.Filled.History else Icons.Outlined.History,
-                                    contentDescription = "Недавние"
+                                    contentDescription = stringResource(R.string.nav_recent)
                                 )
                             },
-                            label = { Text("Недавние") },
+                            label = { Text(stringResource(R.string.nav_recent)) },
                             modifier = Modifier.testTag("nav_tab_recent")
                         )
                         NavigationBarItem(
@@ -391,10 +397,10 @@ fun LibraryScreen(
                             icon = {
                                 Icon(
                                     if (currentTab == HomeTab.SETTINGS) Icons.Filled.Settings else Icons.Outlined.Settings,
-                                    contentDescription = "Настройки"
+                                    contentDescription = stringResource(R.string.nav_settings)
                                 )
                             },
-                            label = { Text("Настройки") },
+                            label = { Text(stringResource(R.string.nav_settings)) },
                             modifier = Modifier.testTag("nav_tab_settings")
                         )
                     }
@@ -418,10 +424,10 @@ fun LibraryScreen(
                             icon = {
                                 Icon(
                                     if (currentTab == HomeTab.FOLDERS) Icons.Filled.Folder else Icons.Outlined.Folder,
-                                    contentDescription = "Папки"
+                                    contentDescription = stringResource(R.string.nav_folders)
                                 )
                             },
-                            label = { Text("Папки") },
+                            label = { Text(stringResource(R.string.nav_folders)) },
                             modifier = Modifier.testTag("rail_tab_folders")
                         )
                         NavigationRailItem(
@@ -430,10 +436,10 @@ fun LibraryScreen(
                             icon = {
                                 Icon(
                                     if (currentTab == HomeTab.RECENT) Icons.Filled.History else Icons.Outlined.History,
-                                    contentDescription = "Недавние"
+                                    contentDescription = stringResource(R.string.nav_recent)
                                 )
                             },
-                            label = { Text("Недавние") },
+                            label = { Text(stringResource(R.string.nav_recent)) },
                             modifier = Modifier.testTag("rail_tab_recent")
                         )
                         NavigationRailItem(
@@ -454,10 +460,10 @@ fun LibraryScreen(
                             icon = {
                                 Icon(
                                     if (currentTab == HomeTab.SETTINGS) Icons.Filled.Settings else Icons.Outlined.Settings,
-                                    contentDescription = "Настройки"
+                                    contentDescription = stringResource(R.string.nav_settings)
                                 )
                             },
-                            label = { Text("Настройки") },
+                            label = { Text(stringResource(R.string.nav_settings)) },
                             modifier = Modifier.testTag("rail_tab_settings")
                         )
                     }
@@ -554,15 +560,25 @@ fun LibraryScreen(
         )
     }
 
+    if (showVersionPlanetarySheet) {
+        VersionPlanetaryModalSheet(
+            onDismiss = { showVersionPlanetarySheet = false }
+        )
+    }
+
     if (showQuickThemeSheet) {
         QuickThemeBottomSheet(
             currentTheme = settings.themeMode,
             currentControlsTheme = settings.playerControlsTheme,
+            currentLanguage = settings.appLanguage,
             onSelectTheme = { mode ->
                 effectiveSettingsActions.onUpdateThemeMode(mode)
             },
             onSelectControlsTheme = { controlsTheme ->
                 effectiveSettingsActions.onUpdatePlayerControlsTheme(controlsTheme)
+            },
+            onSelectLanguage = { lang ->
+                effectiveSettingsActions.onUpdateAppLanguage(lang)
             },
             onDismiss = { showQuickThemeSheet = false }
         )
@@ -727,7 +743,7 @@ private fun FoldersTabContent(
                     ) {
                         if (!hasStorageAccess) {
                             CompactHomeActionPill(
-                                label = "Доступ",
+                                label = tr("Доступ", "Access"),
                                 icon = Icons.Default.FolderOpen,
                                 emphasized = true,
                                 onClick = onRequestStorageAccess,
@@ -735,7 +751,7 @@ private fun FoldersTabContent(
                             )
                         } else if (!hasAllFilesAccess) {
                             CompactHomeActionPill(
-                                label = "Доступ",
+                                label = tr("Доступ", "Access"),
                                 icon = Icons.Default.FolderOpen,
                                 tonal = true,
                                 onClick = onRequestStorageAccess,
@@ -744,7 +760,7 @@ private fun FoldersTabContent(
                         }
 
                         CompactHomeActionPill(
-                            label = "Файл",
+                            label = tr("Файл", "File"),
                             icon = Icons.Default.VideoFile,
                             tonal = true,
                             onClick = onOpenSingleFile,
@@ -760,7 +776,7 @@ private fun FoldersTabContent(
 
                         if (hasStorageAccess) {
                             CompactHomeActionPill(
-                                label = "Папка",
+                                label = tr("Папка", "Folder"),
                                 icon = Icons.Default.CreateNewFolder,
                                 onClick = onAddSafFolder,
                                 testTag = "add_folder_button"

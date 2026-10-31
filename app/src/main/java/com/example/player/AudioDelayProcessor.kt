@@ -24,11 +24,12 @@ class AudioDelayProcessor : BaseAudioProcessor() {
 
         fun clampDelayMs(delayMs: Long): Long = delayMs.coerceIn(MIN_DELAY_MS, MAX_DELAY_MS)
 
-        fun formatDelayLabel(delayMs: Long): String {
+        fun formatDelayLabel(delayMs: Long, isEnglish: Boolean = false): String {
+            val unit = if (isEnglish) "ms" else "мс"
             return when {
-                delayMs > 0L -> "+${delayMs} мс"
-                delayMs < 0L -> "${delayMs} мс"
-                else -> "0 мс"
+                delayMs > 0L -> "+${delayMs} $unit"
+                delayMs < 0L -> "${delayMs} $unit"
+                else -> "0 $unit"
             }
         }
     }
@@ -37,9 +38,29 @@ class AudioDelayProcessor : BaseAudioProcessor() {
     var delayMs: Long = 0L
         private set
 
+    /**
+     * When true (default), negative delays (< 0 ms, such as Bluetooth A2DP/LE Audio latency
+     * compensation) are applied by shifting the master [ androidx.media3.exoplayer.MediaClock ]
+     * in `MediaCodecAudioRenderer.getPositionUs()` so video frames wait for Bluetooth transmission
+     * without chopping or dropping a single PCM audio sample.
+     */
+    @Volatile
+    var useClockShiftForNegativeDelay: Boolean = true
+
+    /**
+     * Microsecond offset (`<= 0L`) to add to `MediaCodecAudioRenderer.getPositionUs()`.
+     * For example, `-150 ms` returns `-150_000L` us, delaying video frame release by 150 ms.
+     */
+    val mediaClockOffsetUs: Long
+        get() {
+            val d = delayMs
+            return if (useClockShiftForNegativeDelay && d < 0L) d * 1000L else 0L
+        }
+
     private var appliedDelayMs: Long = 0L
     private var pendingSilenceBytes: Long = 0L
     private var pendingSkipBytes: Long = 0L
+    private val zeroBlock = ByteArray(4096)
 
     @Synchronized
     fun setDelayMs(newDelayMs: Long) {
@@ -48,7 +69,12 @@ class AudioDelayProcessor : BaseAudioProcessor() {
         delayMs = clamped
         appliedDelayMs = clamped
         if (inputAudioFormat != AudioFormat.NOT_SET && deltaMs != 0L) {
-            applyDeltaBytes(deltaMs)
+            if (useClockShiftForNegativeDelay && clamped <= 0L && appliedDelayMs - deltaMs <= 0L) {
+                pendingSilenceBytes = 0L
+                pendingSkipBytes = 0L
+            } else {
+                recalculateFromScratch()
+            }
         }
     }
 
@@ -87,7 +113,7 @@ class AudioDelayProcessor : BaseAudioProcessor() {
             }
         }
 
-        // 2. If we have pending silence bytes (positive delay adjustment), prepend zeroed PCM frames
+        // 2. If we have pending silence bytes (positive delay adjustment), prepend zeroed PCM frames using bulk array copy
         val silenceChunk = if (pendingSilenceBytes > 0L) {
             val maxSilenceThisTurn = min(pendingSilenceBytes, 32768L).toInt()
             ((maxSilenceThisTurn / frameSize) * frameSize).coerceAtLeast(0)
@@ -97,8 +123,11 @@ class AudioDelayProcessor : BaseAudioProcessor() {
 
         val outBuffer = replaceOutputBuffer(silenceChunk + remaining)
         if (silenceChunk > 0) {
-            for (i in 0 until silenceChunk) {
-                outBuffer.put(0.toByte())
+            var left = silenceChunk
+            while (left > 0) {
+                val step = min(left, zeroBlock.size)
+                outBuffer.put(zeroBlock, 0, step)
+                left -= step
             }
             pendingSilenceBytes = (pendingSilenceBytes - silenceChunk).coerceAtLeast(0L)
         }
@@ -129,7 +158,7 @@ class AudioDelayProcessor : BaseAudioProcessor() {
         if (delayMs > 0L) {
             pendingSilenceBytes = bytesForDelay
             pendingSkipBytes = 0L
-        } else if (delayMs < 0L) {
+        } else if (delayMs < 0L && !useClockShiftForNegativeDelay) {
             pendingSilenceBytes = 0L
             pendingSkipBytes = bytesForDelay
         } else {

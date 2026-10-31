@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import com.example.data.HiddenFolderEntity
 import com.example.data.LibraryRootEntity
 import com.example.model.Anime4KPreset
+import com.example.model.AppLanguage
 import com.example.model.AppThemeMode
 import com.example.model.DecoderMode
 import com.example.model.FrameInterpolationMode
@@ -64,6 +65,8 @@ import com.example.model.PlayerSettings
 import com.example.model.SettingsCategory
 import com.example.model.SubtitleColorPreset
 import com.example.model.VideoScaleMode
+import com.example.ui.i18n.LocalIsEnglish
+import com.example.ui.i18n.tr
 import kotlin.math.roundToInt
 
 data class SettingsActions(
@@ -75,6 +78,7 @@ data class SettingsActions(
     val onUnhideFolder: (String) -> Unit,
     val onClearPlaybackHistory: () -> Unit,
     val onResetAllSettings: () -> Unit,
+    val onUpdateAppLanguage: (AppLanguage) -> Unit = {},
     val onUpdateThemeMode: (AppThemeMode) -> Unit,
     val onUpdatePlayerControlsTheme: (PlayerControlsTheme) -> Unit = {},
     val onUpdateCompactUiMode: (Boolean) -> Unit = {},
@@ -110,6 +114,8 @@ data class SettingsActions(
     val onUpdateAutoBindAudio: (Boolean) -> Unit,
     val onUpdatePreferExternalAudioOnStart: (Boolean) -> Unit,
     val onUpdateDefaultAudioBoostPercent: (Int) -> Unit,
+    val onUpdateBluetoothAudioAutoSync: (Boolean) -> Unit = {},
+    val onUpdateBluetoothAudioOffsetMs: (Long) -> Unit = {},
     val onUpdateAutoBindSubs: (Boolean) -> Unit,
     val onUpdateSubtitleFontSize: (Float) -> Unit,
     val onUpdateSubtitleColor: (Long) -> Unit,
@@ -171,13 +177,14 @@ fun SettingsTabContent(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    val isEnglish = LocalIsEnglish.current
                     IconButton(
                         onClick = { selectedCategoryId = null },
                         modifier = Modifier.testTag("settings_category_back_button")
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад к категориям настроек"
+                            contentDescription = tr("Назад к категориям настроек", "Back to settings categories")
                         )
                     }
                     Icon(
@@ -187,7 +194,7 @@ fun SettingsTabContent(
                         modifier = Modifier.size(22.dp)
                     )
                     Text(
-                        text = activeCategory.title,
+                        text = activeCategory.localizedTitle(isEnglish),
                         style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -280,6 +287,7 @@ private fun SettingsCategoryHub(
     excludedCount: Int,
     onSelectCategory: (SettingsCategory) -> Unit
 ) {
+    val isEnglish = LocalIsEnglish.current
     LazyColumn(
         modifier = Modifier
             .fillMaxWidth()
@@ -291,33 +299,6 @@ private fun SettingsCategoryHub(
         ),
         verticalArrangement = Arrangement.spacedBy(if (settings.compactUiMode) 8.dp else 10.dp)
     ) {
-        item(key = "hub_intro") {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Категории настроек",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = "negai v2.0",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                    )
-                }
-            }
-        }
-
         items(
             items = SettingsCategory.entries,
             key = { it.id }
@@ -327,7 +308,8 @@ private fun SettingsCategoryHub(
                 settings = settings,
                 hasStorageAccess = hasStorageAccess,
                 hasAllFilesAccess = hasAllFilesAccess,
-                excludedCount = excludedCount
+                excludedCount = excludedCount,
+                isEnglish = isEnglish
             )
             Card(
                 shape = RoundedCornerShape(if (settings.compactUiMode) 15.dp else 18.dp),
@@ -372,7 +354,7 @@ private fun SettingsCategoryHub(
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         Text(
-                            text = category.title,
+                            text = category.localizedTitle(isEnglish),
                             style = MaterialTheme.typography.titleMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -417,34 +399,58 @@ private fun categorySummary(
     settings: PlayerSettings,
     hasStorageAccess: Boolean,
     hasAllFilesAccess: Boolean,
-    excludedCount: Int
+    excludedCount: Int,
+    isEnglish: Boolean = false
 ): String = when (category) {
     SettingsCategory.APPEARANCE -> {
-        val densityTxt = if (settings.compactUiMode) "Компактно" else "Просторно"
-        "${settings.themeMode.title} • Плеер: ${settings.playerControlsTheme.shortBadge} • $densityTxt"
+        val langTxt = settings.appLanguage.shortBadge
+        val densityTxt = if (isEnglish) {
+            if (settings.compactUiMode) "Compact" else "Spacious"
+        } else {
+            if (settings.compactUiMode) "Компактно" else "Просторно"
+        }
+        "${settings.themeMode.title} • $langTxt • $densityTxt"
     }
     SettingsCategory.PLAYBACK -> {
-        val resumeTxt = if (settings.resumePlayback) "Продолжение" else "С начала"
-        val chapTxt = if (settings.enableEmbeddedChapters) "Главы вкл" else "Главы выкл"
-        "$resumeTxt • $chapTxt • Шаг ${settings.seekStepSeconds} сек"
+        if (isEnglish) {
+            val resumeTxt = if (settings.resumePlayback) "Resume ON" else "From start"
+            val chapTxt = if (settings.enableEmbeddedChapters) "Chapters ON" else "Chapters OFF"
+            "$resumeTxt • $chapTxt • Step ${settings.seekStepSeconds}s"
+        } else {
+            val resumeTxt = if (settings.resumePlayback) "Продолжение" else "С начала"
+            val chapTxt = if (settings.enableEmbeddedChapters) "Главы вкл" else "Главы выкл"
+            "$resumeTxt • $chapTxt • Шаг ${settings.seekStepSeconds} сек"
+        }
     }
     SettingsCategory.GESTURES -> {
-        val boostTxt = if (settings.gestureLongPress2x) "Удержание ${settings.longPressBoostSpeed}x" else "Удержание выкл"
-        "$boostTxt • Ориентация: ${settings.defaultPlayerOrientation.shortBadge}"
+        if (isEnglish) {
+            val boostTxt = if (settings.gestureLongPress2x) "Hold ${settings.longPressBoostSpeed}x" else "Hold OFF"
+            "$boostTxt • Orientation: ${settings.defaultPlayerOrientation.shortBadge}"
+        } else {
+            val boostTxt = if (settings.gestureLongPress2x) "Удержание ${settings.longPressBoostSpeed}x" else "Удержание выкл"
+            "$boostTxt • Ориентация: ${settings.defaultPlayerOrientation.shortBadge}"
+        }
     }
     SettingsCategory.VIDEO_ANIME4K -> {
         val memc = settings.effectiveFrameInterpolationMode.badgeLabel
-        val a4k = if (settings.anime4kEnabled) settings.anime4kPreset.badgeLabel else "Выкл"
+        val a4k = if (settings.anime4kEnabled) settings.anime4kPreset.badgeLabel else if (isEnglish) "OFF" else "Выкл"
         val hz = when {
-            settings.ltpoAdaptiveRefreshEnabled && settings.highRefreshRateEnabled -> "LTPO Авто"
+            settings.ltpoAdaptiveRefreshEnabled && settings.highRefreshRateEnabled -> if (isEnglish) "LTPO Auto" else "LTPO Авто"
             settings.highRefreshRateEnabled -> "Max Hz"
             else -> "60Hz"
         }
         "${settings.decoderMode.shortBadge} • $memc • $hz • Anime4K: $a4k"
     }
     SettingsCategory.AUDIO -> {
-        val autoAud = if (settings.autoBindExternalAudio) "Авто-привязка вкл" else "Авто-привязка выкл"
-        "$autoAud • Усиление ${settings.defaultAudioBoostPercent}%"
+        if (isEnglish) {
+            val autoAud = if (settings.autoBindExternalAudio) "Auto-bind ON" else "Auto-bind OFF"
+            val btLabel = if (settings.bluetoothAudioAutoSync) "BT Sync ${settings.bluetoothAudioOffsetMs}ms" else "BT Sync OFF"
+            "$autoAud • $btLabel • Boost ${settings.defaultAudioBoostPercent}%"
+        } else {
+            val autoAud = if (settings.autoBindExternalAudio) "Авто-привязка вкл" else "Авто-привязка выкл"
+            val btLabel = if (settings.bluetoothAudioAutoSync) "BT ${settings.bluetoothAudioOffsetMs}мс" else "BT выкл"
+            "$autoAud • $btLabel • Усиление ${settings.defaultAudioBoostPercent}%"
+        }
     }
     SettingsCategory.SUBTITLES -> {
         val colorLabel = SubtitleColorPreset.fromArgb(settings.subtitleColorArgb).label
@@ -457,15 +463,28 @@ private fun categorySummary(
             .removePrefix("https://")
             .removePrefix("http://")
             .substringBefore('/')
-        val dohLabel = if (settings.enableTrackerDoh) "DoH вкл" else "DoH выкл"
+        val dohLabel = if (settings.enableTrackerDoh) {
+            if (isEnglish) "DoH ON" else "DoH вкл"
+        } else {
+            if (isEnglish) "DoH OFF" else "DoH выкл"
+        }
         "${settings.torrServerUrl.removePrefix("http://")} • $indexerHost • $dohLabel"
     }
     SettingsCategory.STORAGE -> {
-        val accessLabel = when {
-            hasAllFilesAccess -> "Полный доступ"
-            hasStorageAccess -> "Доступ к медиа"
-            else -> "Требуется доступ"
+        if (isEnglish) {
+            val accessLabel = when {
+                hasAllFilesAccess -> "All files access"
+                hasStorageAccess -> "Media access"
+                else -> "Access required"
+            }
+            "$accessLabel • Exclusions: $excludedCount"
+        } else {
+            val accessLabel = when {
+                hasAllFilesAccess -> "Полный доступ"
+                hasStorageAccess -> "Доступ к медиа"
+                else -> "Требуется доступ"
+            }
+            "$accessLabel • Исключений: $excludedCount"
         }
-        "$accessLabel • Исключений: $excludedCount"
     }
 }

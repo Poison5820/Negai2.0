@@ -316,7 +316,14 @@ class TorrentAndTorrServerTest {
     @Test
     fun resourcesAndSettingsCategories_includeTorrServerAndTorrentsTab() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        assertEquals("Торренты", context.getString(R.string.nav_torrents))
+        val ruConfig = android.content.res.Configuration(context.resources.configuration).apply {
+            setLocale(java.util.Locale("ru"))
+        }
+        val enConfig = android.content.res.Configuration(context.resources.configuration).apply {
+            setLocale(java.util.Locale("en"))
+        }
+        assertEquals("Торренты", context.createConfigurationContext(ruConfig).getString(R.string.nav_torrents))
+        assertEquals("Torrents", context.createConfigurationContext(enConfig).getString(R.string.nav_torrents))
         assertTrue(SettingsCategory.entries.contains(SettingsCategory.TORRSERVER))
 
         val parsedJson = TorrServerClient.parseTorrentJson(

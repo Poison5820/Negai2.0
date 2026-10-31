@@ -7,10 +7,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,6 +42,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -62,13 +66,21 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.data.HiddenFolderEntity
+import com.example.model.AppLanguage
 import com.example.model.AppThemeMode
 import com.example.model.EpisodeSortOption
 import com.example.model.FolderSortOption
 import com.example.model.PlayerControlsTheme
 import com.example.ui.components.PlayerControlsThemeSelectorSection
-
-import androidx.compose.foundation.layout.height
+import com.example.ui.i18n.LocalIsEnglish
+import com.example.ui.i18n.localizedActiveBadge
+import com.example.ui.i18n.localizedActiveHint
+import com.example.ui.i18n.localizedAscBadge
+import com.example.ui.i18n.localizedDescBadge
+import com.example.ui.i18n.localizedShortLabel
+import com.example.ui.i18n.localizedSubtitle
+import com.example.ui.i18n.localizedTitle
+import com.example.ui.i18n.tr
 
 @Composable
 internal fun FolderSortHeaderBar(
@@ -79,13 +91,14 @@ internal fun FolderSortHeaderBar(
     onToggleDirection: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isEnglish = LocalIsEnglish.current
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
-            text = "Папки ($folderCount)",
+            text = tr("Папки ($folderCount)", "Folders ($folderCount)"),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -112,7 +125,7 @@ internal fun FolderSortHeaderBar(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = "${sortOption.shortLabel} • ${sortOption.activeBadge(ascending)}",
+                        text = "${sortOption.localizedShortLabel(isEnglish)} • ${sortOption.localizedActiveBadge(ascending, isEnglish)}",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -139,9 +152,9 @@ internal fun FolderSortHeaderBar(
                             Icons.Default.ArrowDownward
                         },
                         contentDescription = if (ascending) {
-                            "По возрастанию: переключить на убывание"
+                            tr("По возрастанию: переключить на убывание", "Ascending: switch to descending")
                         } else {
-                            "По убыванию: переключить на возрастание"
+                            tr("По убыванию: переключить на возрастание", "Descending: switch to ascending")
                         },
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(18.dp)
@@ -161,6 +174,7 @@ internal fun FolderSortBottomSheet(
     onSetDirection: (Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val isEnglish = LocalIsEnglish.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -183,7 +197,7 @@ internal fun FolderSortBottomSheet(
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Сортировка папок",
+                    text = tr("Сортировка папок", "Sort Folders"),
                     style = MaterialTheme.typography.titleLarge
                 )
             }
@@ -195,7 +209,10 @@ internal fun FolderSortBottomSheet(
             ) {
                 SortDirectionPill(
                     selected = ascending,
-                    label = "По возрастанию (${currentOption.shortAscBadge})",
+                    label = tr(
+                        "По возрастанию (${currentOption.localizedAscBadge(false)})",
+                        "Ascending (${currentOption.localizedAscBadge(true)})"
+                    ),
                     icon = Icons.Default.ArrowUpward,
                     onClick = { onSetDirection(true) },
                     modifier = Modifier
@@ -204,7 +221,10 @@ internal fun FolderSortBottomSheet(
                 )
                 SortDirectionPill(
                     selected = !ascending,
-                    label = "По убыванию (${currentOption.shortDescBadge})",
+                    label = tr(
+                        "По убыванию (${currentOption.localizedDescBadge(false)})",
+                        "Descending (${currentOption.localizedDescBadge(true)})"
+                    ),
                     icon = Icons.Default.ArrowDownward,
                     onClick = { onSetDirection(false) },
                     modifier = Modifier
@@ -250,11 +270,11 @@ internal fun FolderSortBottomSheet(
                         )
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = option.title,
+                                text = option.localizedTitle(isEnglish),
                                 style = MaterialTheme.typography.titleSmall
                             )
                             Text(
-                                text = option.activeHint(effectiveAsc),
+                                text = option.localizedActiveHint(effectiveAsc, isEnglish),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -347,13 +367,14 @@ internal fun EpisodeSortHeaderBar(
     onToggleDirection: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isEnglish = LocalIsEnglish.current
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
-            text = "Видео ($episodeCount)",
+            text = tr("Видео ($episodeCount)", "Videos ($episodeCount)"),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -380,7 +401,7 @@ internal fun EpisodeSortHeaderBar(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = "${sortOption.shortLabel} • ${sortOption.activeBadge(ascending)}",
+                        text = "${sortOption.localizedShortLabel(isEnglish)} • ${sortOption.localizedActiveBadge(ascending, isEnglish)}",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -407,9 +428,9 @@ internal fun EpisodeSortHeaderBar(
                             Icons.Default.ArrowDownward
                         },
                         contentDescription = if (ascending) {
-                            "По возрастанию: переключить на убывание"
+                            tr("По возрастанию: переключить на убывание", "Ascending: switch to descending")
                         } else {
-                            "По убыванию: переключить на возрастание"
+                            tr("По убыванию: переключить на возрастание", "Descending: switch to ascending")
                         },
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(18.dp)
@@ -429,6 +450,7 @@ internal fun EpisodeSortBottomSheet(
     onSetDirection: (Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val isEnglish = LocalIsEnglish.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -451,7 +473,7 @@ internal fun EpisodeSortBottomSheet(
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Сортировка внутри папки",
+                    text = tr("Сортировка внутри папки", "Sort Inside Folder"),
                     style = MaterialTheme.typography.titleLarge
                 )
             }
@@ -462,7 +484,10 @@ internal fun EpisodeSortBottomSheet(
             ) {
                 SortDirectionPill(
                     selected = ascending,
-                    label = "По возрастанию (${currentOption.shortAscBadge})",
+                    label = tr(
+                        "По возрастанию (${currentOption.localizedAscBadge(false)})",
+                        "Ascending (${currentOption.localizedAscBadge(true)})"
+                    ),
                     icon = Icons.Default.ArrowUpward,
                     onClick = { onSetDirection(true) },
                     modifier = Modifier
@@ -471,7 +496,10 @@ internal fun EpisodeSortBottomSheet(
                 )
                 SortDirectionPill(
                     selected = !ascending,
-                    label = "По убыванию (${currentOption.shortDescBadge})",
+                    label = tr(
+                        "По убыванию (${currentOption.localizedDescBadge(false)})",
+                        "Descending (${currentOption.localizedDescBadge(true)})"
+                    ),
                     icon = Icons.Default.ArrowDownward,
                     onClick = { onSetDirection(false) },
                     modifier = Modifier
@@ -517,11 +545,11 @@ internal fun EpisodeSortBottomSheet(
                         )
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = option.title,
+                                text = option.localizedTitle(isEnglish),
                                 style = MaterialTheme.typography.titleSmall
                             )
                             Text(
-                                text = option.activeHint(effectiveAsc),
+                                text = option.localizedActiveHint(effectiveAsc, isEnglish),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -558,15 +586,18 @@ private fun EpisodeSortOption.icon(): ImageVector = when (this) {
     EpisodeSortOption.LAST_PLAYED -> Icons.Default.History
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun QuickThemeBottomSheet(
     currentTheme: AppThemeMode,
     currentControlsTheme: PlayerControlsTheme = PlayerControlsTheme.CLASSIC_OLED,
+    currentLanguage: AppLanguage = AppLanguage.SYSTEM,
     onSelectTheme: (AppThemeMode) -> Unit,
     onSelectControlsTheme: (PlayerControlsTheme) -> Unit = {},
+    onSelectLanguage: (AppLanguage) -> Unit = {},
     onDismiss: () -> Unit
 ) {
+    val isEnglish = LocalIsEnglish.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -579,12 +610,36 @@ internal fun QuickThemeBottomSheet(
                 .padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            Text(
+                text = tr("Язык интерфейса", "Interface Language"),
+                style = MaterialTheme.typography.titleMedium
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                AppLanguage.entries.forEach { lang ->
+                    FilterChip(
+                        selected = currentLanguage == lang,
+                        onClick = { onSelectLanguage(lang) },
+                        label = { Text(lang.localizedTitle(isEnglish)) },
+                        modifier = Modifier.testTag("quick_language_chip_${lang.id}")
+                    )
+                }
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 2.dp),
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Icon(Icons.Default.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text("Темы оформления (OLED)", style = MaterialTheme.typography.titleLarge)
+                Text(tr("Темы оформления (OLED)", "App Themes (OLED)"), style = MaterialTheme.typography.titleLarge)
             }
             AppThemeMode.entries.forEach { mode ->
                 val selected = currentTheme == mode
@@ -626,9 +681,9 @@ internal fun QuickThemeBottomSheet(
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(mode.title, style = MaterialTheme.typography.titleSmall)
+                            Text(mode.localizedTitle(isEnglish), style = MaterialTheme.typography.titleSmall)
                             Text(
-                                mode.subtitle,
+                                mode.localizedSubtitle(isEnglish),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -648,7 +703,7 @@ internal fun QuickThemeBottomSheet(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Icon(Icons.Default.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text("Тема кнопок и полосы плеера", style = MaterialTheme.typography.titleMedium)
+                Text(tr("Тема кнопок и полосы плеера", "Player Controls & Timeline Theme"), style = MaterialTheme.typography.titleMedium)
             }
 
             PlayerControlsThemeSelectorSection(
@@ -686,18 +741,21 @@ internal fun HiddenFoldersBottomSheet(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Исключения (${hiddenFolders.size})",
+                    text = tr("Исключения (${hiddenFolders.size})", "Exclusions (${hiddenFolders.size})"),
                     style = MaterialTheme.typography.titleLarge
                 )
                 FilledTonalButton(
                     onClick = onPickFolderToExclude,
                     modifier = Modifier.testTag("sheet_pick_exclusion_folder_button")
                 ) {
-                    Text("Добавить папку")
+                    Text(tr("Добавить папку", "Add Folder"))
                 }
             }
             Text(
-                text = "Папки из списка исключений и все их подпапки скрываются из библиотеки при сканировании хранилища.",
+                text = tr(
+                    "Папки из списка исключений и все их подпапки скрываются из библиотеки при сканировании хранилища.",
+                    "Excluded folders and all their subfolders are hidden from the library during storage scanning."
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -709,7 +767,10 @@ internal fun HiddenFoldersBottomSheet(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Список исключений пуст. Вы можете добавить любую папку через меню «⋮» на карточке папки или кнопкой выше.",
+                        text = tr(
+                            "Список исключений пуст. Вы можете добавить любую папку через меню «⋮» на карточке папки или кнопкой выше.",
+                            "The exclusion list is empty. You can exclude any folder via the '⋮' menu on a folder card or using the button above."
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(20.dp)
                     )
@@ -751,7 +812,7 @@ internal fun HiddenFoldersBottomSheet(
                             ) {
                                 Icon(Icons.Outlined.Visibility, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Вернуть")
+                                Text(tr("Вернуть", "Restore"))
                             }
                         }
                     }
@@ -771,13 +832,13 @@ internal fun OpenStreamUrlDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Открыть видео по ссылке") },
+        title = { Text(tr("Открыть видео по ссылке", "Open Video Stream URL")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it },
-                    label = { Text("URL потока (.mp4, .mkv, .m3u8)") },
+                    label = { Text(tr("URL потока (.mp4, .mkv, .m3u8)", "Stream URL (.mp4, .mkv, .m3u8)")) },
                     singleLine = true,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -786,7 +847,7 @@ internal fun OpenStreamUrlDialog(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Название (необязательно)") },
+                    label = { Text(tr("Название (необязательно)", "Title (optional)")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -798,12 +859,12 @@ internal fun OpenStreamUrlDialog(
                 enabled = url.isNotBlank(),
                 modifier = Modifier.testTag("stream_url_confirm_button")
             ) {
-                Text("Воспроизвести")
+                Text(tr("Воспроизвести", "Play"))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                Text(tr("Отмена", "Cancel"))
             }
         }
     )

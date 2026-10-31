@@ -239,7 +239,7 @@ private class Anime4KGlSurfaceView(
         DisplayRefreshRateController.configureSurfaceFrameRate(
             surface = holder?.surface,
             targetFps = latestSurfaceFps,
-            highRefreshOrSvpActive = latestSurfaceRateActive,
+            highRefreshOrInterpActive = latestSurfaceRateActive,
             compatibility = latestCompatibility
         )
     }
@@ -390,7 +390,7 @@ private class Anime4KRenderer(
     @Volatile private var videoH: Int = 720
     @Volatile private var activePreset: Anime4KPreset = Anime4KPreset.ANIME4K_UPSCALE_CNN
     @Volatile private var activeStrength: Float = 1.0f
-    @Volatile private var activeInterpolation: FrameInterpolationMode = FrameInterpolationMode.SVP_MAX
+    @Volatile private var activeInterpolation: FrameInterpolationMode = FrameInterpolationMode.MAX_FPS
     @Volatile private var activeSourceFps: Float = 0f
     @Volatile private var activePlaybackSpeed: Float = 1.0f
     @Volatile private var splitCompareEnabled: Boolean = false

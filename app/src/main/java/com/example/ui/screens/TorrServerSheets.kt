@@ -79,6 +79,8 @@ import com.example.torrent.TorrServerTorrent
 import com.example.torrent.TorrentInspectorState
 import com.example.torrent.TorrentIntentHelper
 import com.example.ui.components.formatFileSize
+import com.example.ui.i18n.LocalIsEnglish
+import com.example.ui.i18n.tr
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -128,7 +130,7 @@ fun TorrentInspectorBottomSheet(
                         )
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Подготовка потока TorrServer",
+                                text = tr("Подготовка потока TorrServer", "Preparing TorrServer Stream"),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -171,7 +173,7 @@ fun TorrentInspectorBottomSheet(
                             ) {
                                 Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Запустить поток сразу")
+                                Text(tr("Запустить поток сразу", "Start stream immediately"))
                             }
                         }
 
@@ -202,7 +204,7 @@ fun TorrentInspectorBottomSheet(
                             onClick = onDismiss,
                             modifier = Modifier.defaultMinSize(minHeight = 48.dp)
                         ) {
-                            Text("Отмена")
+                            Text(tr("Отмена", "Cancel"))
                         }
                     }
                 }
@@ -222,22 +224,32 @@ fun TorrentInspectorBottomSheet(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        InspectorMetaChip("${bundle.episodes.size} видео")
+                        InspectorMetaChip(tr("${bundle.episodes.size} видео", "${bundle.episodes.size} videos"))
                         if (torrent.torrentSize > 0L) {
                             InspectorMetaChip(formatFileSize(torrent.torrentSize))
                         }
                         if (torrent.connectedSeeders > 0 || torrent.activePeers > 0) {
-                            InspectorMetaChip("Пиры: ${torrent.activePeers} (сиды: ${torrent.connectedSeeders})")
+                            InspectorMetaChip(
+                                tr(
+                                    "Пиры: ${torrent.activePeers} (сиды: ${torrent.connectedSeeders})",
+                                    "Peers: ${torrent.activePeers} (seeds: ${torrent.connectedSeeders})"
+                                )
+                            )
                         }
                         if (bundle.subtitleTrackCount > 0) {
-                            InspectorMetaChip("Субтитры: ${bundle.subtitleTrackCount}")
+                            InspectorMetaChip(
+                                tr(
+                                    "Субтитры: ${bundle.subtitleTrackCount}",
+                                    "Subtitles: ${bundle.subtitleTrackCount}"
+                                )
+                            )
                         }
                     }
 
                     if (bundle.availableVoiceovers.isNotEmpty()) {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
-                                text = "Внешняя озвучка (.mka / аудиопапки)",
+                                text = tr("Внешняя озвучка (.mka / аудиопапки)", "External voiceover (.mka / audio folders)"),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -248,7 +260,7 @@ fun TorrentInspectorBottomSheet(
                                 FilterChip(
                                     selected = bundle.selectedVoiceover == null,
                                     onClick = { onSelectVoiceover(null) },
-                                    label = { Text("Все дорожки") }
+                                    label = { Text(tr("Все дорожки", "All tracks")) }
                                 )
                                 bundle.availableVoiceovers.forEach { voice ->
                                     FilterChip(
@@ -275,7 +287,11 @@ fun TorrentInspectorBottomSheet(
                             Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (bundle.episodes.size > 1) "Смотреть с 1-й" else stringResource(R.string.action_watch_torrent),
+                                text = if (bundle.episodes.size > 1) {
+                                    tr("Смотреть с 1-й", "Watch from ep. 1")
+                                } else {
+                                    stringResource(R.string.action_watch_torrent)
+                                },
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -385,7 +401,7 @@ fun TorrentInspectorBottomSheet(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Открыть TorrServer")
+                                Text(tr("Открыть TorrServer", "Open TorrServer"))
                             }
                         }
 
@@ -398,7 +414,7 @@ fun TorrentInspectorBottomSheet(
                             ) {
                                 Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Повторить")
+                                Text(tr("Повторить", "Retry"))
                             }
                         }
 
@@ -413,7 +429,7 @@ fun TorrentInspectorBottomSheet(
                         ) {
                             Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Настроить сервер")
+                            Text(tr("Настроить сервер", "Configure server"))
                         }
 
                         if (!retryCandidate.isNullOrBlank()) {
@@ -466,6 +482,8 @@ private fun InspectorEpisodeRow(
     index: Int,
     onClick: () -> Unit
 ) {
+    val audioPrefix = tr("Аудио", "Audio")
+    val subsPrefix = tr("Субтитры", "Subtitles")
     Card(
         shape = RoundedCornerShape(14.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
@@ -494,7 +512,7 @@ private fun InspectorEpisodeRow(
             ) {
                 Icon(
                     imageVector = Icons.Default.PlayArrow,
-                    contentDescription = "Воспроизвести ${episode.cleanTitle}",
+                    contentDescription = tr("Воспроизвести ${episode.cleanTitle}", "Play ${episode.cleanTitle}"),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
@@ -532,11 +550,11 @@ private fun InspectorEpisodeRow(
                     if (sz.isNotEmpty()) append(sz)
                     if (episode.autoAudioTracks.isNotEmpty()) {
                         if (isNotEmpty()) append(" • ")
-                        append("Аудио: ${episode.autoAudioTracks.size}")
+                        append("$audioPrefix: ${episode.autoAudioTracks.size}")
                     }
                     if (episode.autoSubtitleTracks.isNotEmpty()) {
                         if (isNotEmpty()) append(" • ")
-                        append("Субтитры: ${episode.autoSubtitleTracks.size}")
+                        append("$subsPrefix: ${episode.autoSubtitleTracks.size}")
                     }
                 }
                 if (subMeta.isNotEmpty()) {
@@ -609,11 +627,14 @@ fun TorrServerSavedTorrentsSheet(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Торренты на TorrServer",
+                        text = tr("Торренты на TorrServer", "Torrents on TorrServer"),
                         style = MaterialTheme.typography.titleLarge
                     )
                     Text(
-                        text = "Сохранённые раздачи для быстрого продолжения просмотра",
+                        text = tr(
+                            "Сохранённые раздачи для быстрого продолжения просмотра",
+                            "Saved torrents for quick resume"
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -626,7 +647,10 @@ fun TorrServerSavedTorrentsSheet(
                     if (isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                     } else {
-                        Icon(Icons.Default.Refresh, contentDescription = "Обновить список торрентов сервера")
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = tr("Обновить список торрентов сервера", "Refresh server torrents")
+                        )
                     }
                 }
             }
@@ -647,7 +671,10 @@ fun TorrServerSavedTorrentsSheet(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text(
-                            text = "Список сохранённых раздач пуст или TorrServer не запущен.",
+                            text = tr(
+                                "Список сохранённых раздач пуст или TorrServer не запущен.",
+                                "Saved torrent list is empty or TorrServer is not running."
+                            ),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -660,7 +687,7 @@ fun TorrServerSavedTorrentsSheet(
                         ) {
                             Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Проверить адрес TorrServer")
+                            Text(tr("Проверить адрес TorrServer", "Check TorrServer address"))
                         }
                     }
                 }
@@ -734,7 +761,7 @@ fun TorrServerSavedTorrentsSheet(
                                     ) {
                                         Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Смотреть")
+                                        Text(tr("Смотреть", "Watch"))
                                     }
 
                                     if (item.hash.isNotBlank()) {
@@ -748,19 +775,19 @@ fun TorrServerSavedTorrentsSheet(
                                         ) {
                                             Icon(
                                                 Icons.AutoMirrored.Filled.OpenInNew,
-                                                contentDescription = "Открыть во внешнем приложении"
+                                                contentDescription = tr("Открыть во внешнем приложении", "Open in external app")
                                             )
                                         }
                                         IconButton(onClick = { onDropCache(item.hash) }) {
                                             Icon(
                                                 Icons.Default.CleaningServices,
-                                                contentDescription = "Сбросить буфер раздачи"
+                                                contentDescription = tr("Сбросить буфер раздачи", "Drop torrent cache")
                                             )
                                         }
                                         IconButton(onClick = { onRemoveTorrent(item.hash) }) {
                                             Icon(
                                                 Icons.Default.DeleteOutline,
-                                                contentDescription = "Удалить торрент с сервера",
+                                                contentDescription = tr("Удалить торрент с сервера", "Remove torrent from server"),
                                                 tint = MaterialTheme.colorScheme.error
                                             )
                                         }
@@ -788,11 +815,14 @@ fun ManualTorrentInputDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Открыть Magnet или .torrent") },
+        title = { Text(tr("Открыть Magnet или .torrent", "Open Magnet or .torrent")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "Вставьте Magnet-ссылку, InfoHash или прямую ссылку на .torrent, либо выберите файл с устройства.",
+                    text = tr(
+                        "Вставьте Magnet-ссылку, InfoHash или прямую ссылку на .torrent, либо выберите файл с устройства.",
+                        "Paste a Magnet link, InfoHash, or direct .torrent URL, or pick a file from your device."
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -812,7 +842,7 @@ fun ManualTorrentInputDialog(
                 OutlinedTextField(
                     value = titleInput,
                     onValueChange = { titleInput = it },
-                    label = { Text("Название (необязательно)") },
+                    label = { Text(tr("Название (необязательно)", "Title (optional)")) },
                     singleLine = true,
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -824,7 +854,7 @@ fun ManualTorrentInputDialog(
                 )
 
                 Text(
-                    text = "Локальный .torrent файл на устройстве:",
+                    text = tr("Локальный .torrent файл на устройстве:", "Local .torrent file on device:"),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -841,7 +871,7 @@ fun ManualTorrentInputDialog(
                 ) {
                     Icon(Icons.Default.FileOpen, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Выбрать .torrent для просмотра")
+                    Text(tr("Выбрать .torrent для просмотра", "Pick .torrent to watch"))
                 }
 
                 OutlinedButton(
@@ -856,7 +886,7 @@ fun ManualTorrentInputDialog(
                 ) {
                     Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Выбрать .torrent для другого приложения")
+                    Text(tr("Выбрать .torrent для другого приложения", "Pick .torrent for external app"))
                 }
             }
         },
@@ -873,7 +903,7 @@ fun ManualTorrentInputDialog(
                     enabled = linkInput.isNotBlank(),
                     modifier = Modifier.testTag("manual_torrent_external_button")
                 ) {
-                    Text("В приложение")
+                    Text(tr("В приложение", "In App"))
                 }
                 Button(
                     onClick = {
@@ -892,7 +922,7 @@ fun ManualTorrentInputDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Закрыть")
+                Text(tr("Закрыть", "Close"))
             }
         }
     )
@@ -907,6 +937,7 @@ fun TorrServerQuickConfigDialog(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val isEnglish = LocalIsEnglish.current
 
     var urlInput by rememberSaveable(settings.torrServerUrl) {
         mutableStateOf(settings.torrServerUrl)
@@ -927,7 +958,7 @@ fun TorrServerQuickConfigDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Настройка TorrServer") },
+        title = { Text(tr("Настройка TorrServer", "TorrServer Configuration")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 FlowRow(
@@ -953,7 +984,7 @@ fun TorrServerQuickConfigDialog(
                 OutlinedTextField(
                     value = urlInput,
                     onValueChange = { urlInput = it },
-                    label = { Text("Адрес TorrServer") },
+                    label = { Text(tr("Адрес TorrServer", "TorrServer URL")) },
                     placeholder = { Text("http://127.0.0.1:8090") },
                     singleLine = true,
                     shape = RoundedCornerShape(14.dp),
@@ -969,7 +1000,7 @@ fun TorrServerQuickConfigDialog(
                     OutlinedTextField(
                         value = userInput,
                         onValueChange = { userInput = it },
-                        label = { Text("Логин") },
+                        label = { Text(tr("Логин", "Username")) },
                         singleLine = true,
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.weight(1f)
@@ -977,7 +1008,7 @@ fun TorrServerQuickConfigDialog(
                     OutlinedTextField(
                         value = passInput,
                         onValueChange = { passInput = it },
-                        label = { Text("Пароль") },
+                        label = { Text(tr("Пароль", "Password")) },
                         visualTransformation = PasswordVisualTransformation(),
                         singleLine = true,
                         shape = RoundedCornerShape(14.dp),
@@ -1018,11 +1049,11 @@ fun TorrServerQuickConfigDialog(
                                 res.fold(
                                     onSuccess = { ver ->
                                         testOk = true
-                                        testResultText = "Онлайн: TorrServer $ver"
+                                        testResultText = if (isEnglish) "Online: TorrServer $ver" else "Онлайн: TorrServer $ver"
                                     },
                                     onFailure = { err ->
                                         testOk = false
-                                        testResultText = err.message ?: "Нет ответа от сервера"
+                                        testResultText = err.message ?: if (isEnglish) "No response from server" else "Нет ответа от сервера"
                                     }
                                 )
                             }
@@ -1036,7 +1067,7 @@ fun TorrServerQuickConfigDialog(
                             Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                         }
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Проверить")
+                        Text(tr("Проверить", "Test"))
                     }
 
                     if (isTorrServerInstalled) {
@@ -1044,7 +1075,7 @@ fun TorrServerQuickConfigDialog(
                             onClick = { TorrentIntentHelper.launchTorrServerApp(context) },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Запустить App")
+                            Text(tr("Запустить App", "Launch App"))
                         }
                     }
                 }
@@ -1059,12 +1090,12 @@ fun TorrServerQuickConfigDialog(
                 },
                 modifier = Modifier.testTag("quick_torrserver_save_button")
             ) {
-                Text("Сохранить")
+                Text(tr("Сохранить", "Save"))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                Text(tr("Отмена", "Cancel"))
             }
         }
     )

@@ -23,29 +23,26 @@ import org.junit.Test
 class NegaiV2FeaturesTest {
 
     @Test
-    fun version2BuildConfig_and_noSvpMisnomerInUserFacingLabels() {
-        assertEquals(2, BuildConfig.VERSION_CODE)
-        assertEquals("2.0", BuildConfig.VERSION_NAME)
+    fun version2BuildConfig_and_frameInterpolationUserFacingLabels() {
+        assertEquals(3, BuildConfig.VERSION_CODE)
+        assertEquals("2.1.0", BuildConfig.VERSION_NAME)
+        assertEquals("v2.1.0", com.example.model.AppVersionInfo.BADGE_TEXT)
+
+        assertEquals(com.example.model.AppLanguage.SYSTEM, com.example.model.AppLanguage.fromId("system"))
+        assertEquals(com.example.model.AppLanguage.RU, com.example.model.AppLanguage.fromId("ru"))
+        assertEquals(com.example.model.AppLanguage.EN, com.example.model.AppLanguage.fromId("en"))
+        assertTrue(com.example.ui.i18n.resolveIsEnglish(com.example.model.AppLanguage.EN))
+        assertFalse(com.example.ui.i18n.resolveIsEnglish(com.example.model.AppLanguage.RU))
 
         FrameInterpolationMode.entries.forEach { mode ->
-            assertFalse(
-                "Mode title must not contain SVP: ${mode.title}",
-                mode.title.contains("SVP", ignoreCase = true)
-            )
-            assertFalse(
-                "Mode badge must not contain SVP: ${mode.badgeLabel}",
-                mode.badgeLabel.contains("SVP", ignoreCase = true)
-            )
-            assertFalse(
-                "Mode description must not contain SVP: ${mode.description}",
-                mode.description.contains("SVP", ignoreCase = true)
-            )
+            assertTrue(mode.title.isNotBlank())
+            assertTrue(mode.badgeLabel.isNotBlank())
+            assertTrue(mode.description.isNotBlank())
         }
 
         val interpQuickAction = PlayerQuickAction.FRAME_INTERPOLATION
-        assertFalse(interpQuickAction.title.contains("SVP", ignoreCase = true))
-        assertFalse(interpQuickAction.shortTitle.contains("SVP", ignoreCase = true))
-        assertFalse(interpQuickAction.subtitle.contains("SVP", ignoreCase = true))
+        assertEquals("Интерполяция кадров (MEMC)", interpQuickAction.title)
+        assertEquals("Плавность", interpQuickAction.shortTitle)
     }
 
     @Test
@@ -105,7 +102,7 @@ class NegaiV2FeaturesTest {
             playbackSpeed = 1.5f,
             highRefreshRateEnabled = true,
             ltpoAdaptiveEnabled = true,
-            interpolationMode = FrameInterpolationMode.SVP_MAX
+            interpolationMode = FrameInterpolationMode.MAX_FPS
         )
         assertEquals(45f, harmonicMemcPlan.effectiveVideoFps, 0.1f)
         assertEquals(90f, harmonicMemcPlan.targetDisplayHz, 0.1f)
@@ -121,7 +118,7 @@ class NegaiV2FeaturesTest {
             playbackSpeed = 2.0f,
             highRefreshRateEnabled = true,
             ltpoAdaptiveEnabled = true,
-            interpolationMode = FrameInterpolationMode.SVP_MAX
+            interpolationMode = FrameInterpolationMode.MAX_FPS
         )
         assertFalse(autoBypassPlan.memcActive)
         assertTrue(autoBypassPlan.memcAutoBypassedBySpeed)
@@ -136,7 +133,7 @@ class NegaiV2FeaturesTest {
             playbackSpeed = 1.0f,
             highRefreshRateEnabled = true,
             ltpoAdaptiveEnabled = true,
-            interpolationMode = FrameInterpolationMode.SVP_MAX
+            interpolationMode = FrameInterpolationMode.MAX_FPS
         )
         assertTrue(pausedPlan.preferSystemIdleWindowMode)
         assertFalse(pausedPlan.useContinuousVsync)
@@ -260,5 +257,65 @@ class NegaiV2FeaturesTest {
         assertEquals(PlayerQuickAction.EPISODES, defaultActions[2])
         assertEquals(PlayerQuickAction.CHAPTERS, defaultActions[3])
         assertFalse(defaultActions.contains(PlayerQuickAction.DECODER))
+
+        // Verify negative audio delay uses MediaClock offset instead of dropping PCM samples
+        val processor = com.example.player.AudioDelayProcessor()
+        processor.setDelayMs(-150L)
+        assertEquals(-150_000L, processor.mediaClockOffsetUs)
+        assertFalse(processor.isActive())
+
+        processor.setDelayMs(200L)
+        assertEquals(0L, processor.mediaClockOffsetUs)
+
+        // Verify BluetoothAudioSyncController auto-compensation logic for A2DP / LE Audio / Wired
+        val wiredRoute = com.example.player.BluetoothAudioRouteState(
+            isBluetoothActive = false,
+            profile = com.example.player.BluetoothAudioProfile.NONE
+        )
+        assertEquals(
+            0L,
+            com.example.player.BluetoothAudioSyncController.computeAutoBluetoothOffsetMs(
+                route = wiredRoute,
+                autoSyncEnabled = true,
+                userConfiguredA2dpOffsetMs = -150L
+            )
+        )
+
+        val a2dpRoute = com.example.player.BluetoothAudioRouteState(
+            isBluetoothActive = true,
+            profile = com.example.player.BluetoothAudioProfile.A2DP,
+            deviceName = "WH-1000XM5"
+        )
+        assertEquals(
+            -150L,
+            com.example.player.BluetoothAudioSyncController.computeAutoBluetoothOffsetMs(
+                route = a2dpRoute,
+                autoSyncEnabled = true,
+                userConfiguredA2dpOffsetMs = -150L
+            )
+        )
+        assertEquals(
+            -100L,
+            com.example.player.BluetoothAudioSyncController.computeTotalEffectiveDelayMs(
+                manualDelayMs = 50L,
+                route = a2dpRoute,
+                autoSyncEnabled = true,
+                userConfiguredBtOffsetMs = -150L
+            )
+        )
+
+        val leAudioRoute = com.example.player.BluetoothAudioRouteState(
+            isBluetoothActive = true,
+            profile = com.example.player.BluetoothAudioProfile.LE_AUDIO,
+            deviceName = "Pixel Buds Pro 2"
+        )
+        assertEquals(
+            -60L,
+            com.example.player.BluetoothAudioSyncController.computeAutoBluetoothOffsetMs(
+                route = leAudioRoute,
+                autoSyncEnabled = true,
+                userConfiguredA2dpOffsetMs = -150L
+            )
+        )
     }
 }

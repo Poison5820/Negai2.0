@@ -73,6 +73,7 @@ import com.example.model.VideoFolderItem
 import com.example.ui.components.ResolutionBadgeChip
 import com.example.ui.components.formatFileSize
 import com.example.ui.components.formatTimeMs
+import com.example.ui.i18n.tr
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -131,7 +132,10 @@ fun FolderDetailScreen(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "${folder.episodes.size} эп. • ${folder.displayPath}",
+                            text = tr(
+                                "${folder.episodes.size} эп. • ${folder.displayPath}",
+                                "${folder.episodes.size} ep. • ${folder.displayPath}"
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -146,7 +150,7 @@ fun FolderDetailScreen(
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад к списку папок"
+                            contentDescription = tr("Назад к списку папок", "Back to folders")
                         )
                     }
                 },
@@ -157,7 +161,7 @@ fun FolderDetailScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.VisibilityOff,
-                            contentDescription = "Добавить папку в исключения"
+                            contentDescription = tr("Добавить папку в исключения", "Exclude folder")
                         )
                     }
                 },
@@ -175,11 +179,17 @@ fun FolderDetailScreen(
                     resumeEnabled = resumePlaybackEnabled
                 )
                 val label = if (resumePos > 0L) {
-                    "Продолжить ${targetEp.episodeBadge ?: ""} (${formatTimeMs(resumePos)})".replace("  ", " ")
+                    tr(
+                        "Продолжить ${targetEp.episodeBadge ?: ""} (${formatTimeMs(resumePos)})".replace("  ", " "),
+                        "Resume ${targetEp.episodeBadge ?: ""} (${formatTimeMs(resumePos)})".replace("  ", " ")
+                    )
                 } else if (resumeCandidateIndex > 0) {
-                    "Смотреть ${targetEp.episodeBadge ?: "с ${resumeCandidateIndex + 1} серии"}"
+                    tr(
+                        "Смотреть ${targetEp.episodeBadge ?: "с ${resumeCandidateIndex + 1} серии"}",
+                        "Watch ${targetEp.episodeBadge ?: "from ep. ${resumeCandidateIndex + 1}"}"
+                    )
                 } else {
-                    "Смотреть с 1 серии"
+                    tr("Смотреть с 1 серии", "Watch from episode 1")
                 }
                 ExtendedFloatingActionButton(
                     onClick = { onPlayEpisode(resumeCandidateIndex) },
@@ -289,15 +299,17 @@ private fun AutoBindSummaryBanner(
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Автопривязка дорожек активна",
+                    text = tr("Автопривязка дорожек активна", "Auto Track Binding Active"),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface
                 )
+                val audioLabel = tr("Найдено внешних аудио: $audioCount", "External audio found: $audioCount")
+                val subLabel = tr("Внешних SRT/ASS: $subCount", "External SRT/ASS: $subCount")
                 Text(
                     text = buildString {
-                        if (audioCount > 0) append("Найдено внешних аудио: $audioCount")
+                        if (audioCount > 0) append(audioLabel)
                         if (audioCount > 0 && subCount > 0) append(" • ")
-                        if (subCount > 0) append("Внешних SRT/ASS: $subCount")
+                        if (subCount > 0) append(subLabel)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -489,7 +501,10 @@ private fun EpisodeRowCard(
                                     text = if (episode.autoAudioTracks.size == 1) {
                                         firstAudio.sourceFolderName.ifBlank { firstAudio.extension.uppercase() }
                                     } else {
-                                        "${episode.autoAudioTracks.size} внеш. аудио"
+                                        tr(
+                                            "${episode.autoAudioTracks.size} внеш. аудио",
+                                            "${episode.autoAudioTracks.size} ext. audio"
+                                        )
                                     },
                                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer

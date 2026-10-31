@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -60,8 +61,15 @@ import com.example.model.SubtitleColorPreset
 import com.example.model.VideoScaleMode
 import com.example.player.AudioDelayProcessor
 import com.example.player.AudioTrackUiOption
+import com.example.player.BluetoothAudioRouteState
 import com.example.player.SubtitleTrackUiOption
 import com.example.ui.components.formatDelaySeconds
+import com.example.ui.i18n.LocalIsEnglish
+import com.example.ui.i18n.localizedDescription
+import com.example.ui.i18n.localizedLabel
+import com.example.ui.i18n.localizedSubtitle
+import com.example.ui.i18n.localizedTitle
+import com.example.ui.i18n.tr
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,6 +78,11 @@ fun AudioTracksModalSheet(
     audioOptions: List<AudioTrackUiOption>,
     audioBoostPercent: Int,
     audioDelayMs: Long = 0L,
+    effectiveAudioDelayMs: Long = audioDelayMs,
+    bluetoothRoute: BluetoothAudioRouteState = BluetoothAudioRouteState(),
+    bluetoothAutoSyncEnabled: Boolean = true,
+    bluetoothAppliedOffsetMs: Long = 0L,
+    onToggleBluetoothAutoSync: (Boolean) -> Unit = {},
     onSelectAudio: (AudioTrackUiOption) -> Unit,
     onSetAudioBoostPercent: (Int) -> Unit,
     onAdjustAudioDelayMs: (Long) -> Unit = {},
@@ -178,13 +191,84 @@ fun AudioTracksModalSheet(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
+            // Bluetooth Route & Automatic Latency Compensation Card
+            Surface(
+                color = if (bluetoothRoute.isBluetoothActive) {
+                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainer
+                },
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(
+                    1.dp,
+                    if (bluetoothRoute.isBluetoothActive) {
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+                    } else {
+                        MaterialTheme.colorScheme.outlineVariant
+                    }
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("audio_bluetooth_sync_card")
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                        val routeTitle = if (bluetoothRoute.isBluetoothActive) {
+                            val namePart = bluetoothRoute.deviceName?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""
+                            "${bluetoothRoute.profile.badgeRu}$namePart"
+                        } else {
+                            "Автоподстройка для Bluetooth"
+                        }
+                        Text(
+                            text = routeTitle,
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        val routeSub = when {
+                            bluetoothRoute.isBluetoothActive && bluetoothAutoSyncEnabled ->
+                                "Авто-компенсация Bluetooth активна: ${AudioDelayProcessor.formatDelayLabel(bluetoothAppliedOffsetMs)}"
+                            bluetoothRoute.isBluetoothActive ->
+                                "Bluetooth подключён (авто-компенсация выключена)"
+                            bluetoothAutoSyncEnabled ->
+                                "Вывод: динамик/провод (0 мс) • Включится автоматически при подключении BT"
+                            else ->
+                                "Авто-компенсация задержки Bluetooth отключена"
+                        }
+                        Text(
+                            text = routeSub,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = bluetoothAutoSyncEnabled,
+                        onCheckedChange = onToggleBluetoothAutoSync,
+                        modifier = Modifier.testTag("audio_bt_autosync_switch")
+                    )
+                }
+            }
+
             // Audio Synchronization & Delay Controls (±5s, ±50/250ms steps + stream resync)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Синхронизация и задержка аудио", style = MaterialTheme.typography.titleSmall)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Ручная коррекция задержки аудио", style = MaterialTheme.typography.titleSmall)
+                    if (bluetoothAppliedOffsetMs != 0L) {
+                        Text(
+                            text = "Итого с учётом Bluetooth: ${AudioDelayProcessor.formatDelayLabel(effectiveAudioDelayMs)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
                 Surface(
                     color = MaterialTheme.colorScheme.primaryContainer,
                     shape = RoundedCornerShape(8.dp)
@@ -286,6 +370,7 @@ fun SubtitleControlModalSheet(
     onSetBackgroundEnabled: (Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val isEnglish = LocalIsEnglish.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -303,7 +388,7 @@ fun SubtitleControlModalSheet(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Icon(Icons.Default.Subtitles, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text("Субтитры (SRT / ASS)", style = MaterialTheme.typography.titleLarge)
+                Text(tr("Субтитры (SRT / ASS)", "Subtitles (SRT / ASS)"), style = MaterialTheme.typography.titleLarge)
             }
 
             Button(
@@ -314,11 +399,11 @@ fun SubtitleControlModalSheet(
             ) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Загрузить внешние субтитры (.SRT / .ASS)")
+                Text(tr("Загрузить внешние субтитры (.SRT / .ASS)", "Load External Subtitles (.SRT / .ASS)"))
             }
 
             // Track Selection
-            Text("Активная дорожка субтитров", style = MaterialTheme.typography.titleSmall)
+            Text(tr("Активная дорожка субтитров", "Active Subtitle Track"), style = MaterialTheme.typography.titleSmall)
             subtitleOptions.forEachIndexed { idx, opt ->
                 Card(
                     shape = RoundedCornerShape(12.dp),
@@ -347,7 +432,7 @@ fun SubtitleControlModalSheet(
                             onClick = { onSelectSubtitle(opt) }
                         )
                         Text(
-                            text = opt.label,
+                            text = if (isEnglish && opt.label == "Выключены") "Off" else opt.label,
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.weight(1f),
                             maxLines = 2,
@@ -375,7 +460,7 @@ fun SubtitleControlModalSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Задержка субтитров", style = MaterialTheme.typography.titleSmall)
+                Text(tr("Задержка субтитров", "Subtitle Delay"), style = MaterialTheme.typography.titleSmall)
                 Surface(
                     color = MaterialTheme.colorScheme.primaryContainer,
                     shape = RoundedCornerShape(8.dp)
@@ -400,35 +485,35 @@ fun SubtitleControlModalSheet(
                     modifier = Modifier
                         .weight(1f)
                         .testTag("subtitle_delay_minus_500")
-                ) { Text("-0.5с") }
+                ) { Text(tr("-0.5с", "-0.5s")) }
 
                 OutlinedButton(
                     onClick = { onAdjustDelayMs(-100L) },
                     modifier = Modifier
                         .weight(1f)
                         .testTag("subtitle_delay_minus_100")
-                ) { Text("-0.1с") }
+                ) { Text(tr("-0.1с", "-0.1s")) }
 
                 FilledTonalButton(
                     onClick = { onSetDelayMs(0L) },
                     modifier = Modifier
                         .weight(1f)
                         .testTag("subtitle_delay_reset")
-                ) { Text("0.0с") }
+                ) { Text(tr("0.0с", "0.0s")) }
 
                 OutlinedButton(
                     onClick = { onAdjustDelayMs(100L) },
                     modifier = Modifier
                         .weight(1f)
                         .testTag("subtitle_delay_plus_100")
-                ) { Text("+0.1с") }
+                ) { Text(tr("+0.1с", "+0.1s")) }
 
                 OutlinedButton(
                     onClick = { onAdjustDelayMs(500L) },
                     modifier = Modifier
                         .weight(1f)
                         .testTag("subtitle_delay_plus_500")
-                ) { Text("+0.5с") }
+                ) { Text(tr("+0.5с", "+0.5s")) }
             }
 
             Slider(
@@ -449,7 +534,7 @@ fun SubtitleControlModalSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Размер шрифта", style = MaterialTheme.typography.titleSmall)
+                Text(tr("Размер шрифта", "Font Size"), style = MaterialTheme.typography.titleSmall)
                 Text(
                     text = "${settings.subtitleFontSizeSp.roundToInt()} sp",
                     style = MaterialTheme.typography.labelSmall,
@@ -464,7 +549,7 @@ fun SubtitleControlModalSheet(
             )
 
             // Subtitle Color Swatches
-            Text("Цвет субтитров", style = MaterialTheme.typography.titleSmall)
+            Text(tr("Цвет субтитров", "Subtitle Color"), style = MaterialTheme.typography.titleSmall)
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -488,7 +573,7 @@ fun SubtitleControlModalSheet(
                         if (selected) {
                             Icon(
                                 imageVector = Icons.Default.Check,
-                                contentDescription = preset.label,
+                                contentDescription = preset.localizedLabel(isEnglish),
                                 tint = Color.Black,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -502,7 +587,7 @@ fun SubtitleControlModalSheet(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Тёмная подложка под текстом", style = MaterialTheme.typography.bodyMedium)
+                Text(tr("Тёмная подложка под текстом", "Dark Background Box"), style = MaterialTheme.typography.bodyMedium)
                 Switch(
                     checked = settings.subtitleBackgroundEnabled,
                     onCheckedChange = onSetBackgroundEnabled
@@ -525,6 +610,7 @@ fun Anime4KControlModalSheet(
     onChangeSplitPosition: (Float) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val isEnglish = LocalIsEnglish.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -542,7 +628,10 @@ fun Anime4KControlModalSheet(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text("Anime4K — Реалтайм апскейлинг", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    tr("Anime4K — Реалтайм апскейлинг", "Anime4K — Real-Time Upscaling"),
+                    style = MaterialTheme.typography.titleLarge
+                )
             }
 
             Card(
@@ -559,9 +648,12 @@ fun Anime4KControlModalSheet(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Активировать Anime4K", style = MaterialTheme.typography.titleMedium)
+                        Text(tr("Активировать Anime4K", "Enable Anime4K"), style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "Многопроходный OpenGL ES шейдер реконструкции линий",
+                            tr(
+                                "Многопроходный OpenGL ES шейдер реконструкции линий",
+                                "Multi-pass OpenGL ES line reconstruction shader"
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -574,7 +666,7 @@ fun Anime4KControlModalSheet(
                 }
             }
 
-            Text("Пресеты качества", style = MaterialTheme.typography.titleSmall)
+            Text(tr("Пресеты качества", "Quality Presets"), style = MaterialTheme.typography.titleSmall)
             Anime4KPreset.entries.forEach { preset ->
                 val isSelected = settings.effectiveAnime4KPreset == preset ||
                     (!settings.anime4kEnabled && preset == Anime4KPreset.OFF)
@@ -617,9 +709,9 @@ fun Anime4KControlModalSheet(
                             }
                         )
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(preset.title, style = MaterialTheme.typography.titleSmall)
+                            Text(preset.localizedTitle(isEnglish), style = MaterialTheme.typography.titleSmall)
                             Text(
-                                preset.description,
+                                preset.localizedDescription(isEnglish),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -645,7 +737,7 @@ fun Anime4KControlModalSheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Интенсивность реконструкции", style = MaterialTheme.typography.titleSmall)
+                Text(tr("Интенсивность реконструкции", "Reconstruction Strength"), style = MaterialTheme.typography.titleSmall)
                 Text(
                     text = "${(settings.anime4kStrength * 100).roundToInt()}%",
                     style = MaterialTheme.typography.labelSmall,
@@ -673,9 +765,12 @@ fun Anime4KControlModalSheet(
                 ) {
                     Icon(Icons.Default.Compare, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                     Column {
-                        Text("Сравнение До / После", style = MaterialTheme.typography.titleSmall)
+                        Text(tr("Сравнение До / После", "Before / After Comparison"), style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "Слева оригинал, справа улучшение Anime4K",
+                            tr(
+                                "Слева оригинал, справа улучшение Anime4K",
+                                "Original on the left, Anime4K on the right"
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -709,16 +804,10 @@ fun DecoderAndVideoModalSheet(
     isHardwareAccelerated: Boolean,
     videoWidth: Int,
     videoHeight: Int,
-    playbackSpeed: Float,
-    scaleMode: VideoScaleMode,
-    playlist: List<EpisodeItem>,
-    currentEpisodeIndex: Int,
     onSelectDecoderMode: (DecoderMode) -> Unit,
-    onSelectSpeed: (Float) -> Unit,
-    onSelectScaleMode: (VideoScaleMode) -> Unit,
-    onSelectEpisodeIndex: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val isEnglish = LocalIsEnglish.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -736,7 +825,10 @@ fun DecoderAndVideoModalSheet(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Icon(Icons.Default.Memory, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text("Аппаратный декодер и видео", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    tr("Аппаратный декодер и видео", "Hardware Decoder & Video"),
+                    style = MaterialTheme.typography.titleLarge
+                )
             }
 
             // Live Codec Telemetry Box
@@ -750,97 +842,68 @@ fun DecoderAndVideoModalSheet(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "Кодек: $activeCodecName",
+                        text = tr("Кодек: $activeCodecName", "Codec: $activeCodecName"),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "Поток: ${videoWidth}×${videoHeight} • Ускорение: ${if (isHardwareAccelerated) "Аппаратное (MediaCodec GPU)" else "Программное (CPU)"}",
+                        text = if (isEnglish) {
+                            "Stream: ${videoWidth}×${videoHeight} • Acceleration: ${if (isHardwareAccelerated) "Hardware (MediaCodec GPU)" else "Software (CPU)"}"
+                        } else {
+                            "Поток: ${videoWidth}×${videoHeight} • Ускорение: ${if (isHardwareAccelerated) "Аппаратное (MediaCodec GPU)" else "Программное (CPU)"}"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            Text("Режим декодера", style = MaterialTheme.typography.titleSmall)
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                DecoderMode.entries.forEach { mode ->
-                    FilterChip(
-                        selected = activeDecoderMode == mode,
-                        onClick = { onSelectDecoderMode(mode) },
-                        label = { Text(mode.title) },
-                        modifier = Modifier.testTag("decoder_mode_chip_${mode.id}")
-                    )
-                }
-            }
-
-            Text("Скорость воспроизведения", style = MaterialTheme.typography.titleSmall)
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { spd ->
-                    FilterChip(
-                        selected = kotlin.math.abs(playbackSpeed - spd) < 0.02f,
-                        onClick = { onSelectSpeed(spd) },
-                        label = { Text("${spd}x") }
-                    )
-                }
-            }
-
-            Text("Масштаб кадра", style = MaterialTheme.typography.titleSmall)
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                VideoScaleMode.entries.forEach { mode ->
-                    FilterChip(
-                        selected = scaleMode == mode,
-                        onClick = { onSelectScaleMode(mode) },
-                        label = { Text(mode.title) }
-                    )
-                }
-            }
-
-            if (playlist.size > 1) {
-                HorizontalDivider()
-                Text("Серии в плейлисте (${playlist.size})", style = MaterialTheme.typography.titleSmall)
-                playlist.forEachIndexed { idx, ep ->
-                    val current = idx == currentEpisodeIndex
-                    Surface(
-                        color = if (current) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.surfaceContainer
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable {
-                                onSelectEpisodeIndex(idx)
-                                onDismiss()
-                            }
+            Text(tr("Режим декодера", "Decoder Mode"), style = MaterialTheme.typography.titleSmall)
+            DecoderMode.entries.forEach { mode ->
+                val selected = activeDecoderMode == mode
+                Surface(
+                    color = if (selected) {
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f)
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainer
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(
+                        1.dp,
+                        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable { onSelectDecoderMode(mode) }
+                        .testTag("decoder_mode_chip_${mode.id}")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        RadioButton(
+                            selected = selected,
+                            onClick = { onSelectDecoderMode(mode) }
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(mode.localizedTitle(isEnglish), style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                text = mode.localizedSubtitle(isEnglish),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
-                                text = ep.episodeBadge ?: "#${idx + 1}",
+                                text = mode.shortBadge,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = ep.cleanTitle,
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
                     }

@@ -2,6 +2,7 @@ package com.example
 
 import android.content.Context
 import android.net.Uri
+import androidx.activity.compose.setContent
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.PlaybackResumeHelper
 import com.example.player.PipController
@@ -49,5 +50,32 @@ class ExampleRobolectricTest {
 
         assertTrue(tempVideo.delete())
         assertFalse(PlaybackResumeHelper.isMediaFileExists(context, fileUri))
+    }
+
+    @Test
+    fun provideAppLocalization_preservesActivityResultRegistryOwnerAndActivityContext() {
+        var resolvedEnglishLabel = ""
+        var resolvedRussianLabel = ""
+        var activityCastSucceeded = false
+        org.robolectric.Robolectric.buildActivity(androidx.activity.ComponentActivity::class.java).use { controller ->
+            controller.setup()
+            val activity = controller.get()
+            activity.setContent {
+                com.example.ui.i18n.ProvideAppLocalization(appLanguage = com.example.model.AppLanguage.EN) {
+                    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
+                        contract = androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+                    ) {}
+                    val ctx = androidx.compose.ui.platform.LocalContext.current
+                    activityCastSucceeded = (ctx as? android.app.Activity) === activity && launcher != null
+                    resolvedEnglishLabel = com.example.ui.i18n.tr("Папки", "Folders")
+                }
+                com.example.ui.i18n.ProvideAppLocalization(appLanguage = com.example.model.AppLanguage.RU) {
+                    resolvedRussianLabel = com.example.ui.i18n.tr("Папки", "Folders")
+                }
+            }
+        }
+        assertTrue(activityCastSucceeded)
+        assertEquals("Folders", resolvedEnglishLabel)
+        assertEquals("Папки", resolvedRussianLabel)
     }
 }

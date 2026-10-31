@@ -88,7 +88,7 @@ object DisplayRefreshRateController {
      * Computes an energy-optimal LTPO / multi-rate refresh & MEMC plan taking into account:
      * 1. Source video frame rate (23.976 / 24 / 25 / 29.97 / 30 / 50 / 59.94 / 60 fps)
      * 2. Active playback speed / 2x long-press acceleration (`effectiveVideoFps = sourceFps * speed`)
-     * 3. Selected frame interpolation mode (`OFF`, `CINEMA`, `SMOOTH_60`, `SVP_MAX`, `ANIME`)
+     * 3. Selected frame interpolation mode (`OFF`, `CINEMA`, `SMOOTH_60`, `MAX_FPS`, `ANIME`)
      * 4. Display supported modes & LTPO dynamic idle drop on pause.
      */
     fun computeOptimalRefreshPlan(
@@ -170,7 +170,7 @@ object DisplayRefreshRateController {
                 FrameInterpolationMode.SMOOTH_60 -> {
                     60f.coerceAtMost(allowedCapHz)
                 }
-                FrameInterpolationMode.SVP_MAX,
+                FrameInterpolationMode.MAX_FPS,
                 FrameInterpolationMode.ANIME -> {
                     allowedCapHz
                 }
@@ -323,7 +323,7 @@ object DisplayRefreshRateController {
                 if (nearTarget != null) return nearTarget
                 return candidateModes.last()
             }
-            FrameInterpolationMode.SVP_MAX,
+            FrameInterpolationMode.MAX_FPS,
             FrameInterpolationMode.ANIME -> {
                 // Prefer the highest clean harmonic multiple of effectiveFps up to allowedCapHz
                 // (e.g. 25fps -> 100Hz on [60, 100, 120]; 45fps -> 90Hz on [60, 90, 120]; 48fps -> 96Hz on [60, 96, 120]; 24fps -> 120Hz on [60, 120])
@@ -446,13 +446,13 @@ object DisplayRefreshRateController {
     fun configureSurfaceFrameRate(
         surface: Surface?,
         targetFps: Float,
-        highRefreshOrSvpActive: Boolean,
+        highRefreshOrInterpActive: Boolean,
         compatibility: Int = Surface.FRAME_RATE_COMPATIBILITY_DEFAULT
     ) {
         if (surface == null || !surface.isValid) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             runCatching {
-                if (highRefreshOrSvpActive && targetFps >= 12f) {
+                if (highRefreshOrInterpActive && targetFps >= 12f) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         surface.setFrameRate(
                             targetFps,

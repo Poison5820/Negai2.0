@@ -3,13 +3,12 @@ package com.example.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -18,43 +17,35 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.AddCircleOutline
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Bookmarks
-import androidx.compose.material.icons.filled.DragIndicator
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.MotionPhotosOn
 import androidx.compose.material.icons.filled.PictureInPictureAlt
-import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -64,81 +55,42 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import com.example.model.PlayerQuickAction
-import com.example.model.QuickActionsSerializer
 import com.example.model.QuickBarPreset
-
-fun PlayerQuickAction.iconVector(): ImageVector = when (this) {
-    PlayerQuickAction.SPEED -> Icons.Default.Speed
-    PlayerQuickAction.AUDIO -> Icons.Default.GraphicEq
-    PlayerQuickAction.SUBTITLES -> Icons.Default.Subtitles
-    PlayerQuickAction.DECODER -> Icons.Default.Memory
-    PlayerQuickAction.FRAME_INTERPOLATION -> Icons.Default.Bolt
-    PlayerQuickAction.ANIME4K -> Icons.Default.AutoAwesome
-    PlayerQuickAction.EPISODES -> Icons.AutoMirrored.Filled.PlaylistPlay
-    PlayerQuickAction.CHAPTERS -> Icons.Default.Bookmarks
-    PlayerQuickAction.SCALE -> Icons.Default.AspectRatio
-    PlayerQuickAction.AUDIO_BOOST -> Icons.AutoMirrored.Filled.VolumeUp
-    PlayerQuickAction.SLEEP_TIMER -> Icons.Default.Bedtime
-    PlayerQuickAction.AB_LOOP -> Icons.Default.Repeat
-    PlayerQuickAction.SKIP_INTRO -> Icons.Default.FastForward
-    PlayerQuickAction.ORIENTATION -> Icons.Default.ScreenRotation
-    PlayerQuickAction.LOCK -> Icons.Default.Lock
-    PlayerQuickAction.PIP -> Icons.Default.PictureInPictureAlt
-    PlayerQuickAction.TOOLS -> Icons.Default.Tune
-}
+import com.example.ui.i18n.LocalIsEnglish
+import com.example.ui.i18n.localizedDescription
+import com.example.ui.i18n.localizedShortTitle
+import com.example.ui.i18n.localizedSubtitle
+import com.example.ui.i18n.localizedTitle
+import com.example.ui.i18n.tr
 
 /**
- * Interactive ModalBottomSheet for adding, removing, and reordering quick buttons
- * in the player's bottom toolbar (supports drag-and-drop handle, up/down arrows, and presets).
+ * Interactive bottom sheet that lets the user choose which quick buttons appear
+ * in the bottom player bar, reorder them with Up/Down controls, or apply a preset.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun QuickActionsCustomizerModalSheet(
-    activeActions: List<PlayerQuickAction>,
-    onUpdateQuickActions: (List<PlayerQuickAction>) -> Unit,
+fun QuickActionsCustomizerSheet(
+    selectedActions: List<PlayerQuickAction>,
+    onUpdateActions: (List<PlayerQuickAction>) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val availableActions = remember(activeActions) {
-        QuickActionsSerializer.availableToAdd(activeActions)
-    }
-
-    val density = LocalDensity.current
-    val rowSpacingPx = with(density) { 8.dp.toPx() }
-    val itemHeightsPx = remember { mutableStateMapOf<String, Int>() }
-    var draggedActionId by remember { mutableStateOf<String?>(null) }
-    var dragOffsetY by remember { mutableFloatStateOf(0f) }
-
-    val latestActions by rememberUpdatedState(activeActions)
-    val latestOnUpdate by rememberUpdatedState(onUpdateQuickActions)
+    val isEnglish = LocalIsEnglish.current
+    val activeList = selectedActions.distinct().ifEmpty { PlayerQuickAction.defaultActions }
+    val availableToAdd = PlayerQuickAction.entries.filter { it !in activeList }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Column(
@@ -146,8 +98,7 @@ fun QuickActionsCustomizerModalSheet(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
-                .padding(bottom = 32.dp)
-                .testTag("quick_actions_customizer_sheet"),
+                .padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             // Header
@@ -162,341 +113,100 @@ fun QuickActionsCustomizerModalSheet(
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Edit,
+                        imageVector = Icons.Default.Tune,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
                     Column {
                         Text(
-                            text = "Быстрые клавиши плеера",
+                            text = tr("Быстрые кнопки в плеере", "Player Quick Action Buttons"),
                             style = MaterialTheme.typography.titleLarge
                         )
                         Text(
-                            text = "Перетаскивайте за ≡ или меняйте порядок стрелками",
+                            text = tr(
+                                "Выберите кнопки нижней панели и настройте их порядок",
+                                "Choose bottom bar buttons and customize their order"
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                IconButton(
-                    onClick = { onUpdateQuickActions(QuickActionsSerializer.DEFAULT_ACTIONS) },
+                OutlinedButton(
+                    onClick = { onUpdateActions(PlayerQuickAction.defaultActions) },
                     modifier = Modifier.testTag("quick_actions_reset_button")
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.RestartAlt,
-                        contentDescription = "Сбросить кнопки по умолчанию",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                    Icon(Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(tr("Сброс", "Reset"))
                 }
             }
 
-            // Live OLED Preview Strip
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = "Предпросмотр панели в плеере (${activeActions.size}):",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Surface(
-                    color = Color(0xFF060810),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (activeActions.isEmpty()) {
-                        Text(
-                            text = "Панель очищена — в плеере останется кнопка быстрой настройки",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.7f),
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
-                        )
-                    } else {
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            itemsIndexed(
-                                items = activeActions,
-                                key = { _, item -> "preview_${item.id}" }
-                            ) { index, action ->
-                                AssistChip(
-                                    onClick = {},
-                                    label = {
-                                        Text(
-                                            text = "${index + 1}. ${action.shortTitle}",
-                                            color = Color.White
-                                        )
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = action.iconVector(),
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    },
-                                    colors = AssistChipDefaults.assistChipColors(
-                                        containerColor = Color.White.copy(alpha = 0.12f)
-                                    ),
-                                    border = null,
-                                    modifier = Modifier.animateItem()
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Curated Presets Row
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = "Готовые наборы кнопок:",
-                    style = MaterialTheme.typography.labelLarge
-                )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    QuickBarPreset.entries.forEach { preset ->
-                        FilterChip(
-                            selected = activeActions == preset.actions,
-                            onClick = { onUpdateQuickActions(preset.actions) },
-                            label = { Text(preset.title) },
-                            modifier = Modifier.testTag("quick_actions_preset_${preset.id}")
-                        )
-                    }
-                }
-            }
-
-            HorizontalDivider()
-
-            // Active Buttons (Draggable + Up/Down/Remove)
-            Text(
-                text = "Активные кнопки на экране (${activeActions.size})",
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            if (activeActions.isEmpty()) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "На панели сейчас нет кнопок. Добавьте нужные клавиши из списка ниже или выберите готовый набор.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-            } else {
+            // Live miniature preview of the bottom bar
+            Surface(
+                color = Color(0xFF070C14),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    activeActions.forEachIndexed { index, action ->
-                        val isDragging = draggedActionId == action.id
-                        Card(
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(
-                                width = if (isDragging) 1.5.dp else 1.dp,
-                                color = if (isDragging) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.outlineVariant
-                                }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = tr(
+                                "Предпросмотр панели (${activeList.size} кнопок)",
+                                "Bar Preview (${activeList.size} buttons)"
                             ),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isDragging) {
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f)
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceContainer
-                                }
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .zIndex(if (isDragging) 2f else 0f)
-                                .graphicsLayer {
-                                    if (isDragging) {
-                                        translationY = dragOffsetY
-                                        scaleX = 1.02f
-                                        scaleY = 1.02f
-                                    }
-                                }
-                                .onSizeChanged { sz ->
-                                    itemHeightsPx[action.id] = sz.height
-                                }
-                                .testTag("quick_action_active_row_${action.id}")
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
+                        Text(
+                            text = tr("Прокручивается свайпом ↔", "Horizontally scrollable ↔"),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        activeList.forEachIndexed { idx, action ->
+                            Surface(
+                                color = Color.White.copy(alpha = 0.12f),
+                                shape = RoundedCornerShape(11.dp),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f))
                             ) {
-                                // Drag Handle (48dp touch area)
-                                Box(
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .pointerInput(action.id) {
-                                            detectVerticalDragGestures(
-                                                onDragStart = {
-                                                    draggedActionId = action.id
-                                                    dragOffsetY = 0f
-                                                },
-                                                onDragEnd = {
-                                                    draggedActionId = null
-                                                    dragOffsetY = 0f
-                                                },
-                                                onDragCancel = {
-                                                    draggedActionId = null
-                                                    dragOffsetY = 0f
-                                                },
-                                                onVerticalDrag = { change, dragAmount ->
-                                                    change.consume()
-                                                    dragOffsetY += dragAmount
-                                                    val curIdx = latestActions.indexOf(action)
-                                                    if (curIdx >= 0) {
-                                                        val selfStep = ((itemHeightsPx[action.id] ?: 168) + rowSpacingPx)
-                                                            .coerceAtLeast(80f)
-                                                        if (dragOffsetY > selfStep * 0.58f && curIdx < latestActions.lastIndex) {
-                                                            val nextId = latestActions[curIdx + 1].id
-                                                            val nextStep = (itemHeightsPx[nextId] ?: 168) + rowSpacingPx
-                                                            latestOnUpdate(
-                                                                QuickActionsSerializer.moveItem(
-                                                                    latestActions,
-                                                                    curIdx,
-                                                                    curIdx + 1
-                                                                )
-                                                            )
-                                                            dragOffsetY -= nextStep
-                                                        } else if (dragOffsetY < -selfStep * 0.58f && curIdx > 0) {
-                                                            val prevId = latestActions[curIdx - 1].id
-                                                            val prevStep = (itemHeightsPx[prevId] ?: 168) + rowSpacingPx
-                                                            latestOnUpdate(
-                                                                QuickActionsSerializer.moveItem(
-                                                                    latestActions,
-                                                                    curIdx,
-                                                                    curIdx - 1
-                                                                )
-                                                            )
-                                                            dragOffsetY += prevStep
-                                                        }
-                                                    }
-                                                }
-                                            )
-                                        }
-                                        .testTag("quick_action_drag_handle_${action.id}"),
-                                    contentAlignment = Alignment.Center
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.DragIndicator,
-                                        contentDescription = "Перетащить кнопку ${action.title}",
-                                        tint = if (isDragging) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        }
-                                    )
-                                }
-
-                                // Action Icon Badge
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primaryContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = action.iconVector(),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.width(10.dp))
-
-                                // Action Title & Type Badge
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Text(
-                                            text = "${index + 1}. ${action.shortTitle}",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.SemiBold,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Surface(
-                                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                            shape = RoundedCornerShape(6.dp)
-                                        ) {
-                                            Text(
-                                                text = if (action.isInstantAction) "1 касание" else "Меню",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
-                                            )
-                                        }
-                                    }
                                     Text(
-                                        text = action.title,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        text = "${idx + 1}.",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary
                                     )
-                                }
-
-                                // Move Up / Move Down / Remove Buttons (48dp touch targets)
-                                IconButton(
-                                    onClick = {
-                                        onUpdateQuickActions(
-                                            QuickActionsSerializer.moveUp(activeActions, index)
-                                        )
-                                    },
-                                    enabled = index > 0,
-                                    modifier = Modifier.testTag("quick_action_up_${action.id}")
-                                ) {
                                     Icon(
-                                        imageVector = Icons.Default.KeyboardArrowUp,
-                                        contentDescription = "Переместить ${action.shortTitle} выше"
+                                        imageVector = action.icon(),
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp)
                                     )
-                                }
-
-                                IconButton(
-                                    onClick = {
-                                        onUpdateQuickActions(
-                                            QuickActionsSerializer.moveDown(activeActions, index)
-                                        )
-                                    },
-                                    enabled = index < activeActions.lastIndex,
-                                    modifier = Modifier.testTag("quick_action_down_${action.id}")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.KeyboardArrowDown,
-                                        contentDescription = "Переместить ${action.shortTitle} ниже"
-                                    )
-                                }
-
-                                IconButton(
-                                    onClick = {
-                                        onUpdateQuickActions(
-                                            QuickActionsSerializer.removeAction(activeActions, action)
-                                        )
-                                    },
-                                    modifier = Modifier.testTag("quick_action_remove_${action.id}")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.RemoveCircleOutline,
-                                        contentDescription = "Убрать ${action.shortTitle} с панели",
-                                        tint = MaterialTheme.colorScheme.error
+                                    Text(
+                                        text = action.localizedShortTitle(isEnglish),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = Color.White
                                     )
                                 }
                             }
@@ -505,180 +215,321 @@ fun QuickActionsCustomizerModalSheet(
                 }
             }
 
-            HorizontalDivider()
-
-            // Available Buttons to Add
+            // Ready-made Presets
             Text(
-                text = "Доступные для добавления (${availableActions.size})",
-                style = MaterialTheme.typography.titleMedium
+                text = tr("Готовые наборы кнопок", "Quick Action Presets"),
+                style = MaterialTheme.typography.titleSmall
             )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                QuickBarPreset.entries.forEach { preset ->
+                    val isPresetSelected = activeList == preset.actions
+                    FilterChip(
+                        selected = isPresetSelected,
+                        onClick = { onUpdateActions(preset.actions) },
+                        label = { Text(preset.localizedTitle(isEnglish)) },
+                        modifier = Modifier.testTag("quick_preset_chip_${preset.id}")
+                    )
+                }
+            }
 
-            if (availableActions.isEmpty()) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // Active Buttons (with Up / Down / Remove)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    text = "Все доступные быстрые кнопки уже добавлены на панель плеера.",
+                    text = tr(
+                        "Активные кнопки в плеере (${activeList.size})",
+                        "Active Player Buttons (${activeList.size})"
+                    ),
+                    style = MaterialTheme.typography.titleSmall
+                )
+                Text(
+                    text = tr("Порядок слева направо", "Order from left to right"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            } else {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    availableActions.forEach { action ->
-                        Card(
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .defaultMinSize(minHeight = 56.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .clickable {
-                                    onUpdateQuickActions(
-                                        QuickActionsSerializer.addAction(activeActions, action)
-                                    )
-                                }
-                                .testTag("quick_action_available_row_${action.id}")
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = action.iconVector(),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
+            }
 
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = action.title,
-                                        style = MaterialTheme.typography.titleSmall
-                                    )
-                                    Text(
-                                        text = action.subtitle,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-
-                                IconButton(
-                                    onClick = {
-                                        onUpdateQuickActions(
-                                            QuickActionsSerializer.addAction(activeActions, action)
-                                        )
-                                    },
-                                    modifier = Modifier.testTag("quick_action_add_${action.id}")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.AddCircleOutline,
-                                        contentDescription = "Добавить ${action.title} на панель",
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                activeList.forEachIndexed { index, action ->
+                    ActiveQuickActionRow(
+                        index = index,
+                        totalCount = activeList.size,
+                        action = action,
+                        canRemove = activeList.size > 1,
+                        onMoveUp = {
+                            if (index > 0) {
+                                val mutable = activeList.toMutableList()
+                                val item = mutable.removeAt(index)
+                                mutable.add(index - 1, item)
+                                onUpdateActions(mutable)
+                            }
+                        },
+                        onMoveDown = {
+                            if (index < activeList.lastIndex) {
+                                val mutable = activeList.toMutableList()
+                                val item = mutable.removeAt(index)
+                                mutable.add(index + 1, item)
+                                onUpdateActions(mutable)
+                            }
+                        },
+                        onRemove = {
+                            if (activeList.size > 1) {
+                                onUpdateActions(activeList.filterNot { it == action })
                             }
                         }
+                    )
+                }
+            }
+
+            // Available Buttons to Add
+            if (availableToAdd.isNotEmpty()) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                Text(
+                    text = tr(
+                        "Доступные кнопки для добавления (${availableToAdd.size})",
+                        "Available Buttons to Add (${availableToAdd.size})"
+                    ),
+                    style = MaterialTheme.typography.titleSmall
+                )
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    availableToAdd.forEach { action ->
+                        AvailableQuickActionRow(
+                            action = action,
+                            onAdd = {
+                                onUpdateActions(activeList + action)
+                            }
+                        )
                     }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("quick_actions_done_button")
+            ) {
+                Text(tr("Готово", "Done"))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActiveQuickActionRow(
+    index: Int,
+    totalCount: Int,
+    action: PlayerQuickAction,
+    canRemove: Boolean,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onRemove: () -> Unit
+) {
+    val isEnglish = LocalIsEnglish.current
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("active_quick_action_${action.id}")
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = action.icon(),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "${index + 1}. ${action.localizedTitle(isEnglish)}",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Text(
+                    text = action.localizedDescription(isEnglish),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = onMoveUp,
+                    enabled = index > 0,
+                    modifier = Modifier
+                        .size(38.dp)
+                        .testTag("move_up_quick_action_${action.id}")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowUpward,
+                        contentDescription = tr("Переместить левее", "Move earlier"),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                IconButton(
+                    onClick = onMoveDown,
+                    enabled = index < totalCount - 1,
+                    modifier = Modifier
+                        .size(38.dp)
+                        .testTag("move_down_quick_action_${action.id}")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowDownward,
+                        contentDescription = tr("Переместить правее", "Move later"),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                IconButton(
+                    onClick = onRemove,
+                    enabled = canRemove,
+                    modifier = Modifier
+                        .size(38.dp)
+                        .testTag("remove_quick_action_${action.id}")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = tr("Убрать кнопку", "Remove button"),
+                        tint = if (canRemove) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
         }
     }
 }
 
-/**
- * Summary preview block used inside SettingsTabContent to display active quick buttons
- * and launch the interactive QuickActionsCustomizerModalSheet.
- */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun QuickActionsSettingsSummaryContent(
-    activeActions: List<PlayerQuickAction>,
-    onOpenCustomizer: () -> Unit,
-    onResetDefault: () -> Unit
+private fun AvailableQuickActionRow(
+    action: PlayerQuickAction,
+    onAdd: () -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            text = "Выберите нужные кнопки (серии, главы, интерполяция кадров, скорость, аудио, декодер, масштаб, A–B, таймер сна и др.) и настройте их точный порядок на нижней панели плеера.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        if (activeActions.isEmpty()) {
-            Text(
-                text = "Активные кнопки не выбраны (отображается только кнопка настройки).",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        } else {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                activeActions.forEachIndexed { idx, action ->
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = action.iconVector(),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(15.dp)
-                            )
-                            Text(
-                                text = "${idx + 1}. ${action.shortTitle}",
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
+    val isEnglish = LocalIsEnglish.current
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onAdd)
+            .testTag("available_quick_action_${action.id}")
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = 52.dp)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Button(
-                onClick = onOpenCustomizer,
+            Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .testTag("settings_open_quick_actions_editor_button")
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Настроить кнопки")
+                Icon(
+                    imageVector = action.icon(),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
             }
 
-            if (activeActions != QuickActionsSerializer.DEFAULT_ACTIONS) {
-                OutlinedButton(
-                    onClick = onResetDefault,
-                    modifier = Modifier.testTag("settings_reset_quick_actions_button")
-                ) {
-                    Text("Сброс")
-                }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = action.localizedTitle(isEnglish),
+                    style = MaterialTheme.typography.titleSmall
+                )
+                Text(
+                    text = action.localizedDescription(isEnglish),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            FilledTonalButton(
+                onClick = onAdd,
+                modifier = Modifier.testTag("add_quick_action_button_${action.id}")
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(tr("Добавить", "Add"))
             }
         }
     }
+}
+
+internal fun PlayerQuickAction.icon(): ImageVector = when (this) {
+    PlayerQuickAction.AUDIO -> Icons.Default.GraphicEq
+    PlayerQuickAction.SUBTITLES -> Icons.Default.Subtitles
+    PlayerQuickAction.EPISODES -> Icons.AutoMirrored.Filled.PlaylistPlay
+    PlayerQuickAction.CHAPTERS -> Icons.Default.Bookmark
+    PlayerQuickAction.SPEED -> Icons.Default.Speed
+    PlayerQuickAction.ANIME4K -> Icons.Default.AutoAwesome
+    PlayerQuickAction.FRAME_INTERPOLATION -> Icons.Default.MotionPhotosOn
+    PlayerQuickAction.DECODER -> Icons.Default.Memory
+    PlayerQuickAction.SCALE -> Icons.Default.AspectRatio
+    PlayerQuickAction.AUDIO_BOOST -> Icons.Default.GraphicEq
+    PlayerQuickAction.SLEEP_TIMER -> Icons.Default.Bedtime
+    PlayerQuickAction.AB_LOOP -> Icons.Default.Repeat
+    PlayerQuickAction.SKIP_INTRO -> Icons.Default.FastForward
+    PlayerQuickAction.ORIENTATION -> Icons.Default.ScreenRotation
+    PlayerQuickAction.PIP -> Icons.Default.PictureInPictureAlt
+    PlayerQuickAction.LOCK -> Icons.Default.LockOpen
+    PlayerQuickAction.TOOLS -> Icons.Default.Tune
+}
+
+internal fun PlayerQuickAction.iconVector(): ImageVector = icon()
+
+@Composable
+fun QuickActionsCustomizerModalSheet(
+    activeActions: List<PlayerQuickAction>,
+    onUpdateQuickActions: (List<PlayerQuickAction>) -> Unit,
+    onDismiss: () -> Unit
+) {
+    QuickActionsCustomizerSheet(
+        selectedActions = activeActions,
+        onUpdateActions = onUpdateQuickActions,
+        onDismiss = onDismiss
+    )
 }

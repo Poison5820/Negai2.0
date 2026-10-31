@@ -113,6 +113,9 @@ import com.example.ui.components.SubtitleOverlay
 import com.example.ui.components.ThemedPlayerCenterTransport
 import com.example.ui.components.ThemedPlayerSeekBar
 import com.example.ui.components.formatTimeMs
+import com.example.ui.i18n.LocalIsEnglish
+import com.example.ui.i18n.localizedTitle
+import com.example.ui.i18n.tr
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
@@ -166,6 +169,7 @@ fun PlayerScreen(
     onAdjustAudioDelay: (Long) -> Unit = {},
     onSetAudioDelay: (Long) -> Unit = {},
     onResyncAudio: () -> Unit = {},
+    onToggleBluetoothAutoSync: (Boolean) -> Unit = {},
     onSelectSubtitle: (SubtitleTrackUiOption) -> Unit,
     onPickExternalSubtitle: () -> Unit,
     onAdjustSubtitleDelay: (Long) -> Unit,
@@ -592,7 +596,7 @@ fun PlayerScreen(
             ) {
                 Surface(color = Color.Black.copy(alpha = 0.78f), shape = RoundedCornerShape(8.dp)) {
                     Text(
-                        text = "ДО: ОРИГИНАЛ",
+                        text = tr("ДО: ОРИГИНАЛ", "BEFORE: ORIGINAL"),
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
@@ -603,7 +607,7 @@ fun PlayerScreen(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = "ПОСЛЕ: $afterBadge",
+                        text = tr("ПОСЛЕ: $afterBadge", "AFTER: $afterBadge"),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
@@ -657,7 +661,7 @@ fun PlayerScreen(
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
-                        text = "Продолжено с ${formatTimeMs(resumedPos)}",
+                        text = tr("Продолжено с ${formatTimeMs(resumedPos)}", "Resumed from ${formatTimeMs(resumedPos)}"),
                         style = MaterialTheme.typography.labelMedium,
                         color = Color.White
                     )
@@ -673,7 +677,7 @@ fun PlayerScreen(
                             .testTag("player_restart_from_zero_button")
                     ) {
                         Text(
-                            text = "С начала",
+                            text = tr("С начала", "From start"),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
@@ -685,7 +689,7 @@ fun PlayerScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Скрыть уведомление",
+                            contentDescription = tr("Скрыть уведомление", "Dismiss banner"),
                             tint = Color.White.copy(alpha = 0.75f),
                             modifier = Modifier.size(16.dp)
                         )
@@ -760,7 +764,7 @@ fun PlayerScreen(
                             modifier = Modifier.size(22.dp)
                         )
                         Text(
-                            text = "${deltaSign}${absDeltaSec} сек",
+                            text = tr("${deltaSign}${absDeltaSec} сек", "${deltaSign}${absDeltaSec} s"),
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -819,7 +823,7 @@ fun PlayerScreen(
                         )
                     }
                     Text(
-                        text = "$signPrefix$absSec сек",
+                        text = tr("$signPrefix$absSec сек", "$signPrefix$absSec s"),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White
@@ -888,6 +892,7 @@ fun PlayerScreen(
             exit = fadeOut(),
             modifier = Modifier.fillMaxSize()
         ) {
+            val isEnglish = LocalIsEnglish.current
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -916,14 +921,14 @@ fun PlayerScreen(
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Закрыть плеер",
+                            contentDescription = tr("Закрыть плеер", "Close player"),
                             tint = Color.White
                         )
                     }
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = playbackState.currentEpisode?.cleanTitle ?: "Воспроизведение",
+                            text = playbackState.currentEpisode?.cleanTitle ?: tr("Воспроизведение", "Now Playing"),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = Color.White,
@@ -932,11 +937,12 @@ fun PlayerScreen(
                         )
                         val subInfo = buildString {
                             playbackState.currentEpisode?.folderName?.let { append(it) }
-                            if (playbackState.playlist.size > 1) {
-                                append(" • Серия ${playbackState.currentEpisodeIndex + 1}/${playbackState.playlist.size}")
-                            }
-                            if (settings.enableEmbeddedChapters && playbackState.chapters.isNotEmpty()) {
-                                append(" • ${playbackState.chapters.size} гл.")
+                            if (playbackState.playlist.size > 1 && !settings.showEpisodesButtonInHud) {
+                                if (isEnglish) {
+                                    append(" • Episode ${playbackState.currentEpisodeIndex + 1}/${playbackState.playlist.size}")
+                                } else {
+                                    append(" • Серия ${playbackState.currentEpisodeIndex + 1}/${playbackState.playlist.size}")
+                                }
                             }
                         }
                         if (subInfo.isNotEmpty()) {
@@ -953,9 +959,12 @@ fun PlayerScreen(
                     // Direct immediate access to Episodes in Player Top Bar
                     if (settings.showEpisodesButtonInHud) {
                         val epButtonLabel = if (playbackState.playlist.size > 1) {
-                            "Серии ${playbackState.currentEpisodeIndex + 1}/${playbackState.playlist.size}"
+                            tr(
+                                "Серии ${playbackState.currentEpisodeIndex + 1}/${playbackState.playlist.size}",
+                                "Episodes ${playbackState.currentEpisodeIndex + 1}/${playbackState.playlist.size}"
+                            )
                         } else {
-                            "Серии"
+                            tr("Серии", "Episodes")
                         }
                         Surface(
                             color = Color.White.copy(alpha = 0.14f),
@@ -1015,7 +1024,10 @@ fun PlayerScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Memory,
-                                contentDescription = "Декодер: ${playbackState.activeDecoderMode.shortBadge}",
+                                contentDescription = tr(
+                                    "Декодер: ${playbackState.activeDecoderMode.shortBadge}",
+                                    "Decoder: ${playbackState.activeDecoderMode.shortBadge}"
+                                ),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(15.dp)
                             )
@@ -1038,10 +1050,22 @@ fun PlayerScreen(
                             }
                             if (refreshPlan.hudBadgeText.isNotBlank()) {
                                 if (isNotEmpty()) append("•")
-                                append(refreshPlan.hudBadgeText)
+                                append(
+                                    if (isEnglish) {
+                                        refreshPlan.hudBadgeText.replace("Гц", "Hz")
+                                    } else {
+                                        refreshPlan.hudBadgeText
+                                    }
+                                )
                             }
                             if (isEmpty()) {
-                                append("${refreshPlan.targetDisplayHz.roundToInt()}Гц")
+                                append(
+                                    if (isEnglish) {
+                                        "${refreshPlan.targetDisplayHz.roundToInt()}Hz"
+                                    } else {
+                                        "${refreshPlan.targetDisplayHz.roundToInt()}Гц"
+                                    }
+                                )
                             }
                         }
                         Surface(
@@ -1078,7 +1102,10 @@ fun PlayerScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ScreenRotation,
-                                contentDescription = "Ориентация экрана: ${orientationMode.title}",
+                                contentDescription = tr(
+                                    "Ориентация экрана: ${orientationMode.title}",
+                                    "Screen orientation: ${orientationMode.localizedTitle(true)}"
+                                ),
                                 tint = if (orientationMode != PlayerOrientationMode.AUTO) {
                                     MaterialTheme.colorScheme.primary
                                 } else {
@@ -1097,7 +1124,10 @@ fun PlayerScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.LockOpen,
-                                contentDescription = "Заблокировать экран от случайных нажатий",
+                                contentDescription = tr(
+                                    "Заблокировать экран от случайных нажатий",
+                                    "Lock screen against accidental touches"
+                                ),
                                 tint = Color.White
                             )
                         }
@@ -1109,7 +1139,10 @@ fun PlayerScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.PictureInPictureAlt,
-                                    contentDescription = "Режим Картинка в картинке (PiP)",
+                                    contentDescription = tr(
+                                        "Режим Картинка в картинке (PiP)",
+                                        "Picture-in-Picture (PiP) mode"
+                                    ),
                                     tint = Color.White
                                 )
                             }
@@ -1267,6 +1300,11 @@ fun PlayerScreen(
             audioOptions = playbackState.audioTrackOptions,
             audioBoostPercent = playbackState.audioBoostPercent,
             audioDelayMs = playbackState.audioDelayMs,
+            effectiveAudioDelayMs = playbackState.effectiveAudioDelayMs,
+            bluetoothRoute = playbackState.bluetoothAudioRoute,
+            bluetoothAutoSyncEnabled = playbackState.bluetoothAutoSyncEnabled,
+            bluetoothAppliedOffsetMs = playbackState.bluetoothAppliedOffsetMs,
+            onToggleBluetoothAutoSync = onToggleBluetoothAutoSync,
             onSelectAudio = onSelectAudio,
             onSetAudioBoostPercent = onSetAudioBoostPercent,
             onAdjustAudioDelayMs = onAdjustAudioDelay,
@@ -1291,18 +1329,17 @@ fun PlayerScreen(
         )
 
         ActivePlayerSheet.FRAME_INTERPOLATION -> FrameInterpolationModalSheet(
-            settings = settings,
+            frameInterpolationEnabled = settings.frameInterpolationEnabled,
+            interpolationMode = settings.frameInterpolationMode,
+            highRefreshRateEnabled = settings.highRefreshRateEnabled,
+            ltpoAdaptiveEnabled = settings.ltpoAdaptiveRefreshEnabled,
             sourceFrameRate = playbackState.sourceFrameRate,
-            playbackSpeed = playbackState.playbackSpeed,
+            targetDisplayHz = targetDisplayHz,
             refreshPlan = refreshPlan,
-            splitCompareEnabled = splitCompareEnabled,
-            splitPosition = splitPosition,
+            onToggleFrameInterpolation = onToggleFrameInterpolation,
+            onSelectInterpolationMode = onSelectFrameInterpolationMode,
             onToggleHighRefreshRate = onToggleHighRefreshRate,
             onToggleLtpoAdaptive = onToggleLtpoAdaptive,
-            onToggleInterpolationEnabled = onToggleFrameInterpolation,
-            onSelectInterpolationMode = onSelectFrameInterpolationMode,
-            onToggleSplitCompare = onToggleSplitCompare,
-            onChangeSplitPosition = onChangeSplitPos,
             onDismiss = { activeSheet = ActivePlayerSheet.NONE }
         )
 
@@ -1324,21 +1361,16 @@ fun PlayerScreen(
             isHardwareAccelerated = playbackState.isHardwareAccelerated,
             videoWidth = playbackState.videoWidth,
             videoHeight = playbackState.videoHeight,
-            playbackSpeed = playbackState.playbackSpeed,
-            scaleMode = scaleMode,
-            playlist = playbackState.playlist,
-            currentEpisodeIndex = playbackState.currentEpisodeIndex,
             onSelectDecoderMode = onSelectDecoderMode,
-            onSelectSpeed = onSelectSpeed,
-            onSelectScaleMode = onSelectScaleMode,
-            onSelectEpisodeIndex = onSelectEpisodeIndex,
             onDismiss = { activeSheet = ActivePlayerSheet.NONE }
         )
 
         ActivePlayerSheet.EPISODES -> EpisodesModalSheet(
             playlist = playbackState.playlist,
-            currentEpisodeIndex = playbackState.currentEpisodeIndex,
+            currentIndex = playbackState.currentEpisodeIndex,
             onSelectEpisodeIndex = onSelectEpisodeIndex,
+            onPreviousEpisode = onPreviousEpisode,
+            onNextEpisode = onNextEpisode,
             onDismiss = { activeSheet = ActivePlayerSheet.NONE }
         )
 
@@ -1370,30 +1402,42 @@ fun PlayerScreen(
         ActivePlayerSheet.TOOLS -> {
             val toolsPosMs by positionMsFlow.collectAsStateWithLifecycle()
             PlayerToolsModalSheet(
+                playbackSpeed = playbackState.playbackSpeed,
+                scaleMode = scaleMode,
                 audioBoostPercent = playbackState.audioBoostPercent,
                 sleepTimerPreset = playbackState.sleepTimerPreset,
                 sleepTimerRemainingMs = playbackState.sleepTimerRemainingMs,
-                abLoopStartMs = playbackState.abLoopStartMs,
-                abLoopEndMs = playbackState.abLoopEndMs,
+                abLoopPointAMs = playbackState.abLoopStartMs,
+                abLoopPointBMs = playbackState.abLoopEndMs,
                 currentPositionMs = toolsPosMs,
                 playbackEndMode = playbackState.playbackEndMode,
-                orientationMode = orientationMode,
-                playerControlsTheme = settings.playerControlsTheme,
+                controlsTheme = settings.playerControlsTheme,
+                activeOrientationMode = orientationMode,
+                onSelectSpeed = onSelectSpeed,
+                onSelectScaleMode = onSelectScaleMode,
                 onSetAudioBoostPercent = onSetAudioBoostPercent,
                 onSetSleepTimer = onSetSleepTimer,
                 onMarkAbPointA = onMarkAbPointA,
                 onMarkAbPointB = onMarkAbPointB,
                 onClearAbLoop = onClearAbLoop,
                 onSelectPlaybackEndMode = onSelectPlaybackEndMode,
-                onSelectOrientationMode = { orientationMode = it },
                 onSelectControlsTheme = onSelectControlsTheme,
+                onSelectOrientationMode = { orientationMode = it },
+                onLockControls = {
+                    isScreenLocked = true
+                    lockedPillVisible = true
+                    controlsVisible = false
+                },
+                onOpenQuickActionsCustomizer = {
+                    activeSheet = ActivePlayerSheet.CUSTOMIZE_QUICK_ACTIONS
+                },
                 onDismiss = { activeSheet = ActivePlayerSheet.NONE }
             )
         }
 
-        ActivePlayerSheet.CUSTOMIZE_QUICK_ACTIONS -> QuickActionsCustomizerModalSheet(
-            activeActions = settings.quickActions,
-            onUpdateQuickActions = onUpdateQuickActions,
+        ActivePlayerSheet.CUSTOMIZE_QUICK_ACTIONS -> QuickActionsCustomizerSheet(
+            selectedActions = settings.quickActions,
+            onUpdateActions = onUpdateQuickActions,
             onDismiss = { activeSheet = ActivePlayerSheet.NONE }
         )
 
@@ -1475,7 +1519,7 @@ private fun PlayerTimelineSection(
                         )
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Сбросить повтор A–B",
+                            contentDescription = tr("Сбросить повтор A–B", "Clear A–B loop"),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(13.dp)
                         )
@@ -1500,7 +1544,7 @@ private fun PlayerTimelineSection(
                     ) {
                         Icon(
                             imageVector = Icons.Default.SkipPrevious,
-                            contentDescription = "Предыдущая глава",
+                            contentDescription = tr("Предыдущая глава", "Previous chapter"),
                             tint = Color.White,
                             modifier = Modifier
                                 .padding(horizontal = 6.dp, vertical = 5.dp)
@@ -1529,7 +1573,7 @@ private fun PlayerTimelineSection(
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
-                                text = activeChapter?.title ?: "Главы (${chapters.size})",
+                                text = activeChapter?.title ?: tr("Главы (${chapters.size})", "Chapters (${chapters.size})"),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.White,
                                 maxLines = 1,
@@ -1548,7 +1592,7 @@ private fun PlayerTimelineSection(
                     ) {
                         Icon(
                             imageVector = Icons.Default.SkipNext,
-                            contentDescription = "Следующая глава",
+                            contentDescription = tr("Следующая глава", "Next chapter"),
                             tint = Color.White,
                             modifier = Modifier
                                 .padding(horizontal = 6.dp, vertical = 5.dp)
@@ -1582,7 +1626,7 @@ private fun PlayerTimelineSection(
                             modifier = Modifier.size(15.dp)
                         )
                         Text(
-                            text = "+${skipIntroSeconds}с Опенинг",
+                            text = tr("+${skipIntroSeconds}с Опенинг", "+${skipIntroSeconds}s Intro"),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = Color.White

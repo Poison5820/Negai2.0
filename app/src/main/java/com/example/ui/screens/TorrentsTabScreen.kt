@@ -85,6 +85,11 @@ import com.example.torrent.TorrentSearchResult
 import com.example.torrent.TorrentSortMode
 import com.example.torrent.TorrentTrackerGroup
 import com.example.ui.TorrentsUiState
+import com.example.ui.i18n.LocalIsEnglish
+import com.example.ui.i18n.localizedLabel
+import com.example.ui.i18n.localizedShortLabel
+import com.example.ui.i18n.localizedTitle
+import com.example.ui.i18n.tr
 
 data class TorrentsActions(
     val onQueryChange: (String) -> Unit,
@@ -132,6 +137,7 @@ fun TorrentsTabContent(
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
+    val isEnglish = LocalIsEnglish.current
     var showSavedTorrentsSheet by rememberSaveable { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
 
@@ -192,7 +198,7 @@ fun TorrentsTabContent(
                     trailingIcon = {
                         if (state.query.isNotEmpty()) {
                             IconButton(onClick = { onQueryChange("") }) {
-                                Icon(Icons.Default.Close, contentDescription = "Очистить запрос")
+                                Icon(Icons.Default.Close, contentDescription = tr("Очистить запрос", "Clear query"))
                             }
                         }
                     },
@@ -228,7 +234,7 @@ fun TorrentsTabContent(
                             color = MaterialTheme.colorScheme.onPrimary
                         )
                     } else {
-                        Icon(Icons.Default.Search, contentDescription = "Найти торренты")
+                        Icon(Icons.Default.Search, contentDescription = tr("Найти торренты", "Search torrents"))
                     }
                 }
             }
@@ -244,10 +250,11 @@ fun TorrentsTabContent(
                     key = { it.id }
                 ) { group ->
                     val count = state.trackerCounts[group]
+                    val groupLabel = group.localizedLabel(isEnglish)
                     val chipText = if (state.hasSearched && count != null && count > 0) {
-                        "${group.label} ($count)"
+                        "$groupLabel ($count)"
                     } else {
-                        group.label
+                        groupLabel
                     }
                     FilterChip(
                         selected = state.trackerFilter == group,
@@ -278,7 +285,7 @@ fun TorrentsTabContent(
                                             modifier = Modifier.size(16.dp)
                                         )
                                     },
-                                    label = { Text(state.sortMode.shortLabel) },
+                                    label = { Text(state.sortMode.localizedShortLabel(isEnglish)) },
                                     modifier = Modifier.testTag("torrent_sort_chip")
                                 )
                                 DropdownMenu(
@@ -287,7 +294,7 @@ fun TorrentsTabContent(
                                 ) {
                                     TorrentSortMode.entries.forEach { mode ->
                                         DropdownMenuItem(
-                                            text = { Text(mode.title) },
+                                            text = { Text(mode.localizedTitle(isEnglish)) },
                                             onClick = {
                                                 showSortMenu = false
                                                 onSelectSortMode(mode)
@@ -305,7 +312,7 @@ fun TorrentsTabContent(
                             FilterChip(
                                 selected = state.qualityFilter == qFilter,
                                 onClick = { onSelectQualityFilter(qFilter) },
-                                label = { Text(qFilter.label) },
+                                label = { Text(qFilter.localizedLabel(isEnglish)) },
                                 modifier = Modifier.testTag("quality_filter_${qFilter.id}")
                             )
                         }
@@ -313,12 +320,18 @@ fun TorrentsTabContent(
 
                     if (!state.isSearching && state.rawResults.isNotEmpty()) {
                         val sourcesSummary = if (state.activeSources.isNotEmpty()) {
-                            " • Источники: ${state.activeSources.joinToString(", ")}"
+                            tr(
+                                " • Источники: ${state.activeSources.joinToString(", ")}",
+                                " • Sources: ${state.activeSources.joinToString(", ")}"
+                            )
                         } else {
                             ""
                         }
                         Text(
-                            text = "Раздач: ${state.filteredResults.size} из ${state.rawResults.size}$sourcesSummary",
+                            text = tr(
+                                "Раздач: ${state.filteredResults.size} из ${state.rawResults.size}$sourcesSummary",
+                                "Torrents: ${state.filteredResults.size} of ${state.rawResults.size}$sourcesSummary"
+                            ),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -353,11 +366,14 @@ fun TorrentsTabContent(
                             )
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(
-                                    text = "Поиск по трекерам…",
+                                    text = tr("Поиск по трекерам…", "Searching trackers…"),
                                     style = MaterialTheme.typography.titleMedium
                                 )
                                 Text(
-                                    text = "Опрос RuTracker, Rutor и подключённых индексаторов",
+                                    text = tr(
+                                        "Опрос RuTracker, Rutor и подключённых индексаторов",
+                                        "Querying RuTracker, Rutor, and connected indexers"
+                                    ),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -400,15 +416,18 @@ fun TorrentsTabContent(
                         ) {
                             Text(
                                 text = if (state.rawResults.isNotEmpty()) {
-                                    "Нет раздач под выбранный фильтр"
+                                    tr("Нет раздач под выбранный фильтр", "No torrents match the selected filter")
                                 } else {
-                                    "Раздачи не найдены"
+                                    tr("Раздачи не найдены", "No torrents found")
                                 },
                                 style = MaterialTheme.typography.titleMedium
                             )
                             Text(
                                 text = state.searchMessage
-                                    ?: "Попробуйте изменить запрос, сбросить фильтр качества или проверить адрес индексатора в настройках TorrServer.",
+                                    ?: tr(
+                                        "Попробуйте изменить запрос, сбросить фильтр качества или проверить адрес индексатора в настройках TorrServer.",
+                                        "Try changing your query, resetting the quality filter, or checking the indexer URL in TorrServer settings."
+                                    ),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -424,13 +443,13 @@ fun TorrentsTabContent(
                                             onSelectQualityFilter(TorrentQualityFilter.ALL)
                                         }
                                     ) {
-                                        Text("Сбросить фильтры")
+                                        Text(tr("Сбросить фильтры", "Reset filters"))
                                     }
                                 } else {
                                     FilledTonalButton(onClick = { onSubmitSearch(null) }) {
                                         Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Повторить поиск")
+                                        Text(tr("Повторить поиск", "Retry search"))
                                     }
                                 }
 
@@ -499,12 +518,12 @@ private fun TorrServerStatusBanner(
     val statusLabel = when (connectionState) {
         is TorrServerConnectionState.Connected -> {
             val verSuffix = connectionState.version
-                .takeIf { it.isNotBlank() && !it.equals("Онлайн", ignoreCase = true) }
+                .takeIf { it.isNotBlank() && !it.equals("Онлайн", ignoreCase = true) && !it.equals("Online", ignoreCase = true) }
                 ?.let { " ($it)" }
                 .orEmpty()
             "${stringResource(R.string.torrserver_online_badge)}$verSuffix"
         }
-        TorrServerConnectionState.Checking -> "Проверка TorrServer…"
+        TorrServerConnectionState.Checking -> tr("Проверка TorrServer…", "Checking TorrServer…")
         is TorrServerConnectionState.Disconnected -> stringResource(R.string.torrserver_offline_badge)
         TorrServerConnectionState.Idle -> "TorrServer: $configuredUrl"
     }
@@ -593,7 +612,7 @@ private fun TorrServerStatusBanner(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "Проверить соединение с TorrServer"
+                            contentDescription = tr("Проверить соединение с TorrServer", "Test TorrServer connection")
                         )
                     }
                     IconButton(
@@ -602,7 +621,7 @@ private fun TorrServerStatusBanner(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "Настроить адрес TorrServer"
+                            contentDescription = tr("Настроить адрес TorrServer", "Configure TorrServer URL")
                         )
                     }
                 }
@@ -638,7 +657,7 @@ private fun TorrServerStatusBanner(
                     ) {
                         Icon(Icons.Default.Dns, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Запустить TorrServer")
+                        Text(tr("Запустить TorrServer", "Launch TorrServer"))
                     }
                 }
             }
@@ -670,18 +689,21 @@ private fun TorrentsInitialHeroCard(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "Поиск торрентов и стриминг через TorrServer",
+                text = tr("Поиск торрентов и стриминг через TorrServer", "Torrent Search & TorrServer Streaming"),
                 style = MaterialTheme.typography.titleLarge
             )
             Text(
-                text = "Приоритетная выдача с RuTracker, Rutor, Kinozal, NNM-Club и аниме-трекеров. Любую раздачу или .torrent файл можно сразу смотреть в плеере с Anime4K и внешними озвучками (.mka) либо открыть в стороннем торрент-клиенте.",
+                text = tr(
+                    "Приоритетная выдача с RuTracker, Rutor, Kinozal, NNM-Club и аниме-трекеров. Любую раздачу или .torrent файл можно сразу смотреть в плеере с Anime4K и внешними озвучками (.mka) либо открыть в стороннем торрент-клиенте.",
+                    "Priority results from RuTracker, Rutor, Kinozal, NNM-Club, and anime trackers. Stream any torrent or .torrent file directly in the player with Anime4K and external audio (.mka), or open in an external client."
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             if (recentQueries.isNotEmpty()) {
                 Text(
-                    text = "Недавние запросы",
+                    text = tr("Недавние запросы", "Recent queries"),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -713,7 +735,7 @@ private fun TorrentsInitialHeroCard(
             ) {
                 Icon(Icons.Default.Link, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Вставить Magnet-ссылку или выбрать .torrent файл")
+                Text(tr("Вставить Magnet-ссылку или выбрать .torrent файл", "Paste Magnet link or select .torrent file"))
             }
         }
     }
@@ -819,7 +841,7 @@ private fun TorrentResultCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
-                                contentDescription = "Дополнительные действия"
+                                contentDescription = tr("Дополнительные действия", "More actions")
                             )
                         }
                         DropdownMenu(
@@ -828,7 +850,7 @@ private fun TorrentResultCard(
                         ) {
                             if (!item.magnetUri.isNullOrBlank()) {
                                 DropdownMenuItem(
-                                    text = { Text("Скопировать Magnet-ссылку") },
+                                    text = { Text(tr("Скопировать Magnet-ссылку", "Copy Magnet link")) },
                                     leadingIcon = {
                                         Icon(Icons.Default.ContentCopy, contentDescription = null)
                                     },
@@ -840,7 +862,7 @@ private fun TorrentResultCard(
                             }
                             if (!item.topicUrl.isNullOrBlank()) {
                                 DropdownMenuItem(
-                                    text = { Text("Страница раздачи на трекере") },
+                                    text = { Text(tr("Страница раздачи на трекере", "Open tracker topic page")) },
                                     leadingIcon = {
                                         Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null)
                                     },
@@ -868,7 +890,7 @@ private fun TorrentResultCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "▲ Сиды: ${item.seeders}",
+                    text = tr("▲ Сиды: ${item.seeders}", "▲ Seeds: ${item.seeders}"),
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = if (item.seeders > 0) {
                         MaterialTheme.colorScheme.primary
@@ -877,7 +899,7 @@ private fun TorrentResultCard(
                     }
                 )
                 Text(
-                    text = "▼ Пиры: ${item.leechers}",
+                    text = tr("▼ Пиры: ${item.leechers}", "▼ Peers: ${item.leechers}"),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

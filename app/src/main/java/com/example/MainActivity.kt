@@ -31,6 +31,7 @@ import com.example.player.RefreshRatePlan
 import com.example.torrent.ExternalOpenOutcome
 import com.example.torrent.TorrentIntentHelper
 import com.example.ui.KinoViewModel
+import com.example.ui.i18n.ProvideAppLocalization
 import com.example.ui.screens.FolderDetailScreen
 import com.example.ui.screens.LibraryScreen
 import com.example.ui.screens.PlayerScreen
@@ -110,32 +111,34 @@ class MainActivity : ComponentActivity() {
                 )
             }
             Kino4KTheme(themeMode = settings.themeMode) {
-                Kino4KAppRoot(
-                    viewModel = viewModel,
-                    targetDisplayHz = targetDisplayHz,
-                    refreshPlan = refreshPlan,
-                    onUpdatePipParams = { isPlayerActive, isPlaying, width, height, autoEnter, stepSec ->
-                        PipController.updatePipParams(
-                            activity = this,
-                            isPlayerActive = isPlayerActive,
-                            isPlaying = isPlaying,
-                            videoWidth = width,
-                            videoHeight = height,
-                            autoEnterEnabled = autoEnter,
-                            seekStepSeconds = stepSec
-                        )
-                    },
-                    onRequestEnterPip = { isPlaying, width, height, autoEnter, stepSec ->
-                        PipController.enterPipNow(
-                            activity = this,
-                            isPlaying = isPlaying,
-                            videoWidth = width,
-                            videoHeight = height,
-                            autoEnterEnabled = autoEnter,
-                            seekStepSeconds = stepSec
-                        )
-                    }
-                )
+                ProvideAppLocalization(appLanguage = settings.appLanguage) {
+                    Kino4KAppRoot(
+                        viewModel = viewModel,
+                        targetDisplayHz = targetDisplayHz,
+                        refreshPlan = refreshPlan,
+                        onUpdatePipParams = { isPlayerActive, isPlaying, width, height, autoEnter, stepSec ->
+                            PipController.updatePipParams(
+                                activity = this,
+                                isPlayerActive = isPlayerActive,
+                                isPlaying = isPlaying,
+                                videoWidth = width,
+                                videoHeight = height,
+                                autoEnterEnabled = autoEnter,
+                                seekStepSeconds = stepSec
+                            )
+                        },
+                        onRequestEnterPip = { isPlaying, width, height, autoEnter, stepSec ->
+                            PipController.enterPipNow(
+                                activity = this,
+                                isPlaying = isPlaying,
+                                videoWidth = width,
+                                videoHeight = height,
+                                autoEnterEnabled = autoEnter,
+                                seekStepSeconds = stepSec
+                            )
+                        }
+                    )
+                }
             }
         }
     }
@@ -353,7 +356,7 @@ fun Kino4KAppRoot(
                     if (outcome == ExternalOpenOutcome.COPIED_MAGNET_NO_EXTERNAL_APP) {
                         Toast.makeText(
                             context,
-                            "Внешний торрент-клиент не найден — Magnet-ссылка скопирована",
+                            context.getString(R.string.toast_magnet_copied_no_app),
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -407,6 +410,7 @@ fun Kino4KAppRoot(
                 onAdjustAudioDelay = { delta -> viewModel.adjustAudioDelay(delta) },
                 onSetAudioDelay = { ms -> viewModel.setAudioDelay(ms) },
                 onResyncAudio = { viewModel.resyncAudioStream() },
+                onToggleBluetoothAutoSync = { enabled -> viewModel.setBluetoothAudioAutoSync(enabled) },
                 onSelectSubtitle = { opt -> viewModel.selectSubtitleTrack(opt) },
                 onPickExternalSubtitle = {
                     openExternalSubtitleLauncher.launch(
@@ -473,6 +477,7 @@ fun Kino4KAppRoot(
                 onUnhideFolder = { viewModel.unhideFolder(it) },
                 onClearPlaybackHistory = { viewModel.clearPlaybackHistory() },
                 onResetAllSettings = { viewModel.resetAllSettings() },
+                onUpdateAppLanguage = { viewModel.setAppLanguage(it) },
                 onUpdateThemeMode = { viewModel.setThemeMode(it) },
                 onUpdatePlayerControlsTheme = { viewModel.setPlayerControlsTheme(it) },
                 onUpdateCompactUiMode = { viewModel.setCompactUiMode(it) },
@@ -508,6 +513,8 @@ fun Kino4KAppRoot(
                 onUpdateAutoBindAudio = { viewModel.setAutoBindAudio(it) },
                 onUpdatePreferExternalAudioOnStart = { viewModel.setPreferExternalAudioOnStart(it) },
                 onUpdateDefaultAudioBoostPercent = { viewModel.setDefaultAudioBoostPercent(it) },
+                onUpdateBluetoothAudioAutoSync = { viewModel.setBluetoothAudioAutoSync(it) },
+                onUpdateBluetoothAudioOffsetMs = { viewModel.setBluetoothAudioOffsetMs(it) },
                 onUpdateAutoBindSubs = { viewModel.setAutoBindSubtitles(it) },
                 onUpdateSubtitleFontSize = { viewModel.setSubtitleFontSize(it) },
                 onUpdateSubtitleColor = { viewModel.setSubtitleColor(it) },

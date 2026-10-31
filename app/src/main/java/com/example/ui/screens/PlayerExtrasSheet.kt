@@ -1,14 +1,16 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,16 +21,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.BrightnessHigh
-import androidx.compose.material.icons.filled.BrightnessLow
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.ScreenRotation
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
@@ -48,97 +54,118 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.model.PlaybackEndMode
 import com.example.model.PlayerControlsTheme
 import com.example.model.PlayerOrientationMode
 import com.example.model.SleepTimerPreset
+import com.example.model.VideoScaleMode
 import com.example.ui.components.PlayerControlsThemeSelectorSection
 import com.example.ui.components.formatTimeMs
+import com.example.ui.i18n.LocalIsEnglish
+import com.example.ui.i18n.localizedBadge
+import com.example.ui.i18n.localizedShortLabel
+import com.example.ui.i18n.localizedSubtitle
+import com.example.ui.i18n.localizedTitle
+import com.example.ui.i18n.tr
 import kotlin.math.roundToInt
 
-internal enum class VerticalGestureMode {
+enum class VerticalGestureMode {
     NONE,
     BRIGHTNESS,
     VOLUME
 }
 
+enum class GestureHudType {
+    BRIGHTNESS,
+    VOLUME
+}
+
+data class GestureHudState(
+    val type: GestureHudType,
+    val percent: Int
+)
+
 @Composable
-internal fun VerticalGestureHudCard(
+fun VerticalGestureHudCard(
     mode: VerticalGestureMode,
     fraction: Float,
     modifier: Modifier = Modifier
 ) {
-    if (mode == VerticalGestureMode.NONE) return
-    val clamped = fraction.coerceIn(0f, 1f)
-    val percent = (clamped * 100f).roundToInt()
-    val isBrightness = mode == VerticalGestureMode.BRIGHTNESS
-
-    val icon = when {
-        isBrightness && percent >= 50 -> Icons.Default.BrightnessHigh
-        isBrightness -> Icons.Default.BrightnessLow
-        percent == 0 -> Icons.AutoMirrored.Filled.VolumeOff
-        else -> Icons.AutoMirrored.Filled.VolumeUp
-    }
-    val label = if (isBrightness) "Яркость" else "Громкость"
-
-    Surface(
-        color = Color.Black.copy(alpha = 0.88f),
-        shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)),
+    val type = if (mode == VerticalGestureMode.BRIGHTNESS) GestureHudType.BRIGHTNESS else GestureHudType.VOLUME
+    val pct = (fraction.coerceIn(0f, 1f) * 100f).roundToInt()
+    VerticalGestureHudCard(
+        hudState = GestureHudState(type = type, percent = pct),
         modifier = modifier
-            .width(210.dp)
-            .testTag("vertical_gesture_hud")
+    )
+}
+
+@Composable
+fun VerticalGestureHudCard(
+    hudState: GestureHudState,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = Color(0xD80A101A),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)),
+        modifier = modifier.testTag("vertical_gesture_hud")
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+            modifier = Modifier
+                .width(170.dp)
+                .padding(horizontal = 18.dp, vertical = 14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
-                )
-                Text(
-                    text = "$label • $percent%",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White
-                )
-            }
+            Icon(
+                imageVector = if (hudState.type == GestureHudType.BRIGHTNESS) {
+                    Icons.Default.BrightnessHigh
+                } else {
+                    Icons.Default.VolumeUp
+                },
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp)
+            )
+            Text(
+                text = if (hudState.type == GestureHudType.BRIGHTNESS) {
+                    tr("Яркость ${hudState.percent}%", "Brightness ${hudState.percent}%")
+                } else {
+                    tr("Громкость ${hudState.percent}%", "Volume ${hudState.percent}%")
+                },
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = Color.White
+            )
             LinearProgressIndicator(
-                progress = { clamped },
+                progress = { (hudState.percent / 100f).coerceIn(0f, 1f) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(5.dp)
-                    .clip(CircleShape),
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp)),
                 color = MaterialTheme.colorScheme.primary,
-                trackColor = Color.White.copy(alpha = 0.22f)
+                trackColor = Color.White.copy(alpha = 0.2f)
             )
         }
     }
 }
 
 @Composable
-internal fun LongPressSpeedPill(
+fun LongPressSpeedPill(
     speed: Float,
     modifier: Modifier = Modifier
 ) {
     Surface(
-        color = Color.Black.copy(alpha = 0.86f),
-        shape = RoundedCornerShape(24.dp),
+        color = Color(0xD80A101A),
+        shape = RoundedCornerShape(50),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
         modifier = modifier.testTag("long_press_speed_pill")
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.FastForward,
@@ -147,71 +174,94 @@ internal fun LongPressSpeedPill(
                 modifier = Modifier.size(18.dp)
             )
             Text(
-                text = "${speed}x Ускорение",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-    }
-}
-
-@Composable
-internal fun ScreenLockFloatingPill(
-    onUnlock: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        color = Color.Black.copy(alpha = 0.86f),
-        shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-        modifier = modifier
-            .defaultMinSize(minHeight = 48.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .clickable(onClick = onUnlock)
-            .testTag("player_unlock_button")
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Lock,
-                contentDescription = "Разблокировать управление плеером",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
-            )
-            Text(
-                text = "Экран заблокирован • Нажмите, чтобы снять",
-                style = MaterialTheme.typography.labelLarge,
+                text = tr("Ускорение ${speed}x", "Speed Boost ${speed}x"),
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                 color = Color.White
             )
         }
     }
 }
 
+@Composable
+fun ScreenLockFloatingPill(
+    onUnlock: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = Color(0xCC0A101A),
+        shape = RoundedCornerShape(50),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)),
+        modifier = modifier
+            .clip(RoundedCornerShape(50))
+            .clickable(onClick = onUnlock)
+            .testTag("unlock_screen_pill")
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = tr("Разблокировать экран", "Unlock screen"),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Column {
+                Text(
+                    text = tr("Экран заблокирован", "Screen Locked"),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color.White
+                )
+                Text(
+                    text = tr("Нажмите для разблокировки", "Tap to unlock controls"),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.75f)
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-internal fun PlayerToolsModalSheet(
+fun PlayerToolsModalSheet(
+    playbackSpeed: Float,
+    scaleMode: VideoScaleMode,
     audioBoostPercent: Int,
     sleepTimerPreset: SleepTimerPreset,
     sleepTimerRemainingMs: Long,
-    abLoopStartMs: Long?,
-    abLoopEndMs: Long?,
+    abLoopPointAMs: Long?,
+    abLoopPointBMs: Long?,
     currentPositionMs: Long,
     playbackEndMode: PlaybackEndMode,
-    orientationMode: PlayerOrientationMode,
-    playerControlsTheme: PlayerControlsTheme = PlayerControlsTheme.CLASSIC_OLED,
+    controlsTheme: PlayerControlsTheme = PlayerControlsTheme.CLASSIC_OLED,
+    activeOrientationMode: PlayerOrientationMode = PlayerOrientationMode.VIDEO_ASPECT,
+    onSelectSpeed: (Float) -> Unit,
+    onSelectScaleMode: (VideoScaleMode) -> Unit,
     onSetAudioBoostPercent: (Int) -> Unit,
     onSetSleepTimer: (SleepTimerPreset) -> Unit,
     onMarkAbPointA: () -> Unit,
     onMarkAbPointB: () -> Unit,
     onClearAbLoop: () -> Unit,
     onSelectPlaybackEndMode: (PlaybackEndMode) -> Unit,
-    onSelectOrientationMode: (PlayerOrientationMode) -> Unit,
     onSelectControlsTheme: (PlayerControlsTheme) -> Unit = {},
+    onSelectOrientationMode: (PlayerOrientationMode) -> Unit = {},
+    onLockControls: () -> Unit,
+    onOpenQuickActionsCustomizer: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
+    val isEnglish = LocalIsEnglish.current
+    val speeds = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f, 2.5f, 3.0f)
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -222,213 +272,310 @@ internal fun PlayerToolsModalSheet(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Icon(Icons.Default.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text("Инструменты плеера", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    text = tr("Инструменты просмотра", "Playback Tools"),
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilledTonalButton(
+                        onClick = {
+                            onDismiss()
+                            onOpenQuickActionsCustomizer()
+                        },
+                        modifier = Modifier.testTag("sheet_open_quick_actions_customizer")
+                    ) {
+                        Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(tr("Кнопки", "Buttons"))
+                    }
+                    FilledTonalButton(
+                        onClick = {
+                            onLockControls()
+                            onDismiss()
+                        },
+                        modifier = Modifier.testTag("sheet_lock_controls_button")
+                    ) {
+                        Icon(Icons.Default.LockOpen, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(tr("Блок", "Lock"))
+                    }
+                }
             }
 
-            // 0. Main Player Controls & Timeline Theme
-            Text("Стиль кнопок и полосы плеера", style = MaterialTheme.typography.titleSmall)
-            PlayerControlsThemeSelectorSection(
-                selectedTheme = playerControlsTheme,
-                onSelectTheme = onSelectControlsTheme,
-                compactChipsOnly = true
-            )
+            // 0. Player Controls & Progress Bar Theme
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Text(
+                        text = tr(
+                            "Тема кнопок и полосы (${controlsTheme.localizedTitle(isEnglish)})",
+                            "Controls & Timeline Theme (${controlsTheme.localizedTitle(isEnglish)})"
+                        ),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                }
+                PlayerControlsThemeSelectorSection(
+                    selectedTheme = controlsTheme,
+                    onSelectTheme = onSelectControlsTheme,
+                    compactChipsOnly = true
+                )
+            }
 
-            HorizontalDivider()
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            // 1. Audio Volume Boost (100% - 200%)
+            // 0b. Screen Orientation Selector
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.ScreenRotation, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Text(
+                        text = tr(
+                            "Поворот экрана (${activeOrientationMode.localizedTitle(isEnglish)})",
+                            "Screen Rotation (${activeOrientationMode.localizedTitle(isEnglish)})"
+                        ),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                }
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    PlayerOrientationMode.entries.forEach { mode ->
+                        FilterChip(
+                            selected = activeOrientationMode == mode,
+                            onClick = { onSelectOrientationMode(mode) },
+                            label = { Text(mode.localizedBadge(isEnglish)) },
+                            modifier = Modifier.testTag("tools_orientation_chip_${mode.id}")
+                        )
+                    }
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // 1. Playback Speed
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.Speed, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Text(
+                        text = tr(
+                            "Скорость воспроизведения (${playbackSpeed}x)",
+                            "Playback Speed (${playbackSpeed}x)"
+                        ),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                }
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    speeds.forEach { spd ->
+                        FilterChip(
+                            selected = kotlin.math.abs(playbackSpeed - spd) < 0.02f,
+                            onClick = { onSelectSpeed(spd) },
+                            label = { Text("${spd}x") },
+                            modifier = Modifier.testTag("speed_chip_${spd}x")
+                        )
+                    }
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // 2. Video Scale / Aspect Ratio
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.AspectRatio, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Text(
+                        text = tr("Масштаб и соотношение сторон", "Aspect Ratio & Scale"),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                }
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    VideoScaleMode.entries.forEach { mode ->
+                        FilterChip(
+                            selected = scaleMode == mode,
+                            onClick = { onSelectScaleMode(mode) },
+                            label = { Text(mode.localizedTitle(isEnglish)) },
+                            modifier = Modifier.testTag("scale_chip_${mode.name}")
+                        )
+                    }
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // 3. Software Audio Boost (100% - 200%)
             AudioBoostControlSection(
                 audioBoostPercent = audioBoostPercent,
                 onSetAudioBoostPercent = onSetAudioBoostPercent
             )
 
-            HorizontalDivider()
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            // 2. Sleep Timer
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+            // 4. A-B Loop Section
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Bedtime,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(19.dp)
+                    Icon(Icons.Default.Repeat, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Text(
+                        text = tr(
+                            "Повтор отрезка A–B (сейчас ${formatTimeMs(currentPositionMs)})",
+                            "A–B Segment Loop (now ${formatTimeMs(currentPositionMs)})"
+                        ),
+                        style = MaterialTheme.typography.titleSmall
                     )
-                    Text("Таймер сна", style = MaterialTheme.typography.titleSmall)
                 }
-                if (sleepTimerPreset != SleepTimerPreset.OFF) {
-                    val statusText = if (sleepTimerPreset.stopAtEndOfEpisode) {
-                        "Пауза в конце серии"
-                    } else {
-                        "Осталось ${formatTimeMs(sleepTimerRemainingMs)}"
-                    }
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = RoundedCornerShape(8.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilledTonalButton(
+                        onClick = onMarkAbPointA,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("ab_mark_a_button")
                     ) {
                         Text(
-                            text = statusText,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            if (abLoopPointAMs != null) {
+                                "A: ${formatTimeMs(abLoopPointAMs)}"
+                            } else {
+                                tr("Точка A", "Point A")
+                            }
                         )
+                    }
+                    FilledTonalButton(
+                        onClick = onMarkAbPointB,
+                        enabled = abLoopPointAMs != null,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("ab_mark_b_button")
+                    ) {
+                        Text(
+                            if (abLoopPointBMs != null) {
+                                "B: ${formatTimeMs(abLoopPointBMs)}"
+                            } else {
+                                tr("Точка B", "Point B")
+                            }
+                        )
+                    }
+                    if (abLoopPointAMs != null || abLoopPointBMs != null) {
+                        OutlinedButton(
+                            onClick = onClearAbLoop,
+                            modifier = Modifier.testTag("ab_clear_button")
+                        ) {
+                            Icon(
+                                Icons.Default.Clear,
+                                contentDescription = tr("Сбросить A-B", "Clear A-B loop"),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
             }
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                SleepTimerPreset.entries.forEach { preset ->
-                    FilterChip(
-                        selected = sleepTimerPreset == preset,
-                        onClick = { onSetSleepTimer(preset) },
-                        label = { Text(preset.label) },
-                        modifier = Modifier.testTag("sleep_timer_chip_${preset.id}")
-                    )
-                }
-            }
 
-            HorizontalDivider()
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            // 3. A-B Segment Loop
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+            // 5. Sleep Timer
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Repeat,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(19.dp)
-                    )
-                    Text("Повтор фрагмента A–B", style = MaterialTheme.typography.titleSmall)
+                    Icon(Icons.Default.Bedtime, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    val timerTitle = if (sleepTimerPreset == SleepTimerPreset.OFF) {
+                        tr("Таймер сна", "Sleep Timer")
+                    } else if (sleepTimerPreset == SleepTimerPreset.END_OF_EPISODE) {
+                        tr("Таймер сна: До конца серии", "Sleep Timer: Until end of episode")
+                    } else {
+                        tr(
+                            "Таймер сна: осталось ${formatTimeMs(sleepTimerRemainingMs)}",
+                            "Sleep Timer: ${formatTimeMs(sleepTimerRemainingMs)} left"
+                        )
+                    }
+                    Text(timerTitle, style = MaterialTheme.typography.titleSmall)
                 }
-                Text(
-                    text = "Сейчас: ${formatTimeMs(currentPositionMs)}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilledTonalButton(
-                    onClick = onMarkAbPointA,
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("ab_loop_set_a_button")
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = abLoopStartMs?.let { "A: ${formatTimeMs(it)}" } ?: "Точка A"
-                    )
-                }
-                FilledTonalButton(
-                    onClick = onMarkAbPointB,
-                    enabled = abLoopStartMs != null,
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("ab_loop_set_b_button")
-                ) {
-                    Text(
-                        text = abLoopEndMs?.let { "B: ${formatTimeMs(it)}" } ?: "Точка B"
-                    )
-                }
-                if (abLoopStartMs != null || abLoopEndMs != null) {
-                    OutlinedButton(
-                        onClick = onClearAbLoop,
-                        modifier = Modifier.testTag("ab_loop_clear_button")
-                    ) {
-                        Text("Сброс")
+                    SleepTimerPreset.entries.forEach { preset ->
+                        FilterChip(
+                            selected = sleepTimerPreset == preset,
+                            onClick = { onSetSleepTimer(preset) },
+                            label = { Text(preset.localizedBadge(isEnglish)) },
+                            modifier = Modifier.testTag("sleep_timer_chip_${preset.id}")
+                        )
                     }
                 }
             }
 
-            HorizontalDivider()
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            // 4. Screen Orientation Lock
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ScreenRotation,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(19.dp)
+            // 6. Playback End Mode
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = tr("Режим перехода между сериями", "Episode Transition Mode"),
+                    style = MaterialTheme.typography.titleSmall
                 )
-                Text("Ориентация экрана", style = MaterialTheme.typography.titleSmall)
-            }
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                PlayerOrientationMode.entries.forEach { mode ->
-                    FilterChip(
-                        selected = orientationMode == mode,
-                        onClick = { onSelectOrientationMode(mode) },
-                        label = { Text(mode.title) },
-                        modifier = Modifier.testTag("orientation_chip_${mode.id}")
-                    )
-                }
-            }
-
-            HorizontalDivider()
-
-            // 5. End of Episode Behavior
-            Text("По завершении серии", style = MaterialTheme.typography.titleSmall)
-            PlaybackEndMode.entries.forEach { mode ->
-                val selected = playbackEndMode == mode
-                Surface(
-                    color = if (selected) {
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainer
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(
-                        1.dp,
-                        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable { onSelectPlaybackEndMode(mode) }
-                        .testTag("playback_end_mode_${mode.id}")
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                PlaybackEndMode.entries.forEach { mode ->
+                    val selected = playbackEndMode == mode
+                    Surface(
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainer
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(
+                            1.dp,
+                            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onSelectPlaybackEndMode(mode) }
+                            .testTag("sheet_end_mode_${mode.id}")
                     ) {
-                        RadioButton(
-                            selected = selected,
-                            onClick = { onSelectPlaybackEndMode(mode) }
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(mode.title, style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                mode.description,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(mode.localizedTitle(isEnglish), style = MaterialTheme.typography.titleSmall)
+                                Text(
+                                    mode.localizedSubtitle(isEnglish),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            RadioButton(
+                                selected = selected,
+                                onClick = { onSelectPlaybackEndMode(mode) }
                             )
                         }
                     }
@@ -440,11 +587,12 @@ internal fun PlayerToolsModalSheet(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun AudioBoostControlSection(
+fun AudioBoostControlSection(
     audioBoostPercent: Int,
     onSetAudioBoostPercent: (Int) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    val boostPresets = listOf(100, 125, 150, 175, 200)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -454,51 +602,39 @@ internal fun AudioBoostControlSection(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(19.dp)
-                )
-                Text("Усиление громкости (DSP)", style = MaterialTheme.typography.titleSmall)
-            }
-            Surface(
-                color = if (audioBoostPercent > 100) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainerHighest
-                },
-                shape = RoundedCornerShape(8.dp)
-            ) {
+                Icon(Icons.Default.GraphicEq, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Text(
-                    text = "$audioBoostPercent%",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (audioBoostPercent > 100) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
+                    text = tr("Усиление громкости (Audio Boost)", "Volume Boost (Audio Boost)"),
+                    style = MaterialTheme.typography.titleSmall
                 )
             }
+            Text(
+                text = "$audioBoostPercent%",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = if (audioBoostPercent > 100) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                }
+            )
         }
-
         Slider(
             value = audioBoostPercent.toFloat(),
             onValueChange = { onSetAudioBoostPercent(it.roundToInt()) },
             valueRange = 100f..200f,
-            modifier = Modifier.testTag("audio_boost_slider")
+            steps = 19,
+            modifier = Modifier.testTag("player_audio_boost_slider")
         )
-
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            listOf(100, 125, 150, 175, 200).forEach { pct ->
+            boostPresets.forEach { pct ->
                 FilterChip(
                     selected = audioBoostPercent == pct,
                     onClick = { onSetAudioBoostPercent(pct) },
-                    label = { Text("$pct%") }
+                    label = { Text(if (pct == 100) tr("100% (Норма)", "100% (Normal)") else "$pct%") },
+                    modifier = Modifier.testTag("player_boost_chip_$pct")
                 )
             }
         }

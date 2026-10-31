@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.model.Anime4KPreset
+import com.example.model.AppLanguage
 import com.example.model.AppThemeMode
 import com.example.model.DecoderMode
 import com.example.model.EpisodeSortOption
@@ -34,6 +35,7 @@ private val Context.playerDataStore: DataStore<Preferences> by preferencesDataSt
 class PlayerPreferencesRepository(private val context: Context) {
 
     private object Keys {
+        val APP_LANGUAGE = stringPreferencesKey("app_language")
         val THEME_MODE = stringPreferencesKey("app_theme_mode")
         val PLAYER_CONTROLS_THEME = stringPreferencesKey("player_controls_theme")
         val COMPACT_UI_MODE = booleanPreferencesKey("compact_ui_mode")
@@ -78,6 +80,8 @@ class PlayerPreferencesRepository(private val context: Context) {
         val AUTO_BIND_AUDIO = booleanPreferencesKey("auto_bind_external_audio")
         val PREFER_EXTERNAL_AUDIO_ON_START = booleanPreferencesKey("prefer_external_audio_on_start")
         val DEFAULT_AUDIO_BOOST_PERCENT = intPreferencesKey("default_audio_boost_percent")
+        val BLUETOOTH_AUDIO_AUTO_SYNC = booleanPreferencesKey("bluetooth_audio_auto_sync")
+        val BLUETOOTH_AUDIO_OFFSET_MS = longPreferencesKey("bluetooth_audio_offset_ms")
 
         val AUTO_BIND_SUBS = booleanPreferencesKey("auto_bind_external_subtitles")
         val SUB_FONT_SIZE = floatPreferencesKey("subtitle_font_size_sp")
@@ -108,6 +112,7 @@ class PlayerPreferencesRepository(private val context: Context) {
             prefs[Keys.EPISODE_SORT_OPTION] ?: EpisodeSortOption.EPISODE_NUMBER.id
         )
         PlayerSettings(
+            appLanguage = AppLanguage.fromId(prefs[Keys.APP_LANGUAGE] ?: AppLanguage.SYSTEM.id),
             themeMode = AppThemeMode.fromId(prefs[Keys.THEME_MODE] ?: AppThemeMode.OLED_BLACK.id),
             playerControlsTheme = PlayerControlsTheme.fromId(
                 prefs[Keys.PLAYER_CONTROLS_THEME] ?: PlayerControlsTheme.CLASSIC_OLED.id
@@ -163,6 +168,8 @@ class PlayerPreferencesRepository(private val context: Context) {
             autoBindExternalAudio = prefs[Keys.AUTO_BIND_AUDIO] ?: true,
             preferExternalAudioOnStart = prefs[Keys.PREFER_EXTERNAL_AUDIO_ON_START] ?: true,
             defaultAudioBoostPercent = (prefs[Keys.DEFAULT_AUDIO_BOOST_PERCENT] ?: 100).coerceIn(100, 200),
+            bluetoothAudioAutoSync = prefs[Keys.BLUETOOTH_AUDIO_AUTO_SYNC] ?: true,
+            bluetoothAudioOffsetMs = (prefs[Keys.BLUETOOTH_AUDIO_OFFSET_MS] ?: -150L).coerceIn(-600L, 200L),
 
             autoBindExternalSubtitles = prefs[Keys.AUTO_BIND_SUBS] ?: true,
             subtitleFontSizeSp = (prefs[Keys.SUB_FONT_SIZE] ?: 21f).coerceIn(13f, 42f),
@@ -195,6 +202,11 @@ class PlayerPreferencesRepository(private val context: Context) {
     }
 
     fun readBootSettingsSnapshot(): PlayerSettings = readBootSettingsSnapshot(context)
+
+    suspend fun updateAppLanguage(language: AppLanguage) {
+        bootPrefs(context).edit().putString("app_lang", language.id).apply()
+        context.playerDataStore.edit { it[Keys.APP_LANGUAGE] = language.id }
+    }
 
     suspend fun updateThemeMode(mode: AppThemeMode) {
         bootPrefs(context).edit().putString("theme_mode", mode.id).apply()
@@ -385,7 +397,7 @@ class PlayerPreferencesRepository(private val context: Context) {
                     prefs[Keys.FRAME_INTERPOLATION_MODE] ?: FrameInterpolationMode.OFF.id
                 ) == FrameInterpolationMode.OFF
             ) {
-                prefs[Keys.FRAME_INTERPOLATION_MODE] = FrameInterpolationMode.SVP_MAX.id
+                prefs[Keys.FRAME_INTERPOLATION_MODE] = FrameInterpolationMode.MAX_FPS.id
             }
         }
     }
@@ -432,6 +444,17 @@ class PlayerPreferencesRepository(private val context: Context) {
 
     suspend fun updateDefaultAudioBoostPercent(percent: Int) {
         context.playerDataStore.edit { it[Keys.DEFAULT_AUDIO_BOOST_PERCENT] = percent.coerceIn(100, 200) }
+    }
+
+    suspend fun updateBluetoothAudioAutoSync(enabled: Boolean) {
+        bootPrefs(context).edit().putBoolean("bt_auto_sync", enabled).apply()
+        context.playerDataStore.edit { it[Keys.BLUETOOTH_AUDIO_AUTO_SYNC] = enabled }
+    }
+
+    suspend fun updateBluetoothAudioOffsetMs(offsetMs: Long) {
+        val clamped = offsetMs.coerceIn(-600L, 200L)
+        bootPrefs(context).edit().putLong("bt_offset_ms", clamped).apply()
+        context.playerDataStore.edit { it[Keys.BLUETOOTH_AUDIO_OFFSET_MS] = clamped }
     }
 
     suspend fun updateAutoBindSubtitles(enabled: Boolean) {
@@ -532,6 +555,7 @@ class PlayerPreferencesRepository(private val context: Context) {
             val sortOpt = FolderSortOption.fromId(sp.getString("sort_opt", FolderSortOption.NAME.id) ?: FolderSortOption.NAME.id)
             val epSortOpt = EpisodeSortOption.fromId(sp.getString("ep_sort_opt", EpisodeSortOption.EPISODE_NUMBER.id) ?: EpisodeSortOption.EPISODE_NUMBER.id)
             return PlayerSettings(
+                appLanguage = AppLanguage.fromId(sp.getString("app_lang", AppLanguage.SYSTEM.id)),
                 themeMode = AppThemeMode.fromId(sp.getString("theme_mode", AppThemeMode.OLED_BLACK.id) ?: AppThemeMode.OLED_BLACK.id),
                 playerControlsTheme = PlayerControlsTheme.fromId(
                     sp.getString("controls_theme", PlayerControlsTheme.CLASSIC_OLED.id) ?: PlayerControlsTheme.CLASSIC_OLED.id
@@ -553,20 +577,23 @@ class PlayerPreferencesRepository(private val context: Context) {
                 ),
                 highRefreshRateEnabled = sp.getBoolean("high_hz", true),
                 ltpoAdaptiveRefreshEnabled = sp.getBoolean("ltpo_hz", true),
-                frameInterpolationEnabled = sp.getBoolean("svp_enabled_v2", false),
+                frameInterpolationEnabled = sp.getBoolean("frame_interp_enabled_v2", false),
                 frameInterpolationMode = FrameInterpolationMode.fromId(
-                    sp.getString("svp_mode_v2", FrameInterpolationMode.OFF.id) ?: FrameInterpolationMode.OFF.id
+                    sp.getString("frame_interp_mode_v2", FrameInterpolationMode.OFF.id) ?: FrameInterpolationMode.OFF.id
                 ),
                 anime4kEnabled = sp.getBoolean("a4k_enabled_v2", false),
                 anime4kPreset = Anime4KPreset.fromId(
                     sp.getString("a4k_preset_v2", Anime4KPreset.OFF.id) ?: Anime4KPreset.OFF.id
                 ),
+                bluetoothAudioAutoSync = sp.getBoolean("bt_auto_sync", true),
+                bluetoothAudioOffsetMs = sp.getLong("bt_offset_ms", -150L).coerceIn(-600L, 200L),
                 torrServerUrl = sp.getString("torr_url", "http://127.0.0.1:8090") ?: "http://127.0.0.1:8090"
             )
         }
 
         private fun writeBootSettingsSnapshot(context: Context, s: PlayerSettings) {
             bootPrefs(context).edit()
+                .putString("app_lang", s.appLanguage.id)
                 .putString("theme_mode", s.themeMode.id)
                 .putString("controls_theme", s.playerControlsTheme.id)
                 .putBoolean("compact_ui", s.compactUiMode)
@@ -582,10 +609,12 @@ class PlayerPreferencesRepository(private val context: Context) {
                 .putString("scale_mode", s.defaultScaleMode.id)
                 .putBoolean("high_hz", s.highRefreshRateEnabled)
                 .putBoolean("ltpo_hz", s.ltpoAdaptiveRefreshEnabled)
-                .putBoolean("svp_enabled_v2", s.frameInterpolationEnabled)
-                .putString("svp_mode_v2", s.frameInterpolationMode.id)
+                .putBoolean("frame_interp_enabled_v2", s.frameInterpolationEnabled)
+                .putString("frame_interp_mode_v2", s.frameInterpolationMode.id)
                 .putBoolean("a4k_enabled_v2", s.anime4kEnabled)
                 .putString("a4k_preset_v2", s.anime4kPreset.id)
+                .putBoolean("bt_auto_sync", s.bluetoothAudioAutoSync)
+                .putLong("bt_offset_ms", s.bluetoothAudioOffsetMs)
                 .putString("torr_url", s.torrServerUrl)
                 .apply()
         }

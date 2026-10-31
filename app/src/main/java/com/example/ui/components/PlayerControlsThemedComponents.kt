@@ -69,6 +69,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.model.PlayerControlsTheme
 import com.example.model.VideoChapter
+import com.example.ui.i18n.LocalIsEnglish
+import com.example.ui.i18n.localizedBadge
+import com.example.ui.i18n.localizedSubtitle
+import com.example.ui.i18n.localizedTitle
+import com.example.ui.i18n.tr
 
 /**
  * Compact badge displaying video resolution ("4K", "1440p", "1080p", "720p", etc.)
@@ -1292,6 +1297,7 @@ fun PlayerControlsThemeSelectorSection(
     compactChipsOnly: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val isEnglish = LocalIsEnglish.current
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -1328,9 +1334,9 @@ fun PlayerControlsThemeSelectorSection(
                     durationMs = 1_440_000L,
                     isScrubbing = false,
                     chapters = listOf(
-                        VideoChapter(0, "Интро", 0L, 90_000L),
-                        VideoChapter(1, "Опенинг", 90_000L, 180_000L),
-                        VideoChapter(2, "Часть A", 720_000L, 1_320_000L)
+                        VideoChapter(0, tr("Интро", "Intro"), 0L, 90_000L),
+                        VideoChapter(1, tr("Опенинг", "Opening"), 90_000L, 180_000L),
+                        VideoChapter(2, tr("Часть A", "Part A"), 720_000L, 1_320_000L)
                     ),
                     showChapterMarkers = true,
                     abLoopStartMs = null,
@@ -1381,7 +1387,7 @@ fun PlayerControlsThemeSelectorSection(
                                 modifier = Modifier.size(16.dp)
                             )
                             Text(
-                                text = theme.title,
+                                text = theme.localizedTitle(isEnglish),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = if (isSelected) {
                                     MaterialTheme.colorScheme.onPrimaryContainer
@@ -1428,7 +1434,7 @@ fun PlayerControlsThemeSelectorSection(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Text(
-                                    text = theme.title,
+                                    text = theme.localizedTitle(isEnglish),
                                     style = MaterialTheme.typography.titleSmall
                                 )
                                 Surface(
@@ -1436,7 +1442,7 @@ fun PlayerControlsThemeSelectorSection(
                                     shape = RoundedCornerShape(6.dp)
                                 ) {
                                     Text(
-                                        text = theme.shortBadge,
+                                        text = theme.localizedBadge(isEnglish),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
@@ -1445,7 +1451,7 @@ fun PlayerControlsThemeSelectorSection(
                             }
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = theme.subtitle,
+                                text = theme.localizedSubtitle(isEnglish),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
