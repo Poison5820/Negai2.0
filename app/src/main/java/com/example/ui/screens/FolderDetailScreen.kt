@@ -46,6 +46,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,9 +64,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.ImageLoader
 import coil.compose.AsyncImage
-import coil.decode.VideoFrameDecoder
-import coil.request.ImageRequest
-import coil.request.videoFrameMillis
+import com.example.ui.util.VideoThumbnailCache
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.example.data.PlaybackResumeHelper
 import com.example.model.EpisodeItem
 import com.example.model.EpisodeSortOption
@@ -97,9 +98,23 @@ fun FolderDetailScreen(
 
     val context = LocalContext.current
     val videoThumbnailLoader = remember(context) {
-        ImageLoader.Builder(context)
-            .components { add(VideoFrameDecoder.Factory()) }
-            .build()
+        VideoThumbnailCache.getImageLoader(context)
+    }
+
+    LaunchedEffect(folder.episodes, showThumbnails) {
+        if (showThumbnails && folder.episodes.isNotEmpty()) {
+            withContext(Dispatchers.IO) {
+                folder.episodes.take(12).forEach { episode ->
+                    val req = VideoThumbnailCache.buildEpisodeThumbnailRequest(
+                        context = context,
+                        videoUri = episode.uri,
+                        targetWidthPx = if (compactMode) 336 else 372,
+                        targetHeightPx = if (compactMode) 198 else 222
+                    )
+                    videoThumbnailLoader.enqueue(req)
+                }
+            }
+        }
     }
 
     val resumeCandidateIndex = remember(folder.episodes, resumePlaybackEnabled) {
@@ -246,7 +261,8 @@ fun FolderDetailScreen(
 
                 itemsIndexed(
                     items = folder.episodes,
-                    key = { _, ep -> ep.uri }
+                    key = { _, ep -> ep.uri },
+                    contentType = { _, _ -> "episode_card" }
                 ) { index, episode ->
                     EpisodeRowCard(
                         episode = episode,
@@ -352,6 +368,14 @@ private fun EpisodeRowCard(
                 horizontalArrangement = Arrangement.spacedBy(if (compactMode) 10.dp else 14.dp)
             ) {
                 if (showThumbnail) {
+                    val thumbRequest = remember(episode.uri, compactMode) {
+                        VideoThumbnailCache.buildEpisodeThumbnailRequest(
+                            context = context,
+                            videoUri = episode.uri,
+                            targetWidthPx = if (compactMode) 336 else 372,
+                            targetHeightPx = if (compactMode) 198 else 222
+                        )
+                    }
                     Box(
                         modifier = Modifier
                             .width(if (compactMode) 112.dp else 124.dp)
@@ -368,11 +392,7 @@ private fun EpisodeRowCard(
                         contentAlignment = Alignment.Center
                     ) {
                         AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(Uri.parse(episode.uri))
-                                .videoFrameMillis(2000L)
-                                .crossfade(true)
-                                .build(),
+                            model = thumbRequest,
                             imageLoader = imageLoader,
                             contentDescription = episode.cleanTitle,
                             contentScale = ContentScale.Crop,
