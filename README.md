@@ -4,7 +4,9 @@
 [![Platform](https://img.shields.io/badge/platform-Android_8.0%2B_(API_26%2B)-3DDC84?style=flat-square&logo=android)](#)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.x_%7C_Jetpack_Compose-7F52FF?style=flat-square&logo=kotlin)](#)
 [![Media3](https://img.shields.io/badge/Media3-ExoPlayer_%2B_OpenGL_ES-FF6D00?style=flat-square)](#)
-[![Obtainium](https://img.shields.io/badge/Obtainium-Добавить_%2F_Add_to_Obtainium-6750A4?style=for-the-badge&logo=android&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Poison5820/Negai2.0)
+<a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Poison5820/Negai2.0">
+  <img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="55">
+</a>
 
 **Languages / Языки:** [🇷🇺 Русский](#-русский) • [🇬🇧 English](#-english)
 
@@ -16,7 +18,9 @@
 
 ### 📲 Obtainium
 
-[![Добавить в Obtainium](https://img.shields.io/badge/Obtainium-Добавить_в_отслеживание-6750A4?style=for-the-badge&logo=android&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Poison5820/Negai2.0)
+<a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Poison5820/Negai2.0">
+  <img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="55">
+</a>
 
 ### ✨ Основные возможности
 
@@ -64,7 +68,9 @@ gradle :app:testDebugUnitTest
 
 ### 📲 Obtainium
 
-[![Add to Obtainium](https://img.shields.io/badge/Obtainium-Add_to_Obtainium-6750A4?style=for-the-badge&logo=android&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Poison5820/Negai2.0)
+<a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Poison5820/Negai2.0">
+  <img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="55">
+</a>
 
 ### ✨ Key Features
 
