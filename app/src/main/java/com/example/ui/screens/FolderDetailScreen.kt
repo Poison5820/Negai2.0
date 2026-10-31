@@ -101,19 +101,14 @@ fun FolderDetailScreen(
         VideoThumbnailCache.getImageLoader(context)
     }
 
-    LaunchedEffect(folder.episodes, showThumbnails) {
+    LaunchedEffect(folder.episodes, showThumbnails, compactMode) {
         if (showThumbnails && folder.episodes.isNotEmpty()) {
-            withContext(Dispatchers.IO) {
-                folder.episodes.take(12).forEach { episode ->
-                    val req = VideoThumbnailCache.buildEpisodeThumbnailRequest(
-                        context = context,
-                        videoUri = episode.uri,
-                        targetWidthPx = if (compactMode) 336 else 372,
-                        targetHeightPx = if (compactMode) 198 else 222
-                    )
-                    videoThumbnailLoader.enqueue(req)
-                }
-            }
+            VideoThumbnailCache.prefetchFolderThumbnails(
+                context = context,
+                videoUris = folder.episodes.map { it.uri },
+                targetWidthPx = if (compactMode) 336 else 372,
+                targetHeightPx = if (compactMode) 198 else 222
+            )
         }
     }
 

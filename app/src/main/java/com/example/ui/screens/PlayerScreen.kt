@@ -9,6 +9,7 @@ import android.view.Surface
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -296,16 +298,16 @@ fun PlayerScreen(
         }
     }
 
-    DisposableEffect(controlsVisible, isInPipMode, isScreenLocked) {
+    // Fullscreen immersive mode: keep system bars permanently hidden while the player is active.
+    // Toggling system bars on tap causes heavy WindowManager layout stalls and visible screen freezes.
+    DisposableEffect(isInPipMode) {
         val window = (context as? Activity)?.window
         if (window != null) {
             val controller = WindowCompat.getInsetsController(window, view)
             controller.systemBarsBehavior =
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            if ((!controlsVisible || isScreenLocked) && !isInPipMode) {
+            if (!isInPipMode) {
                 controller.hide(WindowInsetsCompat.Type.systemBars())
-            } else {
-                controller.show(WindowInsetsCompat.Type.systemBars())
             }
         }
         onDispose {
@@ -904,19 +906,21 @@ fun PlayerScreen(
             verticalGestureMode == VerticalGestureMode.NONE &&
             !playbackState.isTempSpeedBoostActive
 
-        val hudAlpha by animateFloatAsState(
-            targetValue = if (showHud) 1f else 0f,
-            animationSpec = tween(durationMillis = 100, easing = LinearOutSlowInEasing),
-            label = "player_hud_alpha"
-        )
+        val hudAlphaAnim = remember { Animatable(if (showHud) 1f else 0f) }
+        LaunchedEffect(showHud) {
+            hudAlphaAnim.animateTo(
+                targetValue = if (showHud) 1f else 0f,
+                animationSpec = tween(durationMillis = 80, easing = LinearOutSlowInEasing)
+            )
+        }
 
-        if (hudAlpha > 0.001f) {
+        if (showHud || hudAlphaAnim.value > 0.001f) {
             val isEnglish = LocalIsEnglish.current
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        alpha = hudAlpha
+                        alpha = hudAlphaAnim.value
                     }
                     .background(
                         Brush.verticalGradient(
@@ -926,7 +930,7 @@ fun PlayerScreen(
                             1.0f to Color.Black.copy(alpha = 0.92f)
                         )
                     )
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .windowInsetsPadding(WindowInsets.displayCutout)
             ) {
                 // TOP BAR (compact, grouped controls + direct Episodes/Chapters access)
                 Row(

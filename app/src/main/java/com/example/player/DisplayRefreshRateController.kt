@@ -183,19 +183,11 @@ object DisplayRefreshRateController {
 
         // 4. Active video playback WITH Frame Interpolation (MEMC) requested
         if (interpolationMode.isEnabled) {
+            // Strict 2x frame doubling cadence: 24 fps -> 48 fps; 25 fps -> 50 fps; 30 fps -> 60 fps.
+            // Strictly doubles source video fps without forcing 120 fps on 24 fps content.
             val desiredMemcTarget = when (interpolationMode) {
                 FrameInterpolationMode.OFF -> effectiveFps
-                FrameInterpolationMode.CINEMA -> {
-                    // 2x cadence (e.g. 24->48Hz, 25->50Hz, 30->60Hz; at 1.5x speed: 36->72Hz; at 2x speed: 48->96Hz)
-                    (effectiveFps * 2f).coerceIn(48f, allowedCapHz)
-                }
-                FrameInterpolationMode.SMOOTH_60 -> {
-                    60f.coerceAtMost(allowedCapHz)
-                }
-                FrameInterpolationMode.MAX_FPS,
-                FrameInterpolationMode.ANIME -> {
-                    allowedCapHz
-                }
+                else -> (effectiveFps * 2.0f).coerceIn(24f, allowedCapHz)
             }
 
             // Auto-bypass MEMC when accelerated video FPS already meets or exceeds target Hz!
@@ -252,8 +244,8 @@ object DisplayRefreshRateController {
                 useContinuousVsync = true,
                 memcActive = true,
                 isLtpoSavingActive = saving,
-                hudBadgeText = buildHzBadge(chosenDisplayHz, saving),
-                statusSummary = "${formatFps(normalizedSrcFps)} к/с × ${formatSpeed(clampedSpeed)} → ${interpolationMode.badgeLabel} ${renderFps.roundToInt()} к/с (${chosenDisplayHz.roundToInt()} Гц${if (saving) " LTPO Эко" else ""})"
+                hudBadgeText = "${renderFps.roundToInt()} к/с (2x)",
+                statusSummary = "${formatFps(normalizedSrcFps)} к/с → 2x Удвоение ${renderFps.roundToInt()} к/с (${chosenDisplayHz.roundToInt()} Гц${if (saving) " LTPO Эко" else ""})"
             )
         }
 
@@ -337,29 +329,18 @@ object DisplayRefreshRateController {
     ): Float {
         if (candidateModes.isEmpty()) return desiredTargetHz.coerceAtMost(allowedCapHz)
 
-        when (interpolationMode) {
-            FrameInterpolationMode.CINEMA,
-            FrameInterpolationMode.SMOOTH_60 -> {
-                // Prefer lowest mode that meets desiredTargetHz, or an exact harmonic near it
-                val nearTarget = candidateModes.firstOrNull { it >= desiredTargetHz - 1.2f }
-                if (nearTarget != null) return nearTarget
-                return candidateModes.last()
-            }
-            FrameInterpolationMode.MAX_FPS,
-            FrameInterpolationMode.ANIME -> {
-                // Prefer the highest clean harmonic multiple of effectiveFps up to allowedCapHz
-                // (e.g. 25fps -> 100Hz on [60, 100, 120]; 45fps -> 90Hz on [60, 90, 120]; 48fps -> 96Hz on [60, 96, 120]; 24fps -> 120Hz on [60, 120])
-                val harmonics = candidateModes.filter { modeHz ->
-                    modeHz >= (effectiveFps * 1.85f).coerceAtLeast(58f) &&
-                        isNearHarmonicMultiple(modeHz, effectiveFps)
-                }
-                if (harmonics.isNotEmpty()) {
-                    return harmonics.max()
-                }
-                return candidateModes.last()
-            }
-            FrameInterpolationMode.OFF -> return allowedCapHz
+        // 1. Strict exact match for 2x cadence (e.g. 24 fps -> 48 Hz mode on LTPO panels)
+        val exactMatch = candidateModes.firstOrNull { abs(it - desiredTargetHz) <= 1.25f }
+        if (exactMatch != null) return exactMatch
+
+        // 2. Harmonic multiple of 2x (e.g. 48 fps -> 96 Hz)
+        val harmonicMatch = candidateModes.firstOrNull { modeHz ->
+            modeHz >= desiredTargetHz - 0.8f && isNearHarmonicMultiple(modeHz, desiredTargetHz)
         }
+        if (harmonicMatch != null) return harmonicMatch
+
+        // 3. Fallback: lowest candidate mode >= desiredTargetHz, or allowedCapHz
+        return candidateModes.firstOrNull { it >= desiredTargetHz - 1.2f } ?: allowedCapHz
     }
 
     private fun isNearHarmonicMultiple(panelHz: Float, videoFps: Float): Boolean {
@@ -434,14 +415,22 @@ object DisplayRefreshRateController {
 
         if (bestMode != null) {
             val attrs = window.attributes
-            if (attrs.preferredDisplayModeId != bestMode.modeId ||
-                abs(attrs.preferredRefreshRate - bestMode.refreshRate) > 0.5f
-            ) {
+            val currentRate = attrs.preferredRefreshRate
+            // CRITICAL: On real Android devices, changing preferredDisplayModeId or preferredRefreshRate
+            // triggers a hardware display controller modeset (150-300ms display pipeline freeze).
+            // When the window is already set to high refresh rate (e.g. 120Hz), we must NEVER downgrade
+            // the Activity Window during playback or UI toggle, avoiding freezes completely.
+            val alreadyHighHz = currentRate >= 88f
+            val isDowngrade = alreadyHighHz && bestMode.refreshRate < 88f
+            val isSame = attrs.preferredDisplayModeId == bestMode.modeId ||
+                abs(currentRate - bestMode.refreshRate) <= 0.5f
+
+            if (!isSame && !isDowngrade) {
                 attrs.preferredDisplayModeId = bestMode.modeId
                 attrs.preferredRefreshRate = bestMode.refreshRate
                 window.attributes = attrs
             }
-            return bestMode.refreshRate
+            return if (alreadyHighHz) currentRate else bestMode.refreshRate
         }
         return currentMode?.refreshRate ?: plan.targetDisplayHz
     }

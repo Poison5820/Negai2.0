@@ -107,7 +107,7 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(settings.themeMode) {
                 window.setBackgroundDrawable(ColorDrawable(settings.themeMode.previewBgArgb.toInt()))
             }
-            LaunchedEffect(refreshPlan) {
+            LaunchedEffect(settings.highRefreshRateEnabled, isPlayerOpen) {
                 targetDisplayHz = DisplayRefreshRateController.applyWindowRefreshPlan(
                     this@MainActivity,
                     refreshPlan

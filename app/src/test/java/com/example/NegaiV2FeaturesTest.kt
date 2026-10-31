@@ -109,6 +109,23 @@ class NegaiV2FeaturesTest {
         assertTrue(harmonicMemcPlan.memcActive)
         assertTrue(harmonicMemcPlan.isLtpoSavingActive)
 
+        // 3b. 23.976 / 24 fps @ 1.0x with MEMC -> strict 2x = 48 fps on 48Hz LTPO panel (not 120Hz!)
+        val strict2xPlan = DisplayRefreshRateController.computeOptimalRefreshPlan(
+            displayInfo = ltpoDisplay,
+            isPlayerActive = true,
+            isPlaying = true,
+            sourceVideoFps = 23.976f,
+            playbackSpeed = 1.0f,
+            highRefreshRateEnabled = true,
+            ltpoAdaptiveEnabled = true,
+            interpolationMode = FrameInterpolationMode.ANIME
+        )
+        assertEquals(24f, strict2xPlan.effectiveVideoFps, 0.1f)
+        assertEquals(48f, strict2xPlan.targetRenderFps, 0.1f)
+        assertEquals(48f, strict2xPlan.targetDisplayHz, 0.1f)
+        assertTrue(strict2xPlan.memcActive)
+        assertTrue(strict2xPlan.hudBadgeText.contains("48 к/с (2x)"))
+
         // 4. 60 fps @ 2.0x speed (120 fps) on 120Hz -> auto-bypasses GPU MEMC to save power
         val autoBypassPlan = DisplayRefreshRateController.computeOptimalRefreshPlan(
             displayInfo = ltpoDisplay,
@@ -397,5 +414,46 @@ class NegaiV2FeaturesTest {
         assertTrue(gamingModeRoute.isGamingMode)
         assertTrue(gamingModeRoute.displayLatencyLabel(isEnglish = false).contains("48 мс"))
         assertTrue(gamingModeRoute.displayLatencyLabel(isEnglish = false).contains("Игровой режим"))
+    }
+
+    @Test
+    fun videoThumbnailCache_deterministicKeysAndDiskPruning() {
+        val uri1 = "content://media/external/video/media/1001"
+        val uri2 = "content://media/external/video/media/1002"
+
+        val key1a = com.example.ui.util.VideoThumbnailCache.generateKey(uri1, 2000L, 336, 198)
+        val key1b = com.example.ui.util.VideoThumbnailCache.generateKey(uri1, 2000L, 336, 198)
+        val key2 = com.example.ui.util.VideoThumbnailCache.generateKey(uri2, 2000L, 336, 198)
+
+        assertEquals("Same URI & dimensions must produce identical key", key1a, key1b)
+        assertTrue("Different URIs must produce distinct keys", key1a != key2)
+        assertTrue("Key should have thumb_ prefix", key1a.startsWith("thumb_"))
+
+        // Test disk pruning logic
+        val tempDir = Files.createTempDirectory("thumb_test_cache").toFile()
+        try {
+            val file1 = java.io.File(tempDir, "thumb_1.jpg").apply {
+                writeBytes(ByteArray(1024 * 50)) // 50 KB
+                setLastModified(1000L)
+            }
+            val file2 = java.io.File(tempDir, "thumb_2.jpg").apply {
+                writeBytes(ByteArray(1024 * 50)) // 50 KB
+                setLastModified(2000L)
+            }
+            val file3 = java.io.File(tempDir, "thumb_3.jpg").apply {
+                writeBytes(ByteArray(1024 * 50)) // 50 KB
+                setLastModified(3000L)
+            }
+
+            assertEquals(3, tempDir.listFiles()?.size)
+            // Prune with max limit of 80 KB -> oldest files should be removed
+            com.example.ui.util.VideoThumbnailCache.pruneDiskCacheIfNeeded(tempDir, maxSizeBytes = 80 * 1024L)
+            val remaining = tempDir.listFiles() ?: emptyArray()
+            assertTrue(remaining.size < 3)
+            assertFalse("Oldest file should have been deleted", file1.exists())
+            assertTrue("Newest file should remain", file3.exists())
+        } finally {
+            tempDir.deleteRecursively()
+        }
     }
 }
