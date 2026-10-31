@@ -122,17 +122,11 @@ jobs:
 
           VERSION_NAME=$(grep -E 'versionName\s*=\s*"[^"]+"' app/build.gradle.kts | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
           if [ -z "$VERSION_NAME" ]; then
-            VERSION_NAME="2.2.0"
+            VERSION_NAME="2.2.1"
           fi
-          BASE_TAG="v${VERSION_NAME}"
-
-          # If the base release tag already exists on GitHub, append the build number so Obtainium
-          # and users always receive a distinct, strictly increasing version tag on every build!
-          if gh release view "$BASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            TAG="${BASE_TAG}-b${GITHUB_RUN_NUMBER}"
-          else
-            TAG="$BASE_TAG"
-          fi
+          # Use clean standard SemVer tag (e.g. v2.2.1) without hyphenated build suffixes so Obtainium
+          # reliably identifies releases and tracks updates against the installed APK's versionName.
+          TAG="v${VERSION_NAME}"
           SHORT_SHA="${GITHUB_SHA::7}"
           APK_SIZE=$(du -h negai.apk | cut -f1)
 

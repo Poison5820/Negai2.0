@@ -447,7 +447,7 @@ fun VersionPlanetaryModalSheet(
                 }
             }
 
-            // Release v2.2.0 Changelog Card
+            // Release v2.2.1 Changelog Card
             Surface(
                 color = MaterialTheme.colorScheme.surfaceContainer,
                 shape = RoundedCornerShape(14.dp),
@@ -459,7 +459,7 @@ fun VersionPlanetaryModalSheet(
                     verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     Text(
-                        text = tr("Что нового в релизе v2.2.0", "What's New in Release v2.2.0"),
+                        text = tr("Что нового в релизе v2.2.1", "What's New in Release v2.2.1"),
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -469,7 +469,9 @@ fun VersionPlanetaryModalSheet(
                             "• Instant dynamic 120Hz boost when touching screen or opening player controls",
                             "• Ultra-fast 100ms lightweight player HUD appearance without stutters or frame drops",
                             "• Dynamic Bluetooth latency auto-tracking & earbud Gaming Mode auto-detection",
-                            "• Live hardware latency monitor in Audio Tracks modal sheet"
+                            "• Live hardware latency monitor in Audio Tracks modal sheet",
+                            "• Persistent 200MB video thumbnail disk cache & smooth folder scrolling",
+                            "• Clean SemVer versioning format for 100% Obtainium updater compatibility"
                         )
                     } else {
                         listOf(
@@ -477,7 +479,9 @@ fun VersionPlanetaryModalSheet(
                             "• Мгновенный буст герцовки дисплея до максимума (120 Гц) при касании и открытии интерфейса плеера",
                             "• Мгновенный отклик и лёгкий переход кнопок плеера (100 мс) без просадок кадров",
                             "• Авто-подстройка задержки Bluetooth и распознавание игрового режима (Gaming Mode) наушников",
-                            "• Отображение измеренной аппаратной задержки в меню аудиодорожек"
+                            "• Отображение измеренной аппаратной задержки в меню аудиодорожек",
+                            "• Постоянный дисковый кэш миниатюр на 200 МБ и устранение фризов прокрутки папок",
+                            "• Чистый формат версий SemVer (v2.2.1) для безошибочного автообновления в Obtainium"
                         )
                     }
                     notes.forEach { line ->

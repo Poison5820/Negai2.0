@@ -583,10 +583,10 @@ enum class SleepTimerPreset(
 }
 
 object AppVersionInfo {
-    const val VERSION_NAME = "2.2.0"
-    const val VERSION_CODE = 4
-    const val BADGE_TEXT = "v2.2.0"
-    const val RELEASE_TAG = "v2.2.0"
+    const val VERSION_NAME = "2.2.1"
+    const val VERSION_CODE = 5
+    const val BADGE_TEXT = "v2.2.1"
+    const val RELEASE_TAG = "v2.2.1"
 }
 
 enum class AppLanguage(
