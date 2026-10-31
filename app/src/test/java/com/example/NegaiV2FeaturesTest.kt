@@ -138,6 +138,35 @@ class NegaiV2FeaturesTest {
         assertTrue(pausedPlan.preferSystemIdleWindowMode)
         assertFalse(pausedPlan.useContinuousVsync)
         assertEquals(0f, pausedPlan.targetRenderFps, 0.01f)
+
+        // 6. Outside player: UI navigation (Folders, Settings) -> runs at 120Hz maximum refresh rate
+        val uiNavigationPlan = DisplayRefreshRateController.computeOptimalRefreshPlan(
+            displayInfo = ltpoDisplay,
+            isPlayerActive = false,
+            isPlaying = false,
+            sourceVideoFps = 24f,
+            playbackSpeed = 1.0f,
+            highRefreshRateEnabled = true,
+            ltpoAdaptiveEnabled = true,
+            interpolationMode = FrameInterpolationMode.OFF
+        )
+        assertEquals(120f, uiNavigationPlan.targetDisplayHz, 0.1f)
+        assertFalse(uiNavigationPlan.preferSystemIdleWindowMode)
+
+        // 7. In player WITH controls / UI active (user taps screen or HUD open) -> instantly boosts to 120Hz
+        val hudBoostPlan = DisplayRefreshRateController.computeOptimalRefreshPlan(
+            displayInfo = ltpoDisplay,
+            isPlayerActive = true,
+            isPlaying = true,
+            sourceVideoFps = 24f,
+            playbackSpeed = 1.0f,
+            highRefreshRateEnabled = true,
+            ltpoAdaptiveEnabled = true,
+            interpolationMode = FrameInterpolationMode.OFF,
+            isControlsOrUiActive = true
+        )
+        assertEquals(120f, hudBoostPlan.targetDisplayHz, 0.1f)
+        assertFalse(hudBoostPlan.preferSystemIdleWindowMode)
     }
 
     @Test
@@ -323,5 +352,50 @@ class NegaiV2FeaturesTest {
                 userConfiguredA2dpOffsetMs = -150L
             )
         )
+
+        // 4. Dynamic measured Bluetooth latency from Android HAL (e.g. 175 ms in standard mode)
+        val measuredA2dpRoute = com.example.player.BluetoothAudioRouteState(
+            isBluetoothActive = true,
+            profile = com.example.player.BluetoothAudioProfile.A2DP,
+            deviceName = "Galaxy Buds2 Pro",
+            halOutputLatencyMs = 175,
+            measuredLatencyMs = 175L,
+            isGamingMode = false
+        )
+        assertEquals(
+            -175L,
+            com.example.player.BluetoothAudioSyncController.computeAutoBluetoothOffsetMs(
+                route = measuredA2dpRoute,
+                autoSyncEnabled = true
+            )
+        )
+        assertEquals(
+            -125L,
+            com.example.player.BluetoothAudioSyncController.computeTotalEffectiveDelayMs(
+                manualDelayMs = 50L,
+                route = measuredA2dpRoute,
+                autoSyncEnabled = true
+            )
+        )
+
+        // 5. Headphone "Gaming Mode" toggled by user -> latency drops to 48 ms -> player adapts immediately
+        val gamingModeRoute = com.example.player.BluetoothAudioRouteState(
+            isBluetoothActive = true,
+            profile = com.example.player.BluetoothAudioProfile.A2DP,
+            deviceName = "TWS Gaming Earbuds",
+            halOutputLatencyMs = 48,
+            measuredLatencyMs = 48L,
+            isGamingMode = true
+        )
+        assertEquals(
+            -48L,
+            com.example.player.BluetoothAudioSyncController.computeAutoBluetoothOffsetMs(
+                route = gamingModeRoute,
+                autoSyncEnabled = true
+            )
+        )
+        assertTrue(gamingModeRoute.isGamingMode)
+        assertTrue(gamingModeRoute.displayLatencyLabel(isEnglish = false).contains("48 мс"))
+        assertTrue(gamingModeRoute.displayLatencyLabel(isEnglish = false).contains("Игровой режим"))
     }
 }

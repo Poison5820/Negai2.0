@@ -61,6 +61,15 @@ class KinoViewModel(application: Application) : AndroidViewModel(application) {
     private val _isPlayerOpen = MutableStateFlow(false)
     val isPlayerOpen: StateFlow<Boolean> = _isPlayerOpen.asStateFlow()
 
+    private val _isPlayerUiActive = MutableStateFlow(true)
+    val isPlayerUiActive: StateFlow<Boolean> = _isPlayerUiActive.asStateFlow()
+
+    fun setPlayerUiActive(active: Boolean) {
+        if (_isPlayerUiActive.value != active) {
+            _isPlayerUiActive.value = active
+        }
+    }
+
     private val _isInPipMode = MutableStateFlow(false)
     val isInPipMode: StateFlow<Boolean> = _isInPipMode.asStateFlow()
 
@@ -254,6 +263,7 @@ class KinoViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun preparePlayerLaunchState() {
         _videoScaleMode.value = playerSettings.value.defaultScaleMode
+        _isPlayerUiActive.value = true
         _isPlayerOpen.value = true
     }
 
@@ -406,6 +416,7 @@ class KinoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun exitPlayer() {
         playerEngine.pauseAndPersist()
+        _isPlayerUiActive.value = true
         _isPlayerOpen.value = false
         repository.refreshMediaAvailabilityAsync()
     }

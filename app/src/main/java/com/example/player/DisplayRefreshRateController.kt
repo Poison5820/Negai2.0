@@ -99,7 +99,8 @@ object DisplayRefreshRateController {
         playbackSpeed: Float,
         highRefreshRateEnabled: Boolean,
         ltpoAdaptiveEnabled: Boolean,
-        interpolationMode: FrameInterpolationMode
+        interpolationMode: FrameInterpolationMode,
+        isControlsOrUiActive: Boolean = false
     ): RefreshRatePlan {
         val maxPanelHz = displayInfo.maxSupportedHz.coerceAtLeast(60f)
         val allowedCapHz = if (highRefreshRateEnabled) maxPanelHz else 60f.coerceAtMost(maxPanelHz)
@@ -113,7 +114,8 @@ object DisplayRefreshRateController {
         val clampedSpeed = playbackSpeed.coerceIn(0.25f, 3.0f)
         val effectiveFps = (normalizedSrcFps * clampedSpeed).coerceIn(6f, 240f)
 
-        // 1. Outside player: UI navigation
+        // 1. Outside player: UI navigation (Folders, Recent, Torrents, Settings)
+        // Must ALWAYS run at maximum display refresh rate (90 / 120 / 144 Hz) when highRefreshRateEnabled is true!
         if (!isPlayerActive) {
             val uiHz = if (highRefreshRateEnabled) allowedCapHz else 60f.coerceAtMost(maxPanelHz)
             return RefreshRatePlan(
@@ -123,16 +125,36 @@ object DisplayRefreshRateController {
                 targetDisplayHz = uiHz,
                 targetRenderFps = uiHz,
                 surfaceFrameRateHz = 0f,
-                preferSystemIdleWindowMode = !highRefreshRateEnabled || ltpoAdaptiveEnabled,
+                preferSystemIdleWindowMode = !highRefreshRateEnabled,
                 useContinuousVsync = false,
                 memcActive = false,
-                isLtpoSavingActive = ltpoAdaptiveEnabled,
+                isLtpoSavingActive = false,
                 hudBadgeText = "${uiHz.roundToInt()}Гц",
-                statusSummary = "Адаптивная частота интерфейса до ${uiHz.roundToInt()} Гц"
+                statusSummary = "Максимальная частота интерфейса ${uiHz.roundToInt()} Гц"
             )
         }
 
-        // 2. Player paused: drop VSync loop & let LTPO throttle panel down to idle Hz
+        // 2. In player WITH controls / UI active (buttons visible, sheets open, scrubbing, gestures)
+        // Must immediately boost to maximum refresh rate (120 Hz) for silky-smooth animations and instant response!
+        if (isControlsOrUiActive) {
+            val boostHz = allowedCapHz
+            return RefreshRatePlan(
+                sourceFps = normalizedSrcFps,
+                playbackSpeed = clampedSpeed,
+                effectiveVideoFps = effectiveFps,
+                targetDisplayHz = boostHz,
+                targetRenderFps = boostHz,
+                surfaceFrameRateHz = 0f,
+                preferSystemIdleWindowMode = false,
+                useContinuousVsync = false,
+                memcActive = false,
+                isLtpoSavingActive = false,
+                hudBadgeText = "${boostHz.roundToInt()}Гц",
+                statusSummary = "Управление плеером • Повышенная частота ${boostHz.roundToInt()} Гц"
+            )
+        }
+
+        // 3. Player paused: drop VSync loop & let LTPO throttle panel down to idle Hz
         if (!isPlaying) {
             val idleHz = if (ltpoAdaptiveEnabled) {
                 displayInfo.minSupportedHz.coerceAtMost(60f)
@@ -159,7 +181,7 @@ object DisplayRefreshRateController {
             )
         }
 
-        // 3. Active video playback WITH Frame Interpolation (MEMC) requested
+        // 4. Active video playback WITH Frame Interpolation (MEMC) requested
         if (interpolationMode.isEnabled) {
             val desiredMemcTarget = when (interpolationMode) {
                 FrameInterpolationMode.OFF -> effectiveFps

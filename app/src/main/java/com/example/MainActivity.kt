@@ -71,6 +71,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settings by viewModel.playerSettings.collectAsStateWithLifecycle()
             val isPlayerOpen by viewModel.isPlayerOpen.collectAsStateWithLifecycle()
+            val isPlayerUiActive by viewModel.isPlayerUiActive.collectAsStateWithLifecycle()
             val playbackState by viewModel.playbackState.collectAsStateWithLifecycle()
 
             val displayRefreshInfo = remember {
@@ -79,6 +80,7 @@ class MainActivity : ComponentActivity() {
             val refreshPlan = remember(
                 displayRefreshInfo,
                 isPlayerOpen,
+                isPlayerUiActive,
                 playbackState.isPlaying,
                 playbackState.sourceFrameRate,
                 playbackState.playbackSpeed,
@@ -94,7 +96,8 @@ class MainActivity : ComponentActivity() {
                     playbackSpeed = playbackState.playbackSpeed,
                     highRefreshRateEnabled = settings.highRefreshRateEnabled,
                     ltpoAdaptiveEnabled = settings.ltpoAdaptiveRefreshEnabled,
-                    interpolationMode = settings.effectiveFrameInterpolationMode
+                    interpolationMode = settings.effectiveFrameInterpolationMode,
+                    isControlsOrUiActive = isPlayerUiActive
                 )
             }
 
@@ -445,7 +448,8 @@ fun Kino4KAppRoot(
                 onSelectControlsTheme = { theme -> viewModel.setPlayerControlsTheme(theme) },
                 onUpdateQuickActions = { actions -> viewModel.setQuickActions(actions) },
                 onDismissResumeBanner = { viewModel.dismissResumeBanner() },
-                onRestartFromBeginning = { viewModel.restartEpisodeFromBeginning() }
+                onRestartFromBeginning = { viewModel.restartEpisodeFromBeginning() },
+                onUiActiveChanged = { active -> viewModel.setPlayerUiActive(active) }
             )
         }
 

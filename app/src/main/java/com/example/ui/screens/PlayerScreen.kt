@@ -9,6 +9,9 @@ import android.view.Surface
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
@@ -81,6 +84,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -198,7 +202,8 @@ fun PlayerScreen(
     onSelectControlsTheme: (PlayerControlsTheme) -> Unit = {},
     onUpdateQuickActions: (List<PlayerQuickAction>) -> Unit,
     onDismissResumeBanner: () -> Unit,
-    onRestartFromBeginning: () -> Unit
+    onRestartFromBeginning: () -> Unit,
+    onUiActiveChanged: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -250,6 +255,17 @@ fun PlayerScreen(
     // Timeline slider scrubbing state
     var isScrubbing by remember { mutableStateOf(false) }
     var scrubValueMs by remember { mutableFloatStateOf(0f) }
+
+    val isUiActive = controlsVisible ||
+        activeSheet != ActivePlayerSheet.NONE ||
+        isScrubbing ||
+        isSwipeSeeking ||
+        verticalGestureMode != VerticalGestureMode.NONE ||
+        playbackState.isTempSpeedBoostActive
+
+    LaunchedEffect(isUiActive) {
+        onUiActiveChanged(isUiActive)
+    }
 
     // Screen keep-awake while playing
     DisposableEffect(playbackState.isPlaying) {
@@ -619,8 +635,8 @@ fun PlayerScreen(
         // Long-Press Speed Boost Top Floating Pill
         AnimatedVisibility(
             visible = playbackState.isTempSpeedBoostActive && !isInPipMode,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = fadeIn(tween(100)),
+            exit = fadeOut(tween(100)),
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
@@ -635,8 +651,8 @@ fun PlayerScreen(
                 !isInPipMode &&
                 !isScreenLocked &&
                 !playbackState.isTempSpeedBoostActive,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = fadeIn(tween(100)),
+            exit = fadeOut(tween(100)),
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
@@ -713,8 +729,8 @@ fun PlayerScreen(
         // Vertical Brightness / Volume Gesture Live OLED HUD
         AnimatedVisibility(
             visible = verticalGestureMode != VerticalGestureMode.NONE && !isInPipMode,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = fadeIn(tween(100)),
+            exit = fadeOut(tween(100)),
             modifier = Modifier.align(Alignment.Center)
         ) {
             VerticalGestureHudCard(
@@ -726,8 +742,8 @@ fun PlayerScreen(
         // Horizontal Swipe Seek Gesture Live OLED HUD
         AnimatedVisibility(
             visible = isSwipeSeeking && !isInPipMode,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = fadeIn(tween(100)),
+            exit = fadeOut(tween(100)),
             modifier = Modifier.align(Alignment.Center)
         ) {
             val deltaMs = swipeTargetPositionMs - swipeStartPositionMs
@@ -796,8 +812,8 @@ fun PlayerScreen(
                 !isSwipeSeeking &&
                 verticalGestureMode == VerticalGestureMode.NONE &&
                 !isInPipMode,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = fadeIn(tween(100)),
+            exit = fadeOut(tween(100)),
             modifier = Modifier.align(Alignment.Center)
         ) {
             val isForward = doubleTapAccumulatedSec > 0
@@ -843,8 +859,8 @@ fun PlayerScreen(
         // Locked Screen Floating Unlock Pill
         AnimatedVisibility(
             visible = isScreenLocked && lockedPillVisible && !isInPipMode,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = fadeIn(tween(100)),
+            exit = fadeOut(tween(100)),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
@@ -880,22 +896,28 @@ fun PlayerScreen(
             }
         }
 
-        // 3. Full Player HUD (automatically hidden inside PiP mode or Screen Lock!)
-        AnimatedVisibility(
-            visible = controlsVisible &&
-                !isScreenLocked &&
-                !isInPipMode &&
-                !isSwipeSeeking &&
-                verticalGestureMode == VerticalGestureMode.NONE &&
-                !playbackState.isTempSpeedBoostActive,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.fillMaxSize()
-        ) {
+        // 3. Full Player HUD (fast 100ms lightweight graphicsLayer transition, eliminates frame drops & freeze)
+        val showHud = controlsVisible &&
+            !isScreenLocked &&
+            !isInPipMode &&
+            !isSwipeSeeking &&
+            verticalGestureMode == VerticalGestureMode.NONE &&
+            !playbackState.isTempSpeedBoostActive
+
+        val hudAlpha by animateFloatAsState(
+            targetValue = if (showHud) 1f else 0f,
+            animationSpec = tween(durationMillis = 100, easing = LinearOutSlowInEasing),
+            label = "player_hud_alpha"
+        )
+
+        if (hudAlpha > 0.001f) {
             val isEnglish = LocalIsEnglish.current
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .graphicsLayer {
+                        alpha = hudAlpha
+                    }
                     .background(
                         Brush.verticalGradient(
                             0.0f to Color.Black.copy(alpha = 0.82f),

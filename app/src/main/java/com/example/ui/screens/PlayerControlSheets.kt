@@ -191,7 +191,8 @@ fun AudioTracksModalSheet(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-            // Bluetooth Route & Automatic Latency Compensation Card
+            // Bluetooth Route & Dynamic Latency Compensation Card (Gaming Mode auto-detection)
+            val isEnglish = LocalIsEnglish.current
             Surface(
                 color = if (bluetoothRoute.isBluetoothActive) {
                     MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
@@ -211,44 +212,75 @@ fun AudioTracksModalSheet(
                     .fillMaxWidth()
                     .testTag("audio_bluetooth_sync_card")
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                        val routeTitle = if (bluetoothRoute.isBluetoothActive) {
-                            val namePart = bluetoothRoute.deviceName?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""
-                            "${bluetoothRoute.profile.badgeRu}$namePart"
-                        } else {
-                            "Автоподстройка для Bluetooth"
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                            val routeTitle = if (bluetoothRoute.isBluetoothActive) {
+                                val namePart = bluetoothRoute.deviceName?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""
+                                "${bluetoothRoute.profile.badgeRu}$namePart"
+                            } else {
+                                if (isEnglish) "Audio Output: Speaker / Wired" else "Вывод звука: Динамик / Провод"
+                            }
+                            Text(
+                                text = routeTitle,
+                                style = MaterialTheme.typography.titleSmall
+                            )
                         }
-                        Text(
-                            text = routeTitle,
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                        val routeSub = when {
-                            bluetoothRoute.isBluetoothActive && bluetoothAutoSyncEnabled ->
-                                "Авто-компенсация Bluetooth активна: ${AudioDelayProcessor.formatDelayLabel(bluetoothAppliedOffsetMs)}"
-                            bluetoothRoute.isBluetoothActive ->
-                                "Bluetooth подключён (авто-компенсация выключена)"
-                            bluetoothAutoSyncEnabled ->
-                                "Вывод: динамик/провод (0 мс) • Включится автоматически при подключении BT"
-                            else ->
-                                "Авто-компенсация задержки Bluetooth отключена"
+
+                        // Measured Latency Badge (Gaming Mode / Standard)
+                        Surface(
+                            color = if (bluetoothRoute.isGamingMode) {
+                                MaterialTheme.colorScheme.tertiaryContainer
+                            } else if (bluetoothRoute.isBluetoothActive) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHighest
+                            },
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = bluetoothRoute.displayLatencyLabel(isEnglish),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (bluetoothRoute.isGamingMode) {
+                                    MaterialTheme.colorScheme.onTertiaryContainer
+                                } else if (bluetoothRoute.isBluetoothActive) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
                         }
-                        Text(
-                            text = routeSub,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
-                    Switch(
-                        checked = bluetoothAutoSyncEnabled,
-                        onCheckedChange = onToggleBluetoothAutoSync,
-                        modifier = Modifier.testTag("audio_bt_autosync_switch")
+
+                    val routeSub = if (bluetoothRoute.isBluetoothActive) {
+                        val gamingDetail = if (bluetoothRoute.isGamingMode) {
+                            if (isEnglish) "Gaming Mode detected • ultra-low audio latency active." else "Обнаружен игровой режим • минимальная задержка звука."
+                        } else {
+                            if (isEnglish) "Standard audio buffer • adapts automatically if gaming mode is toggled on headphones." else "Стандартный аудиобуфер • при включении игрового режима на наушниках плеер подстроится автоматически."
+                        }
+                        "${if (isEnglish) "Auto-compensation" else "Авто-компенсация"}: ${AudioDelayProcessor.formatDelayLabel(bluetoothAppliedOffsetMs)} • $gamingDetail"
+                    } else {
+                        if (isEnglish) {
+                            "0 ms latency • Connect Bluetooth headphones and latency will be detected automatically."
+                        } else {
+                            "Задержка 0 мс • При подключении Bluetooth задержка и игровой режим определяются автоматически."
+                        }
+                    }
+
+                    Text(
+                        text = routeSub,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

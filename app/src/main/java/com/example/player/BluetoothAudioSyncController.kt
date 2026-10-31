@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.compose.runtime.Immutable
+import kotlin.math.abs
 
 enum class BluetoothAudioProfile(
     val id: String,
@@ -29,22 +30,36 @@ data class BluetoothAudioRouteState(
     val isBluetoothActive: Boolean = false,
     val profile: BluetoothAudioProfile = BluetoothAudioProfile.NONE,
     val deviceName: String? = null,
-    val halOutputLatencyMs: Int = 0
-)
+    val halOutputLatencyMs: Int = 0,
+    val isGamingMode: Boolean = false,
+    val measuredLatencyMs: Long = 0L
+) {
+    fun displayLatencyLabel(isEnglish: Boolean): String {
+        if (!isBluetoothActive) {
+            return if (isEnglish) "0 ms (Speaker / Wired)" else "0 мс (Динамик / Провод)"
+        }
+        val ms = when {
+            measuredLatencyMs > 0L -> measuredLatencyMs
+            halOutputLatencyMs > 0 -> halOutputLatencyMs.toLong()
+            else -> 150L
+        }
+        val gamingSuffix = if (isGamingMode) {
+            if (isEnglish) " • Gaming Mode (Low Latency)" else " • Игровой режим (Низкая задержка)"
+        } else {
+            if (isEnglish) " • Standard" else " • Стандартный режим"
+        }
+        return "${ms} ${if (isEnglish) "ms" else "мс"}$gamingSuffix"
+    }
+}
 
 /**
  * Monitors active audio output routes via [AudioManager] + [AudioDeviceCallback] and computes
- * accurate Bluetooth audio latency compensation.
+ * accurate Bluetooth audio latency compensation in real time.
  *
- * Why standard Android players fail at Bluetooth A/V sync:
- * 1. A2DP codecs (SBC, AAC, aptX, LDAC) and TWS earbuds introduce 120–220 ms of air + codec
- *    buffering that is often under-reported by OEM `AudioTrack.getTimestamp()` HAL implementations.
- * 2. Connecting or disconnecting Bluetooth mid-playback leaves stale timestamp smoothing state inside
- *    ExoPlayer's `AudioTrackPositionTracker` unless the audio clock is explicitly re-anchored.
- * 3. Naive players implement negative audio delay by skipping/chopping leading PCM samples, which cuts
- *    off words after every seek/unpause. Instead, our engine applies negative delay (`< 0 ms`) directly
- *    to the master `MediaClock` so `MediaCodecVideoRenderer` naturally delays video frames to match the
- *    Bluetooth audio arrival time without dropping a single audio sample.
+ * When the user toggles "Gaming Mode" (or Low Latency mode) on their Bluetooth earbuds,
+ * the Android HAL buffer latency reported by [AudioManager.getOutputLatency] shrinks
+ * from standard ~150-200 ms down to ~40-70 ms. This controller dynamically detects the drop
+ * and adjusts the player's MediaClock offset on the fly without requiring any manual toggle.
  */
 class BluetoothAudioSyncController(
     context: Context,
@@ -62,20 +77,32 @@ class BluetoothAudioSyncController(
          * Pure function to compute the automatic Bluetooth compensation offset (in milliseconds).
          * Negative values mean audio is advanced relative to video (video frames are delayed to wait
          * for Bluetooth transmission latency).
+         *
+         * If the Android HAL reports a measured output latency (e.g. 45 ms in Gaming Mode or 160 ms in standard mode),
+         * that measured value is used directly.
          */
         fun computeAutoBluetoothOffsetMs(
             route: BluetoothAudioRouteState,
-            autoSyncEnabled: Boolean,
+            autoSyncEnabled: Boolean = true,
             userConfiguredA2dpOffsetMs: Long = DEFAULT_BT_OFFSET_MS
         ): Long {
             if (!autoSyncEnabled || !route.isBluetoothActive) return 0L
+
+            val measured = when {
+                route.measuredLatencyMs > 0L -> route.measuredLatencyMs
+                route.halOutputLatencyMs > 0 -> route.halOutputLatencyMs.toLong()
+                else -> 0L
+            }
+
+            if (measured > 0L) {
+                return -clampBluetoothOffsetMs(measured)
+            }
+
             val clampedUserOffset = clampBluetoothOffsetMs(userConfiguredA2dpOffsetMs)
             return when (route.profile) {
                 BluetoothAudioProfile.NONE -> 0L
                 BluetoothAudioProfile.A2DP -> clampedUserOffset
                 BluetoothAudioProfile.LE_AUDIO -> {
-                    // LE Audio (LC3) has ~40% of classic A2DP latency; if user kept default -150ms, use -60ms,
-                    // otherwise scale proportionally or respect custom offset.
                     if (clampedUserOffset == DEFAULT_BT_OFFSET_MS) {
                         BluetoothAudioProfile.LE_AUDIO.defaultCompensationMs
                     } else {
@@ -106,7 +133,7 @@ class BluetoothAudioSyncController(
         fun computeTotalEffectiveDelayMs(
             manualDelayMs: Long,
             route: BluetoothAudioRouteState,
-            autoSyncEnabled: Boolean,
+            autoSyncEnabled: Boolean = true,
             userConfiguredBtOffsetMs: Long = DEFAULT_BT_OFFSET_MS
         ): Long {
             val btOffset = computeAutoBluetoothOffsetMs(
@@ -147,6 +174,21 @@ class BluetoothAudioSyncController(
     private val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    private val latencyPollRunnable = object : Runnable {
+        override fun run() {
+            if (currentRouteState.isBluetoothActive) {
+                val am = audioManager
+                if (am != null) {
+                    val currentHal = queryHalOutputLatencyMs(am)
+                    if (abs(currentHal - currentRouteState.halOutputLatencyMs) >= 6) {
+                        refreshRouteState()
+                    }
+                }
+                mainHandler.postDelayed(this, 1500L)
+            }
+        }
+    }
+
     @Volatile
     var currentRouteState: BluetoothAudioRouteState = queryCurrentRouteState()
         private set
@@ -165,15 +207,29 @@ class BluetoothAudioSyncController(
         runCatching {
             audioManager?.registerAudioDeviceCallback(deviceCallback, mainHandler)
         }
+        if (currentRouteState.isBluetoothActive) {
+            mainHandler.postDelayed(latencyPollRunnable, 1500L)
+        }
     }
 
     fun refreshRouteState(): BluetoothAudioRouteState {
         val updated = queryCurrentRouteState()
         val prev = currentRouteState
         currentRouteState = updated
+
+        if (updated.isBluetoothActive && !prev.isBluetoothActive) {
+            mainHandler.removeCallbacks(latencyPollRunnable)
+            mainHandler.postDelayed(latencyPollRunnable, 1500L)
+        } else if (!updated.isBluetoothActive && prev.isBluetoothActive) {
+            mainHandler.removeCallbacks(latencyPollRunnable)
+        }
+
+        val latencyDiff = abs(updated.halOutputLatencyMs - prev.halOutputLatencyMs)
         if (updated.isBluetoothActive != prev.isBluetoothActive ||
             updated.profile != prev.profile ||
-            updated.deviceName != prev.deviceName
+            updated.deviceName != prev.deviceName ||
+            updated.isGamingMode != prev.isGamingMode ||
+            latencyDiff >= 6
         ) {
             onRouteChanged(updated)
         }
@@ -208,11 +264,18 @@ class BluetoothAudioSyncController(
         }
 
         val halLatency = queryHalOutputLatencyMs(am)
+        val isGaming = matchedProfile != BluetoothAudioProfile.NONE && (
+            (halLatency in 1..85) || matchedProfile == BluetoothAudioProfile.LE_AUDIO
+        )
+        val measuredMs = halLatency.toLong().coerceAtLeast(0L)
+
         return BluetoothAudioRouteState(
             isBluetoothActive = matchedProfile != BluetoothAudioProfile.NONE,
             profile = matchedProfile,
             deviceName = matchedName,
-            halOutputLatencyMs = halLatency
+            halOutputLatencyMs = halLatency,
+            isGamingMode = isGaming,
+            measuredLatencyMs = measuredMs
         )
     }
 
@@ -225,6 +288,7 @@ class BluetoothAudioSyncController(
     }
 
     fun release() {
+        mainHandler.removeCallbacks(latencyPollRunnable)
         runCatching {
             audioManager?.unregisterAudioDeviceCallback(deviceCallback)
         }
