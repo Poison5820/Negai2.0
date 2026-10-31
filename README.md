@@ -4,9 +4,13 @@
 [![Platform](https://img.shields.io/badge/platform-Android_8.0%2B_(API_26%2B)-3DDC84?style=flat-square&logo=android)](#)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.x_%7C_Jetpack_Compose-7F52FF?style=flat-square&logo=kotlin)](#)
 [![Media3](https://img.shields.io/badge/Media3-ExoPlayer_%2B_OpenGL_ES-FF6D00?style=flat-square)](#)
+<br>
+
 <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Poison5820/Negai2.0">
-  <img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="55">
+  <img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="75">
 </a>
+
+<br>
 
 **Languages / Языки:** [🇷🇺 Русский](#-русский) • [🇬🇧 English](#-english)
 
@@ -15,12 +19,6 @@
 ## 🇷🇺 Русский
 
 **negai** — производительный локальный и сетевой видеоплеер для Android с поддержкой аппаратного декодирования 4K / 10-bit HEVC / AV1, шейдерного апскейлинга **Anime4K**, адаптивного управления частотой экрана **LTPO (24–120 Гц)** и **интерполяции кадров (MEMC)**, автоматической синхронизации задержки звука для **Bluetooth-наушников**, внешних звуковых дорожек и субтитров, а также прямой интеграцией с **TorrServer**.
-
-### 📲 Obtainium
-
-<a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Poison5820/Negai2.0">
-  <img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="55">
-</a>
 
 ### ✨ Основные возможности
 
@@ -65,12 +63,6 @@ gradle :app:testDebugUnitTest
 ## 🇬🇧 English
 
 **negai** is a high-performance local and network video player for Android featuring hardware-accelerated 4K / 10-bit HEVC / AV1 decoding, real-time **Anime4K** OpenGL ES shader upscaling, **LTPO adaptive display refresh rate (24–120 Hz)**, **Frame Interpolation (MEMC)**, automatic **Bluetooth audio latency compensation**, external audio & subtitle auto-binding, and native **TorrServer** streaming.
-
-### 📲 Obtainium
-
-<a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Poison5820/Negai2.0">
-  <img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="55">
-</a>
 
 ### ✨ Key Features
 
