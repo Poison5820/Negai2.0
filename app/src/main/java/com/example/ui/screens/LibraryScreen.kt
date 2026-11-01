@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GraphicEq
@@ -59,6 +60,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -113,8 +115,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
+import com.example.data.DetailedMediaFileInfo
 import com.example.data.HiddenFolderEntity
 import com.example.data.LibraryRootEntity
+import com.example.data.MediaFileInfoExtractor
 import com.example.data.PlaybackProgressEntity
 import com.example.model.Anime4KPreset
 import com.example.model.AppVersionInfo
@@ -161,6 +165,7 @@ fun LibraryScreen(
     onHideFolder: (VideoFolderItem) -> Unit,
     onUnhideFolder: (String) -> Unit,
     onDeleteFolders: (List<VideoFolderItem>) -> Unit = {},
+    onRenameFolder: (VideoFolderItem, String) -> Unit = { _, _ -> },
     onSetSkipDeleteConfirmation: (Boolean) -> Unit = {},
     onResumeRecent: (PlaybackProgressEntity) -> Unit,
     onOpenLastPlayed: ((() -> Unit)?) -> Unit,
@@ -185,6 +190,8 @@ fun LibraryScreen(
 
     var selectedFolderIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
     var pendingDeleteFolders by remember { mutableStateOf<List<VideoFolderItem>>(emptyList()) }
+    var pendingRenameFolder by remember { mutableStateOf<VideoFolderItem?>(null) }
+    var activeFolderInfoTarget by remember { mutableStateOf<Pair<VideoFolderItem, DetailedMediaFileInfo>?>(null) }
 
     val isFolderSelectionMode = currentTab == HomeTab.FOLDERS && selectedFolderIds.isNotEmpty()
 
@@ -657,6 +664,10 @@ fun LibraryScreen(
                             onToggleSortDirection = onToggleFolderSortDirection,
                             onOpenFolder = onOpenFolder,
                             onToggleSelectFolder = { folder -> toggleFolderSelection(folder.id) },
+                            onRenameSingleFolder = { folder -> pendingRenameFolder = folder },
+                            onShowFolderInfo = { folder ->
+                                activeFolderInfoTarget = folder to MediaFileInfoExtractor.extractFolderInfo(context, folder)
+                            },
                             onDeleteSingleFolder = { folder -> requestDeleteFolders(listOf(folder)) },
                             onHideFolder = handleExcludeFolderWithUndo,
                             onOpenLastPlayed = handleOpenLastPlayed
@@ -842,6 +853,35 @@ fun LibraryScreen(
         )
     }
 
+    pendingRenameFolder?.let { folderToRename ->
+        RenameMediaDialog(
+            currentName = folderToRename.name,
+            isFolder = true,
+            onConfirmRename = { newName ->
+                pendingRenameFolder = null
+                onRenameFolder(folderToRename, newName)
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = if (isEnglish) "Folder renamed to \"$newName\"" else "Папка переименована в «$newName»",
+                        duration = SnackbarDuration.Short
+                    )
+                }
+            },
+            onDismiss = { pendingRenameFolder = null }
+        )
+    }
+
+    activeFolderInfoTarget?.let { (folder, info) ->
+        MediaFileInfoModalSheet(
+            info = info,
+            onRenameRequest = {
+                activeFolderInfoTarget = null
+                pendingRenameFolder = folder
+            },
+            onDismiss = { activeFolderInfoTarget = null }
+        )
+    }
+
     TorrentInspectorBottomSheet(
         inspectorState = torrentsState.inspectorState,
         onDismiss = torrentsActions.onDismissInspector,
@@ -881,6 +921,8 @@ private fun FoldersTabContent(
     onToggleSortDirection: () -> Unit,
     onOpenFolder: (VideoFolderItem) -> Unit,
     onToggleSelectFolder: (VideoFolderItem) -> Unit = {},
+    onRenameSingleFolder: (VideoFolderItem) -> Unit = {},
+    onShowFolderInfo: (VideoFolderItem) -> Unit = {},
     onDeleteSingleFolder: (VideoFolderItem) -> Unit = {},
     onHideFolder: (VideoFolderItem) -> Unit,
     onOpenLastPlayed: () -> Unit
@@ -1110,7 +1152,8 @@ private fun FoldersTabContent(
 
             itemsIndexed(
                 items = visibleFolders,
-                key = { _, f -> f.id }
+                key = { _, f -> f.id },
+                contentType = { _, _ -> "folder_card" }
             ) { index, folder ->
                 val isSelected = folder.id in selectedFolderIds
                 VideoFolderCard(
@@ -1130,6 +1173,8 @@ private fun FoldersTabContent(
                         onToggleSelectFolder(folder)
                     },
                     onSelect = { onToggleSelectFolder(folder) },
+                    onRename = { onRenameSingleFolder(folder) },
+                    onShowInfo = { onShowFolderInfo(folder) },
                     onDelete = { onDeleteSingleFolder(folder) },
                     onHide = { onHideFolder(folder) }
                 )
@@ -1337,6 +1382,8 @@ private fun VideoFolderCard(
     onClick: () -> Unit,
     onLongClick: () -> Unit = {},
     onSelect: () -> Unit = {},
+    onRename: () -> Unit = {},
+    onShowInfo: () -> Unit = {},
     onDelete: () -> Unit = {},
     onHide: () -> Unit
 ) {
@@ -1361,7 +1408,13 @@ private fun VideoFolderCard(
             .clip(RoundedCornerShape(cardCorner))
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = onLongClick
+                onLongClick = {
+                    if (isSelectionMode) {
+                        onLongClick()
+                    } else {
+                        menuExpanded = true
+                    }
+                }
             )
             .testTag("folder_card_$index")
     ) {
@@ -1453,6 +1506,28 @@ private fun VideoFolderCard(
                             expanded = menuExpanded,
                             onDismissRequest = { menuExpanded = false }
                         ) {
+                            DropdownMenuItem(
+                                text = { Text(tr("Переименовать", "Rename")) },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Edit, contentDescription = null)
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onRename()
+                                },
+                                modifier = Modifier.testTag("rename_folder_menu_item_$index")
+                            )
+                            DropdownMenuItem(
+                                text = { Text(tr("Сведения о папке", "Folder Info")) },
+                                leadingIcon = {
+                                    Icon(Icons.Outlined.Info, contentDescription = null)
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onShowInfo()
+                                },
+                                modifier = Modifier.testTag("info_folder_menu_item_$index")
+                            )
                             DropdownMenuItem(
                                 text = { Text(tr("Выбрать", "Select")) },
                                 leadingIcon = {

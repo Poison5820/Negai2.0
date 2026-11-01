@@ -33,17 +33,25 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -79,6 +87,8 @@ import coil.ImageLoader
 import coil.compose.AsyncImage
 import com.example.ui.util.VideoThumbnailCache
 import kotlinx.coroutines.launch
+import com.example.data.DetailedMediaFileInfo
+import com.example.data.MediaFileInfoExtractor
 import com.example.data.PlaybackResumeHelper
 import com.example.model.EpisodeItem
 import com.example.model.EpisodeSortOption
@@ -107,12 +117,17 @@ fun FolderDetailScreen(
     onHideFolder: () -> Unit,
     onDeleteFolder: () -> Unit = {},
     onDeleteEpisodes: (List<EpisodeItem>) -> Unit = {},
+    onRenameEpisode: (EpisodeItem, String) -> Unit = { _, _ -> },
+    onRenameFolder: (String) -> Unit = {},
     onSetSkipDeleteConfirmation: (Boolean) -> Unit = {}
 ) {
     var showEpisodeSortSheet by rememberSaveable { mutableStateOf(false) }
     var selectedEpisodeUris by rememberSaveable { mutableStateOf(emptyList<String>()) }
     var pendingDeleteEpisodes by remember { mutableStateOf<List<EpisodeItem>>(emptyList()) }
     var showDeleteEntireFolderConfirm by rememberSaveable { mutableStateOf(false) }
+    var pendingRenameEpisode by remember { mutableStateOf<EpisodeItem?>(null) }
+    var showRenameFolderDialog by rememberSaveable { mutableStateOf(false) }
+    var activeFileInfo by remember { mutableStateOf<Pair<EpisodeItem?, DetailedMediaFileInfo>?>(null) }
 
     val isEnglish = LocalIsEnglish.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -190,13 +205,13 @@ fun FolderDetailScreen(
         VideoThumbnailCache.getImageLoader(context)
     }
 
-    LaunchedEffect(folder.episodes, showThumbnails, compactMode) {
+    LaunchedEffect(folder.episodes, showThumbnails) {
         if (showThumbnails && folder.episodes.isNotEmpty()) {
             VideoThumbnailCache.prefetchFolderThumbnails(
                 context = context,
                 videoUris = folder.episodes.map { it.uri },
-                targetWidthPx = if (compactMode) 336 else 372,
-                targetHeightPx = if (compactMode) 198 else 222
+                targetWidthPx = 320,
+                targetHeightPx = 180
             )
         }
     }
@@ -335,6 +350,17 @@ fun FolderDetailScreen(
                     },
                     actions = {
                         IconButton(
+                            onClick = {
+                                activeFileInfo = null to MediaFileInfoExtractor.extractFolderInfo(context, folder)
+                            },
+                            modifier = Modifier.testTag("folder_detail_info_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Info,
+                                contentDescription = tr("Сведения о папке", "Folder Info")
+                            )
+                        }
+                        IconButton(
                             onClick = onHideFolder,
                             modifier = Modifier.testTag("folder_detail_hide_button")
                         ) {
@@ -461,6 +487,15 @@ fun FolderDetailScreen(
                         },
                         onToggleSelect = {
                             toggleEpisodeSelection(episode.uri)
+                        },
+                        onRename = {
+                            pendingRenameEpisode = episode
+                        },
+                        onShowInfo = {
+                            activeFileInfo = episode to MediaFileInfoExtractor.extractEpisodeInfo(context, episode)
+                        },
+                        onDeleteSingle = {
+                            requestDeleteEpisodes(listOf(episode))
                         }
                     )
                 }
@@ -542,6 +577,57 @@ fun FolderDetailScreen(
             }
         )
     }
+
+    pendingRenameEpisode?.let { episodeToRename ->
+        RenameMediaDialog(
+            currentName = episodeToRename.fileName,
+            isFolder = false,
+            onConfirmRename = { newName ->
+                pendingRenameEpisode = null
+                onRenameEpisode(episodeToRename, newName)
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = if (isEnglish) "File renamed to \"$newName\"" else "Файл переименован в «$newName»",
+                        duration = SnackbarDuration.Short
+                    )
+                }
+            },
+            onDismiss = { pendingRenameEpisode = null }
+        )
+    }
+
+    if (showRenameFolderDialog) {
+        RenameMediaDialog(
+            currentName = folder.name,
+            isFolder = true,
+            onConfirmRename = { newName ->
+                showRenameFolderDialog = false
+                onRenameFolder(newName)
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = if (isEnglish) "Folder renamed to \"$newName\"" else "Папка переименована в «$newName»",
+                        duration = SnackbarDuration.Short
+                    )
+                }
+            },
+            onDismiss = { showRenameFolderDialog = false }
+        )
+    }
+
+    activeFileInfo?.let { (epTarget, info) ->
+        MediaFileInfoModalSheet(
+            info = info,
+            onRenameRequest = {
+                activeFileInfo = null
+                if (epTarget != null) {
+                    pendingRenameEpisode = epTarget
+                } else {
+                    showRenameFolderDialog = true
+                }
+            },
+            onDismiss = { activeFileInfo = null }
+        )
+    }
 }
 
 @Composable
@@ -598,9 +684,13 @@ private fun EpisodeRowCard(
     imageLoader: ImageLoader,
     onClick: () -> Unit,
     onLongClick: () -> Unit = {},
-    onToggleSelect: () -> Unit = {}
+    onToggleSelect: () -> Unit = {},
+    onRename: () -> Unit = {},
+    onShowInfo: () -> Unit = {},
+    onDeleteSingle: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    var menuExpanded by remember { mutableStateOf(false) }
     val corner = if (compactMode) 15.dp else 18.dp
     Card(
         modifier = Modifier
@@ -608,7 +698,13 @@ private fun EpisodeRowCard(
             .clip(RoundedCornerShape(corner))
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = onLongClick
+                onLongClick = {
+                    if (isSelectionMode) {
+                        onLongClick()
+                    } else {
+                        menuExpanded = true
+                    }
+                }
             )
             .testTag("episode_card_$index"),
         shape = RoundedCornerShape(corner),
@@ -633,18 +729,18 @@ private fun EpisodeRowCard(
                 horizontalArrangement = Arrangement.spacedBy(if (compactMode) 10.dp else 14.dp)
             ) {
                 if (showThumbnail) {
-                    val thumbRequest = remember(episode.uri, compactMode) {
+                    val thumbRequest = remember(episode.uri) {
                         VideoThumbnailCache.buildEpisodeThumbnailRequest(
                             context = context,
                             videoUri = episode.uri,
-                            targetWidthPx = if (compactMode) 336 else 372,
-                            targetHeightPx = if (compactMode) 198 else 222
+                            targetWidthPx = 320,
+                            targetHeightPx = 180
                         )
                     }
                     Box(
                         modifier = Modifier
                             .width(if (compactMode) 112.dp else 124.dp)
-                            .height(if (compactMode) 66.dp else 74.dp)
+                            .height(if (compactMode) 63.dp else 70.dp)
                             .clip(RoundedCornerShape(10.dp))
                             .background(
                                 Brush.linearGradient(
@@ -830,6 +926,77 @@ private fun EpisodeRowCard(
                         onCheckedChange = { onToggleSelect() },
                         modifier = Modifier.testTag("episode_select_checkbox_$index")
                     )
+                } else {
+                    Box {
+                        IconButton(
+                            onClick = { menuExpanded = true },
+                            modifier = Modifier.testTag("episode_menu_button_$index")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = tr("Меню файла ${episode.cleanTitle}", "File menu ${episode.cleanTitle}")
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(tr("Переименовать", "Rename")) },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Edit, contentDescription = null)
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onRename()
+                                },
+                                modifier = Modifier.testTag("rename_episode_menu_item_$index")
+                            )
+                            DropdownMenuItem(
+                                text = { Text(tr("Сведения о файле", "File Info")) },
+                                leadingIcon = {
+                                    Icon(Icons.Outlined.Info, contentDescription = null)
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onShowInfo()
+                                },
+                                modifier = Modifier.testTag("info_episode_menu_item_$index")
+                            )
+                            DropdownMenuItem(
+                                text = { Text(tr("Выбрать", "Select")) },
+                                leadingIcon = {
+                                    Icon(Icons.Outlined.CheckCircle, contentDescription = null)
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onToggleSelect()
+                                },
+                                modifier = Modifier.testTag("select_episode_menu_item_$index")
+                            )
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = tr("Удалить с накопителя", "Delete from storage"),
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.DeleteForever,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onDeleteSingle()
+                                },
+                                modifier = Modifier.testTag("delete_episode_menu_item_$index")
+                            )
+                        }
+                    }
                 }
             }
 

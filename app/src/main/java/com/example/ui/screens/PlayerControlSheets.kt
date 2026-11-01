@@ -213,7 +213,7 @@ fun AudioTracksModalSheet(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
 
-            // Bluetooth Route & Auto-Compensation Card (without raw HAL latency badge)
+            // Bluetooth Route & Auto-Compensation Card
             Surface(
                 color = if (bluetoothRoute.isBluetoothActive) {
                     MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.48f)
@@ -239,47 +239,31 @@ fun AudioTracksModalSheet(
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                            val routeTitle = if (bluetoothRoute.isBluetoothActive) {
-                                val namePart = bluetoothRoute.deviceName?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""
-                                "${bluetoothRoute.profile.badgeRu}$namePart"
-                            } else {
-                                if (isEnglish) "Audio Output: Speaker / Wired" else "Вывод звука: Динамик / Провод"
-                            }
-                            Text(
-                                text = routeTitle,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-
-                        Switch(
-                            checked = bluetoothAutoSyncEnabled,
-                            onCheckedChange = onToggleBluetoothAutoSync,
-                            modifier = Modifier.testTag("audio_bt_autosync_switch")
-                        )
+                    val routeTitle = if (bluetoothRoute.isBluetoothActive) {
+                        val namePart = bluetoothRoute.deviceName?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""
+                        "${bluetoothRoute.profile.localizedBadge(isEnglish)}$namePart"
+                    } else {
+                        if (isEnglish) "Audio Output: Speaker / Wired" else "Вывод звука: Динамик / Провод"
                     }
+                    Text(
+                        text = routeTitle,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
 
                     val routeSub = if (bluetoothRoute.isBluetoothActive) {
-                        if (bluetoothAutoSyncEnabled) {
-                            tr(
-                                "Авто-компенсация Bluetooth: ${AudioDelayProcessor.formatDelayLabel(bluetoothAppliedOffsetMs)}. Для игрового режима наушников выберите пресет -45 мс ниже.",
-                                "Bluetooth auto-compensation: ${AudioDelayProcessor.formatDelayLabel(bluetoothAppliedOffsetMs)}. For headphone Gaming Mode, pick the -45 ms preset below."
-                            )
+                        val modeLabel = if (bluetoothRoute.isGamingMode) {
+                            tr("Игровой режим", "Gaming Mode")
                         } else {
-                            tr(
-                                "Авто-компенсация Bluetooth выключена • используется только ручной сдвиг.",
-                                "Bluetooth auto-compensation off • using manual offset only."
-                            )
+                            tr("Авто-профиль", "Auto profile")
                         }
+                        tr(
+                            "Авто-компенсация Bluetooth ($modeLabel): ${AudioDelayProcessor.formatDelayLabel(bluetoothAppliedOffsetMs)}",
+                            "Bluetooth auto-compensation ($modeLabel): ${AudioDelayProcessor.formatDelayLabel(bluetoothAppliedOffsetMs)}"
+                        )
                     } else {
                         tr(
-                            "При подключении Bluetooth-наушников применяется выбранный профиль компенсации.",
-                            "Selected compensation profile is applied automatically when Bluetooth headphones connect."
+                            "Авто-компенсация задержки активируется при подключении Bluetooth",
+                            "Auto latency compensation activates when Bluetooth connects"
                         )
                     }
 
@@ -291,7 +275,7 @@ fun AudioTracksModalSheet(
                 }
             }
 
-            // Audio Synchronization & Delay Controls + Presets (Wired / Gaming Mode / LE Audio / Standard BT)
+            // Audio Synchronization & Manual Fine-Tune Offset Controls
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -323,30 +307,6 @@ fun AudioTracksModalSheet(
                         modifier = Modifier
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                             .testTag("audio_delay_value_text")
-                    )
-                }
-            }
-
-            // Quick Delay & Gaming Mode Presets
-            val delayPresets = listOf(
-                0L to tr("0 мс (Провод)", "0 ms (Wired)"),
-                -45L to tr("-45 мс (Игровой BT)", "-45 ms (Gaming BT)"),
-                -60L to tr("-60 мс (LE Audio)", "-60 ms (LE Audio)"),
-                -150L to tr("-150 мс (Стандарт BT)", "-150 ms (Standard BT)"),
-                -200L to tr("-200 мс (LDAC)", "-200 ms (LDAC)")
-            )
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                delayPresets.forEach { (presetMs, label) ->
-                    val isPresetSelected = effectiveAudioDelayMs == presetMs ||
-                        (bluetoothRoute.isBluetoothActive && bluetoothAutoSyncEnabled && bluetoothConfiguredOffsetMs == presetMs && audioDelayMs == 0L)
-                    FilterChip(
-                        selected = isPresetSelected,
-                        onClick = { onSetAudioDelayMs(presetMs) },
-                        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
-                        modifier = Modifier.testTag("audio_delay_preset_${presetMs}")
                     )
                 }
             }

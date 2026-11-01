@@ -278,6 +278,36 @@ class KinoViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun renameFolder(
+        folder: VideoFolderItem,
+        newName: String,
+        onComplete: ((Boolean) -> Unit)? = null
+    ) {
+        val trimmed = newName.trim()
+        if (trimmed.isEmpty()) return
+        viewModelScope.launch {
+            val newFolderId = repository.renameFolder(folder, trimmed)
+            if (newFolderId != null && _selectedFolderId.value == folder.id) {
+                _selectedFolderId.value = newFolderId
+            }
+            onComplete?.invoke(newFolderId != null)
+        }
+    }
+
+    fun renameEpisode(
+        folderId: String,
+        episode: EpisodeItem,
+        newName: String,
+        onComplete: ((Boolean) -> Unit)? = null
+    ) {
+        val trimmed = newName.trim()
+        if (trimmed.isEmpty()) return
+        viewModelScope.launch {
+            val updated = repository.renameEpisode(folderId, episode, trimmed)
+            onComplete?.invoke(updated != null)
+        }
+    }
+
     fun clearPlaybackHistory() {
         viewModelScope.launch {
             repository.clearPlaybackHistory()

@@ -526,6 +526,9 @@ enum class PlayerOrientationMode(
         AUTO -> VIDEO_ASPECT
     }
 
+    fun toggleLandscapePortrait(isCurrentlyLandscape: Boolean): PlayerOrientationMode =
+        if (isCurrentlyLandscape) PORTRAIT else LANDSCAPE
+
     fun resolveActivityOrientation(videoWidth: Int, videoHeight: Int): Int {
         if (this != VIDEO_ASPECT) return activityOrientation
         return if (videoWidth > 0 && videoHeight > 0 && videoHeight > videoWidth) {
@@ -538,6 +541,9 @@ enum class PlayerOrientationMode(
     companion object {
         fun fromId(id: String): PlayerOrientationMode =
             entries.firstOrNull { it.id.equals(id, ignoreCase = true) } ?: VIDEO_ASPECT
+
+        fun toggleLandscapePortrait(isCurrentlyLandscape: Boolean): PlayerOrientationMode =
+            if (isCurrentlyLandscape) PORTRAIT else LANDSCAPE
     }
 }
 
@@ -710,7 +716,7 @@ data class PlayerSettings(
     val preferExternalAudioOnStart: Boolean = true,
     val defaultAudioBoostPercent: Int = 100,
     val bluetoothAudioAutoSync: Boolean = true,
-    val bluetoothAudioOffsetMs: Long = -150L,
+    val bluetoothAudioOffsetMs: Long = 0L,
 
     // Subtitles
     val autoBindExternalSubtitles: Boolean = true,

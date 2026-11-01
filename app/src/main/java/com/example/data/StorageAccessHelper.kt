@@ -354,4 +354,123 @@ object StorageAccessHelper {
 
         return anyDeleted
     }
+
+    /**
+     * Renames a single video file on device storage (preserving file extension if omitted)
+     * and returns `(newUri, newFileName)`.
+     */
+    fun renameEpisodeFile(
+        context: Context,
+        episode: com.example.model.EpisodeItem,
+        rawNewName: String
+    ): Pair<String, String>? {
+        val sanitized = rawNewName.trim()
+            .replace('/', '_')
+            .replace('\\', '_')
+        if (sanitized.isBlank()) return null
+
+        val oldExt = episode.fileName.substringAfterLast('.', "")
+        val finalFileName = if (oldExt.isNotBlank() && !sanitized.endsWith(".$oldExt", ignoreCase = true)) {
+            "$sanitized.$oldExt"
+        } else {
+            sanitized
+        }
+
+        val localFile = resolveLocalFileFromUri(context, episode.uri)
+        if (localFile != null && localFile.exists()) {
+            val parent = localFile.parentFile
+            if (parent != null) {
+                val destFile = File(parent, finalFileName)
+                if (destFile.absolutePath == localFile.absolutePath) {
+                    return episode.uri to finalFileName
+                }
+                val renamed = runCatching { localFile.renameTo(destFile) }.getOrDefault(false)
+                if (renamed || destFile.exists()) {
+                    val newUri = when {
+                        episode.uri.startsWith("/") -> destFile.absolutePath
+                        else -> Uri.fromFile(destFile).toString()
+                    }
+                    return newUri to finalFileName
+                }
+            }
+        }
+
+        if (episode.uri.startsWith("content://", ignoreCase = true)) {
+            val parsedUri = runCatching { Uri.parse(episode.uri) }.getOrNull()
+            if (parsedUri != null) {
+                val newDocUri = runCatching {
+                    DocumentsContract.renameDocument(context.contentResolver, parsedUri, finalFileName)
+                }.getOrNull()
+                if (newDocUri != null) {
+                    return newDocUri.toString() to finalFileName
+                }
+            }
+        }
+
+        return episode.uri to finalFileName
+    }
+
+    /**
+     * Renames a video folder on device storage and returns `(newFolderId, newFolderName, newDisplayPath)`.
+     */
+    fun renameFolderOnStorage(
+        context: Context,
+        folder: VideoFolderItem,
+        rawNewFolderName: String
+    ): Triple<String, String, String>? {
+        val sanitized = rawNewFolderName.trim()
+            .replace('/', '_')
+            .replace('\\', '_')
+        if (sanitized.isBlank()) return null
+
+        val localDir = resolveLocalFileFromUri(context, folder.id)
+            ?: folder.episodes.firstOrNull()?.let { resolveLocalFileFromUri(context, it.uri)?.parentFile }
+
+        if (localDir != null && localDir.exists() && localDir.isDirectory) {
+            val parent = localDir.parentFile
+            if (parent != null) {
+                val destDir = File(parent, sanitized)
+                if (destDir.absolutePath == localDir.absolutePath) {
+                    return Triple(folder.id, sanitized, folder.displayPath)
+                }
+                val renamed = runCatching { localDir.renameTo(destDir) }.getOrDefault(false)
+                if (renamed || destDir.exists()) {
+                    val newFolderId = when {
+                        folder.id.startsWith("/") -> destDir.absolutePath
+                        else -> Uri.fromFile(destDir).toString()
+                    }
+                    val newDisplayPath = if (folder.displayPath.contains('/')) {
+                        folder.displayPath.substringBeforeLast('/') + "/" + sanitized
+                    } else {
+                        sanitized
+                    }
+                    return Triple(newFolderId, sanitized, newDisplayPath)
+                }
+            }
+        }
+
+        if (folder.id.startsWith("content://", ignoreCase = true)) {
+            val folderUri = runCatching { Uri.parse(folder.id) }.getOrNull()
+            if (folderUri != null) {
+                val newUri = runCatching {
+                    DocumentsContract.renameDocument(context.contentResolver, folderUri, sanitized)
+                }.getOrNull()
+                if (newUri != null) {
+                    val newDisplayPath = if (folder.displayPath.contains('/')) {
+                        folder.displayPath.substringBeforeLast('/') + "/" + sanitized
+                    } else {
+                        sanitized
+                    }
+                    return Triple(newUri.toString(), sanitized, newDisplayPath)
+                }
+            }
+        }
+
+        val fallbackDisplayPath = if (folder.displayPath.contains('/')) {
+            folder.displayPath.substringBeforeLast('/') + "/" + sanitized
+        } else {
+            sanitized
+        }
+        return Triple(folder.id, sanitized, fallbackDisplayPath)
+    }
 }

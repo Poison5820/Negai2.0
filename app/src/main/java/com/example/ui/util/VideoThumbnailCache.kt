@@ -2,6 +2,9 @@ package com.example.ui.util
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Rect
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
@@ -16,6 +19,10 @@ import coil.request.ImageResult
 import coil.request.videoFrameMillis
 import coil.size.Precision
 import coil.size.Scale
+import java.io.File
+import java.io.FileOutputStream
+import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -24,36 +31,30 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
-import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
-import java.security.MessageDigest
-import java.util.concurrent.ConcurrentHashMap
 
 /**
- * High-performance asynchronous video frame thumbnail loader and persistent disk cache.
+ * High-performance asynchronous 16:9 (320×180) video frame thumbnail loader and persistent disk cache.
  *
- * Resolves laggy scrolling and flickering in series folders:
- * 1. Persistent Disk Cache: Extracted frames are downscaled and written as compact JPEGs
- *    (~15-20 KB) in app cache directory. Once cached, loading takes ~1ms directly from disk
- *    without touching MediaMetadataRetriever.
- * 2. Asynchronous Bounded Generation: Extractions run off the main thread via Dispatchers.IO
- *    governed by a concurrency semaphore to prevent CPU/IO thrashing.
- * 3. 25% Memory Cache: Instantaneous 0ms access in RAM for active list viewport.
- * 4. Zero-Flicker Transitions: Crossfade is disabled for cached items so scrolling
- *    displays stable thumbnails without fading from transparent.
- * 5. Background Prefetching: Pre-generates disk cache entries for folder episodes ahead of scrolling.
+ * Optimizations in v2.5:
+ * 1. Standardized 16:9 (320×180) resolution with aspect-preserving center-crop so 4:3 and 21:9
+ *    videos are never stretched.
+ * 2. Uses [Bitmap.Config.RGB_565] (2 bytes/pixel instead of 4 bytes/pixel) for 50% lower RAM usage.
+ * 3. Shared concurrency semaphore across both foreground requests and background folder prefetching
+ *    to prevent I/O and CPU contention during fast scrolling.
  */
 object VideoThumbnailCache {
 
     private const val DISK_CACHE_SUBDIR = "video_thumbnails"
     private const val MAX_DISK_CACHE_BYTES = 200L * 1024L * 1024L // 200 MB
     private const val DEFAULT_FRAME_MILLIS = 2000L
+    const val DEFAULT_THUMB_WIDTH = 320
+    const val DEFAULT_THUMB_HEIGHT = 180
 
     @Volatile
     private var instance: ImageLoader? = null
 
     private val prefetchScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    internal val sharedExtractionSemaphore = Semaphore(2)
 
     fun getThumbnailDir(context: Context): File {
         val dir = File(context.applicationContext.cacheDir, DISK_CACHE_SUBDIR)
@@ -66,8 +67,8 @@ object VideoThumbnailCache {
     fun generateKey(
         videoUri: String,
         frameMillis: Long = DEFAULT_FRAME_MILLIS,
-        width: Int = 336,
-        height: Int = 198
+        width: Int = DEFAULT_THUMB_WIDTH,
+        height: Int = DEFAULT_THUMB_HEIGHT
     ): String {
         val rawInput = "$videoUri:$frameMillis:${width}x$height"
         return try {
@@ -82,8 +83,8 @@ object VideoThumbnailCache {
         context: Context,
         videoUri: String,
         frameMillis: Long = DEFAULT_FRAME_MILLIS,
-        width: Int = 336,
-        height: Int = 198
+        width: Int = DEFAULT_THUMB_WIDTH,
+        height: Int = DEFAULT_THUMB_HEIGHT
     ): File? {
         val dir = getThumbnailDir(context)
         val key = generateKey(videoUri, frameMillis, width, height)
@@ -104,7 +105,7 @@ object VideoThumbnailCache {
                     }
                     .memoryCache {
                         MemoryCache.Builder(appContext)
-                            .maxSizePercent(0.25)
+                            .maxSizePercent(0.20)
                             .strongReferencesEnabled(true)
                             .build()
                     }
@@ -114,10 +115,12 @@ object VideoThumbnailCache {
                             .maxSizeBytes(MAX_DISK_CACHE_BYTES)
                             .build()
                     }
+                    .allowRgb565(true)
+                    .bitmapConfig(Bitmap.Config.RGB_565)
                     .memoryCachePolicy(CachePolicy.ENABLED)
                     .diskCachePolicy(CachePolicy.ENABLED)
                     .respectCacheHeaders(false)
-                    .crossfade(false) // Disable global crossfade to eliminate scrolling flicker
+                    .crossfade(false)
                     .build()
                     .also { instance = it }
             }
@@ -127,13 +130,12 @@ object VideoThumbnailCache {
     fun buildEpisodeThumbnailRequest(
         context: Context,
         videoUri: String,
-        targetWidthPx: Int = 336,
-        targetHeightPx: Int = 198
+        targetWidthPx: Int = DEFAULT_THUMB_WIDTH,
+        targetHeightPx: Int = DEFAULT_THUMB_HEIGHT
     ): ImageRequest {
         val cacheKey = generateKey(videoUri, DEFAULT_FRAME_MILLIS, targetWidthPx, targetHeightPx)
         val cachedFile = getCachedFile(context, videoUri, DEFAULT_FRAME_MILLIS, targetWidthPx, targetHeightPx)
 
-        // If file is already cached on disk, point directly to file for instantaneous 1ms load
         val dataTarget: Any = cachedFile ?: Uri.parse(videoUri)
 
         return ImageRequest.Builder(context)
@@ -142,6 +144,8 @@ object VideoThumbnailCache {
             .size(width = targetWidthPx, height = targetHeightPx)
             .scale(Scale.FILL)
             .precision(Precision.INEXACT)
+            .allowRgb565(true)
+            .bitmapConfig(Bitmap.Config.RGB_565)
             .memoryCacheKey(cacheKey)
             .diskCacheKey(cacheKey)
             .memoryCachePolicy(CachePolicy.ENABLED)
@@ -151,14 +155,14 @@ object VideoThumbnailCache {
     }
 
     /**
-     * Asynchronously pre-generates disk cache thumbnails for a list of episodes in the background.
-     * Prevents any scrolling delays by ensuring upcoming cards find pre-cached files.
+     * Asynchronously pre-generates disk cache thumbnails for a list of episodes in the background,
+     * governed by [sharedExtractionSemaphore] so foreground scrolling stays 120Hz smooth.
      */
     fun prefetchFolderThumbnails(
         context: Context,
         videoUris: List<String>,
-        targetWidthPx: Int = 336,
-        targetHeightPx: Int = 198
+        targetWidthPx: Int = DEFAULT_THUMB_WIDTH,
+        targetHeightPx: Int = DEFAULT_THUMB_HEIGHT
     ) {
         val appContext = context.applicationContext
         val thumbDir = getThumbnailDir(appContext)
@@ -168,16 +172,19 @@ object VideoThumbnailCache {
                 val key = generateKey(uriStr, DEFAULT_FRAME_MILLIS, targetWidthPx, targetHeightPx)
                 val targetFile = File(thumbDir, "$key.jpg")
                 if (!targetFile.exists() || targetFile.length() <= 0L) {
-                    extractVideoThumbnail(
-                        context = appContext,
-                        videoUri = uriStr,
-                        frameMillis = DEFAULT_FRAME_MILLIS,
-                        targetWidth = targetWidthPx,
-                        targetHeight = targetHeightPx,
-                        destinationFile = targetFile
-                    )
+                    sharedExtractionSemaphore.withPermit {
+                        if (!targetFile.exists() || targetFile.length() <= 0L) {
+                            extractVideoThumbnail(
+                                context = appContext,
+                                videoUri = uriStr,
+                                frameMillis = DEFAULT_FRAME_MILLIS,
+                                targetWidth = targetWidthPx,
+                                targetHeight = targetHeightPx,
+                                destinationFile = targetFile
+                            )
+                        }
+                    }
                 }
-                // Also warm up memory cache
                 val req = buildEpisodeThumbnailRequest(appContext, uriStr, targetWidthPx, targetHeightPx)
                 imageLoader.enqueue(req)
             }
@@ -188,8 +195,8 @@ object VideoThumbnailCache {
         context: Context,
         videoUri: String,
         frameMillis: Long,
-        targetWidth: Int,
-        targetHeight: Int,
+        targetWidth: Int = DEFAULT_THUMB_WIDTH,
+        targetHeight: Int = DEFAULT_THUMB_HEIGHT,
         destinationFile: File
     ): Boolean {
         val retriever = MediaMetadataRetriever()
@@ -203,14 +210,17 @@ object VideoThumbnailCache {
                 else -> retriever.setDataSource(videoUri)
             }
 
+            val outW = if (targetWidth > 0) targetWidth else DEFAULT_THUMB_WIDTH
+            val outH = if (targetHeight > 0) targetHeight else DEFAULT_THUMB_HEIGHT
             val timeUs = (if (frameMillis > 0L) frameMillis else DEFAULT_FRAME_MILLIS) * 1000L
-            val rawBitmap: Bitmap? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1 && targetWidth > 0 && targetHeight > 0) {
+
+            val rawBitmap: Bitmap? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
                 try {
                     retriever.getScaledFrameAtTime(
                         timeUs,
                         MediaMetadataRetriever.OPTION_CLOSEST_SYNC,
-                        targetWidth,
-                        targetHeight
+                        outW * 2,
+                        outH * 2
                     )
                 } catch (_: Throwable) {
                     retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
@@ -221,16 +231,9 @@ object VideoThumbnailCache {
 
             if (rawBitmap == null) return false
 
-            val finalBitmap = if (targetWidth > 0 && targetHeight > 0 &&
-                (rawBitmap.width > targetWidth * 1.5 || rawBitmap.height > targetHeight * 1.5)
-            ) {
-                val scaled = Bitmap.createScaledBitmap(rawBitmap, targetWidth, targetHeight, true)
-                if (scaled != rawBitmap) {
-                    rawBitmap.recycle()
-                }
-                scaled
-            } else {
-                rawBitmap
+            val finalBitmap = centerCropToRgb565(rawBitmap, outW, outH)
+            if (finalBitmap != rawBitmap) {
+                rawBitmap.recycle()
             }
 
             destinationFile.parentFile?.mkdirs()
@@ -256,13 +259,50 @@ object VideoThumbnailCache {
         }
     }
 
+    /**
+     * Center-crops [src] to exact ([targetWidth] × [targetHeight]) in [Bitmap.Config.RGB_565]
+     * so 4:3, 16:9, and 21:9 frames preserve natural proportions and consume 50% less RAM.
+     */
+    internal fun centerCropToRgb565(
+        src: Bitmap,
+        targetWidth: Int,
+        targetHeight: Int
+    ): Bitmap {
+        val srcW = src.width
+        val srcH = src.height
+        if (srcW <= 0 || srcH <= 0 || targetWidth <= 0 || targetHeight <= 0) {
+            return src
+        }
+
+        val srcAspect = srcW.toFloat() / srcH.toFloat()
+        val dstAspect = targetWidth.toFloat() / targetHeight.toFloat()
+
+        val cropRect = if (srcAspect > dstAspect) {
+            // Source is wider than target (e.g. 21:9 -> 16:9) -> crop left/right
+            val croppedW = (srcH * dstAspect).toInt().coerceIn(1, srcW)
+            val left = (srcW - croppedW) / 2
+            Rect(left, 0, left + croppedW, srcH)
+        } else {
+            // Source is taller than target (e.g. 4:3 -> 16:9) -> crop top/bottom
+            val croppedH = (srcW / dstAspect).toInt().coerceIn(1, srcH)
+            val top = (srcH - croppedH) / 2
+            Rect(0, top, srcW, top + croppedH)
+        }
+
+        val output = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.RGB_565)
+        val canvas = Canvas(output)
+        val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG)
+        val dstRect = Rect(0, 0, targetWidth, targetHeight)
+        canvas.drawBitmap(src, cropRect, dstRect, paint)
+        return output
+    }
+
     fun pruneDiskCacheIfNeeded(dir: File, maxSizeBytes: Long = MAX_DISK_CACHE_BYTES) {
         try {
             val files = dir.listFiles() ?: return
             var totalSize = files.sumOf { it.length() }
             if (totalSize <= maxSizeBytes) return
 
-            // Sort by last modified ascending (oldest first)
             val sortedFiles = files.sortedBy { it.lastModified() }
             val targetSize = (maxSizeBytes * 0.75).toLong()
             for (file in sortedFiles) {
@@ -280,7 +320,11 @@ object VideoThumbnailCache {
         try {
             val dir = getThumbnailDir(context)
             val memCache = instance?.memoryCache
-            val sizes = listOf(336 to 198, 372 to 222)
+            val sizes = listOf(
+                DEFAULT_THUMB_WIDTH to DEFAULT_THUMB_HEIGHT,
+                336 to 198,
+                372 to 222
+            )
             for (uri in videoUris) {
                 for ((w, h) in sizes) {
                     val key = generateKey(uri, DEFAULT_FRAME_MILLIS, w, h)
@@ -295,10 +339,6 @@ object VideoThumbnailCache {
     }
 }
 
-/**
- * Coil Interceptor that redirects video URI thumbnail requests to cached JPEG files,
- * extracting them asynchronously in the background if not yet on disk.
- */
 private class VideoThumbnailDiskCacheInterceptor(
     private val context: Context,
     private val thumbnailDir: File
@@ -306,7 +346,6 @@ private class VideoThumbnailDiskCacheInterceptor(
 
     private val activeExtractions = ConcurrentHashMap<String, Deferred<Boolean>>()
     private val extractionScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val extractionSemaphore = Semaphore(2)
 
     override suspend fun intercept(chain: Interceptor.Chain): ImageResult {
         val request = chain.request
@@ -323,8 +362,8 @@ private class VideoThumbnailDiskCacheInterceptor(
             return chain.proceed(request)
         }
 
-        val targetWidth = 336
-        val targetHeight = 198
+        val targetWidth = VideoThumbnailCache.DEFAULT_THUMB_WIDTH
+        val targetHeight = VideoThumbnailCache.DEFAULT_THUMB_HEIGHT
         val cacheKey = VideoThumbnailCache.generateKey(videoUriStr, 2000L, targetWidth, targetHeight)
         val cacheFile = File(thumbnailDir, "$cacheKey.jpg")
 
@@ -338,7 +377,7 @@ private class VideoThumbnailDiskCacheInterceptor(
 
         val deferred = activeExtractions.computeIfAbsent(cacheKey) {
             extractionScope.async {
-                extractionSemaphore.withPermit {
+                VideoThumbnailCache.sharedExtractionSemaphore.withPermit {
                     if (cacheFile.exists() && cacheFile.length() > 0L) return@withPermit true
                     val success = VideoThumbnailCache.extractVideoThumbnail(
                         context = context,
@@ -379,7 +418,7 @@ private class VideoThumbnailDiskCacheInterceptor(
         if (uriStr.startsWith("content://")) return true
         val lower = uriStr.lowercase()
         return lower.endsWith(".mkv") || lower.endsWith(".mp4") || lower.endsWith(".avi") ||
-                lower.endsWith(".webm") || lower.endsWith(".mov") || lower.endsWith(".ts") ||
-                lower.endsWith(".m2ts") || lower.endsWith(".flv") || lower.endsWith(".wmv")
+            lower.endsWith(".webm") || lower.endsWith(".mov") || lower.endsWith(".ts") ||
+            lower.endsWith(".m2ts") || lower.endsWith(".flv") || lower.endsWith(".wmv")
     }
 }

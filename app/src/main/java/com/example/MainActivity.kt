@@ -113,34 +113,46 @@ class MainActivity : ComponentActivity() {
                     refreshPlan
                 )
             }
+            val baseDensity = androidx.compose.ui.platform.LocalDensity.current
+            val effectiveAppScale = com.example.ui.screens.rememberPlayerEffectiveScale(settings)
+            val scaledAppDensity = remember(baseDensity, effectiveAppScale) {
+                androidx.compose.ui.unit.Density(
+                    density = baseDensity.density * effectiveAppScale,
+                    fontScale = baseDensity.fontScale * effectiveAppScale
+                )
+            }
             Kino4KTheme(themeMode = settings.themeMode) {
                 ProvideAppLocalization(appLanguage = settings.appLanguage) {
-                    Kino4KAppRoot(
-                        viewModel = viewModel,
-                        targetDisplayHz = targetDisplayHz,
-                        refreshPlan = refreshPlan,
-                        onUpdatePipParams = { isPlayerActive, isPlaying, width, height, autoEnter, stepSec ->
-                            PipController.updatePipParams(
-                                activity = this,
-                                isPlayerActive = isPlayerActive,
-                                isPlaying = isPlaying,
-                                videoWidth = width,
-                                videoHeight = height,
-                                autoEnterEnabled = autoEnter,
-                                seekStepSeconds = stepSec
-                            )
-                        },
-                        onRequestEnterPip = { isPlaying, width, height, autoEnter, stepSec ->
-                            PipController.enterPipNow(
-                                activity = this,
-                                isPlaying = isPlaying,
-                                videoWidth = width,
-                                videoHeight = height,
-                                autoEnterEnabled = autoEnter,
-                                seekStepSeconds = stepSec
-                            )
-                        }
-                    )
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        androidx.compose.ui.platform.LocalDensity provides scaledAppDensity
+                    ) {
+                        Kino4KAppRoot(
+                            viewModel = viewModel,
+                            targetDisplayHz = targetDisplayHz,
+                            refreshPlan = refreshPlan,
+                            onUpdatePipParams = { isPlayerActive, isPlaying, width, height, autoEnter, stepSec ->
+                                PipController.updatePipParams(
+                                    activity = this,
+                                    isPlayerActive = isPlayerActive,
+                                    isPlaying = isPlaying,
+                                    videoWidth = width,
+                                    videoHeight = height,
+                                    autoEnterEnabled = autoEnter,
+                                    seekStepSeconds = stepSec
+                                )
+                            },
+                            onRequestEnterPip = { isPlaying, width, height, autoEnter, stepSec ->
+                                PipController.enterPipNow(
+                                    activity = this,
+                                    isPlaying = isPlaying,
+                                    videoWidth = width,
+                                    videoHeight = height,
+                                    autoEnterEnabled = autoEnter,
+                                    seekStepSeconds = stepSec
+                                )
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -485,6 +497,8 @@ fun Kino4KAppRoot(
                 onHideFolder = { viewModel.hideFolder(activeFolder) },
                 onDeleteFolder = { viewModel.deleteFolders(listOf(activeFolder)) },
                 onDeleteEpisodes = { episodes -> viewModel.deleteEpisodes(activeFolder.id, episodes) },
+                onRenameEpisode = { episode, newName -> viewModel.renameEpisode(activeFolder.id, episode, newName) },
+                onRenameFolder = { newName -> viewModel.renameFolder(activeFolder, newName) },
                 onSetSkipDeleteConfirmation = { viewModel.setSkipDeleteConfirmation(it) }
             )
         }
@@ -636,6 +650,7 @@ fun Kino4KAppRoot(
                 onHideFolder = { viewModel.hideFolder(it) },
                 onUnhideFolder = { viewModel.unhideFolder(it) },
                 onDeleteFolders = { folders -> viewModel.deleteFolders(folders) },
+                onRenameFolder = { folder, newName -> viewModel.renameFolder(folder, newName) },
                 onSetSkipDeleteConfirmation = { viewModel.setSkipDeleteConfirmation(it) },
                 onResumeRecent = { viewModel.resumeRecentItem(it) },
                 onOpenLastPlayed = { onMissing -> viewModel.openLastPlayedFile(onMissing) },

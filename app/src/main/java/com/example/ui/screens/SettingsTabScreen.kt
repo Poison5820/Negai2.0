@@ -412,22 +412,16 @@ private fun categorySummary(
 ): String = when (category) {
     SettingsCategory.APPEARANCE -> {
         val langTxt = settings.appLanguage.shortBadge
-        val densityTxt = if (isEnglish) {
-            if (settings.compactUiMode) "Compact" else "Spacious"
-        } else {
-            if (settings.compactUiMode) "Компактно" else "Просторно"
-        }
-        "${settings.themeMode.title} • $langTxt • $densityTxt"
+        val scaleTxt = "${settings.playerUiScalePercent}%"
+        "${settings.themeMode.title} • $langTxt • $scaleTxt"
     }
     SettingsCategory.PLAYBACK -> {
         if (isEnglish) {
             val resumeTxt = if (settings.resumePlayback) "Resume ON" else "From start"
-            val chapTxt = if (settings.enableEmbeddedChapters) "Chapters ON" else "Chapters OFF"
-            "$resumeTxt • $chapTxt • Step ${settings.seekStepSeconds}s"
+            "$resumeTxt • Step ${settings.seekStepSeconds}s • +${settings.skipIntroSeconds}s Intro"
         } else {
             val resumeTxt = if (settings.resumePlayback) "Продолжение" else "С начала"
-            val chapTxt = if (settings.enableEmbeddedChapters) "Главы вкл" else "Главы выкл"
-            "$resumeTxt • $chapTxt • Шаг ${settings.seekStepSeconds} сек"
+            "$resumeTxt • Шаг ${settings.seekStepSeconds} сек • +${settings.skipIntroSeconds}с Опенинг"
         }
     }
     SettingsCategory.GESTURES -> {
@@ -442,22 +436,15 @@ private fun categorySummary(
     SettingsCategory.VIDEO_ANIME4K -> {
         val memc = settings.effectiveFrameInterpolationMode.badgeLabel
         val a4k = if (settings.anime4kEnabled) settings.anime4kPreset.badgeLabel else if (isEnglish) "OFF" else "Выкл"
-        val hz = when {
-            settings.ltpoAdaptiveRefreshEnabled && settings.highRefreshRateEnabled -> if (isEnglish) "LTPO Auto" else "LTPO Авто"
-            settings.highRefreshRateEnabled -> "Max Hz"
-            else -> "60Hz"
-        }
-        "${settings.decoderMode.shortBadge} • $memc • $hz • Anime4K: $a4k"
+        "${settings.decoderMode.shortBadge} • $memc • Anime4K: $a4k"
     }
     SettingsCategory.AUDIO -> {
         if (isEnglish) {
             val autoAud = if (settings.autoBindExternalAudio) "Auto-bind ON" else "Auto-bind OFF"
-            val btLabel = if (settings.bluetoothAudioAutoSync) "BT Sync ${settings.bluetoothAudioOffsetMs}ms" else "BT Sync OFF"
-            "$autoAud • $btLabel • Boost ${settings.defaultAudioBoostPercent}%"
+            "$autoAud • Auto BT Sync • Boost ${settings.defaultAudioBoostPercent}%"
         } else {
             val autoAud = if (settings.autoBindExternalAudio) "Авто-привязка вкл" else "Авто-привязка выкл"
-            val btLabel = if (settings.bluetoothAudioAutoSync) "BT ${settings.bluetoothAudioOffsetMs}мс" else "BT выкл"
-            "$autoAud • $btLabel • Усиление ${settings.defaultAudioBoostPercent}%"
+            "$autoAud • Авто-BT синхр. • Усиление ${settings.defaultAudioBoostPercent}%"
         }
     }
     SettingsCategory.SUBTITLES -> {

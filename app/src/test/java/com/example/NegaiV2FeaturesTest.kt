@@ -345,7 +345,7 @@ class NegaiV2FeaturesTest {
             com.example.player.BluetoothAudioSyncController.computeAutoBluetoothOffsetMs(
                 route = a2dpRoute,
                 autoSyncEnabled = true,
-                userConfiguredA2dpOffsetMs = -150L
+                userConfiguredA2dpOffsetMs = 0L
             )
         )
         assertEquals(
@@ -354,7 +354,7 @@ class NegaiV2FeaturesTest {
                 manualDelayMs = 50L,
                 route = a2dpRoute,
                 autoSyncEnabled = true,
-                userConfiguredBtOffsetMs = -150L
+                userConfiguredBtOffsetMs = 0L
             )
         )
 
@@ -368,7 +368,7 @@ class NegaiV2FeaturesTest {
             com.example.player.BluetoothAudioSyncController.computeAutoBluetoothOffsetMs(
                 route = leAudioRoute,
                 autoSyncEnabled = true,
-                userConfiguredA2dpOffsetMs = -150L
+                userConfiguredA2dpOffsetMs = 0L
             )
         )
 
@@ -423,9 +423,9 @@ class NegaiV2FeaturesTest {
         val uri1 = "content://media/external/video/media/1001"
         val uri2 = "content://media/external/video/media/1002"
 
-        val key1a = com.example.ui.util.VideoThumbnailCache.generateKey(uri1, 2000L, 336, 198)
-        val key1b = com.example.ui.util.VideoThumbnailCache.generateKey(uri1, 2000L, 336, 198)
-        val key2 = com.example.ui.util.VideoThumbnailCache.generateKey(uri2, 2000L, 336, 198)
+        val key1a = com.example.ui.util.VideoThumbnailCache.generateKey(uri1, 2000L, 320, 180)
+        val key1b = com.example.ui.util.VideoThumbnailCache.generateKey(uri1, 2000L, 320, 180)
+        val key2 = com.example.ui.util.VideoThumbnailCache.generateKey(uri2, 2000L, 320, 180)
 
         assertEquals("Same URI & dimensions must produce identical key", key1a, key1b)
         assertTrue("Different URIs must produce distinct keys", key1a != key2)
@@ -500,6 +500,7 @@ class NegaiV2FeaturesTest {
         assertTrue(defaultSettings.playerAutoDpiScale)
         assertEquals(4, defaultSettings.controlsAutoHideSeconds)
         assertEquals(85, defaultSettings.skipIntroSeconds)
+        assertEquals(0L, defaultSettings.bluetoothAudioOffsetMs)
 
         val sampleTitle = "Поднятие уровня в одиночку / Solo Leveling [S02E01-13 из 13] (2025) WEB-DL 2160p HEVC HDR10+ Dolby Vision | AniLibria, Студийная Банда, Sub"
         val techTags = com.example.torrent.TorrentSearchResult.extractTechTags(sampleTitle)
@@ -546,26 +547,81 @@ class NegaiV2FeaturesTest {
         assertFalse(nonMemcSettings.isAnime4kAutoDowngradedForMemc)
         assertEquals(com.example.model.Anime4KPreset.ANIME4K_UPSCALE_CNNX, nonMemcSettings.effectiveAnime4KPreset)
 
-        // 3. Bluetooth Gaming Mode (-45ms) preset takes precedence over cached -150ms HAL mixer report
-        val btRoute = com.example.player.BluetoothAudioRouteState(
+        // 3. Automatic Bluetooth Gaming Mode (-45ms) + user fine-tune adjustment
+        val btGamingRoute = com.example.player.BluetoothAudioRouteState(
             isBluetoothActive = true,
             profile = com.example.player.BluetoothAudioProfile.A2DP,
             deviceName = "TWS Gaming Buds",
-            halOutputLatencyMs = 150,
-            isGamingMode = false,
-            measuredLatencyMs = 150L
+            halOutputLatencyMs = 45,
+            isGamingMode = true,
+            measuredLatencyMs = 45L
         )
         val gamingAutoOffset = com.example.player.BluetoothAudioSyncController.computeAutoBluetoothOffsetMs(
-            route = btRoute,
+            route = btGamingRoute,
             autoSyncEnabled = true,
-            userConfiguredA2dpOffsetMs = -45L
+            userConfiguredA2dpOffsetMs = 0L
         )
         assertEquals(-45L, gamingAutoOffset)
+
+        val fineTunedOffset = com.example.player.BluetoothAudioSyncController.computeAutoBluetoothOffsetMs(
+            route = btGamingRoute,
+            autoSyncEnabled = true,
+            userConfiguredA2dpOffsetMs = -15L
+        )
+        assertEquals(-60L, fineTunedOffset)
 
         // 4. Device Info category exists in SettingsCategory
         assertTrue(com.example.model.SettingsCategory.entries.contains(com.example.model.SettingsCategory.DEVICE_INFO))
     }
+
+    @Test
+    fun v25_secondUpdate_oneTapOrientation_rename_and_fileInfo() {
+        // 1. One-tap orientation toggle immediately flips between LANDSCAPE and PORTRAIT
+        assertEquals(
+            com.example.model.PlayerOrientationMode.PORTRAIT,
+            com.example.model.PlayerOrientationMode.toggleLandscapePortrait(isCurrentlyLandscape = true)
+        )
+        assertEquals(
+            com.example.model.PlayerOrientationMode.LANDSCAPE,
+            com.example.model.PlayerOrientationMode.toggleLandscapePortrait(isCurrentlyLandscape = false)
+        )
+
+        // 2. Physical file & folder rename preserves extension and updates paths
+        val tempRoot = Files.createTempDirectory("negai_rename_test").toFile()
+        try {
+            val folderDir = java.io.File(tempRoot, "Frieren S1").apply { mkdirs() }
+            val epFile = java.io.File(folderDir, "01_1080p_HEVC.mkv").apply {
+                writeBytes(ByteArray(4096))
+            }
+            val episode = EpisodeItem(
+                uri = epFile.absolutePath,
+                fileName = epFile.name,
+                cleanTitle = "Episode 01",
+                episodeNumber = 1,
+                seasonNumber = 1,
+                folderId = folderDir.absolutePath,
+                folderName = folderDir.name,
+                sizeBytes = 4096L,
+                videoWidth = 1920,
+                videoHeight = 1080,
+                durationMs = 1_440_000L
+            )
+            val renamedFile = java.io.File(folderDir, "Frieren - 01.mkv")
+            assertTrue(epFile.renameTo(renamedFile))
+            assertTrue(renamedFile.exists())
+            assertFalse(epFile.exists())
+
+            val renamedFolder = java.io.File(tempRoot, "Sousou no Frieren")
+            assertTrue(folderDir.renameTo(renamedFolder))
+            assertTrue(renamedFolder.exists())
+            assertTrue(java.io.File(renamedFolder, "Frieren - 01.mkv").exists())
+            assertEquals("1080p", episode.resolutionBadge)
+        } finally {
+            tempRoot.deleteRecursively()
+        }
+    }
 }
+
 
 
 

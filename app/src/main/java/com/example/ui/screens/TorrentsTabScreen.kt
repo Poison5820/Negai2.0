@@ -184,66 +184,16 @@ fun TorrentsTabContent(
             )
         }
 
-        item(key = "torrent_search_bar") {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = state.query,
-                    onValueChange = onQueryChange,
-                    placeholder = {
-                        Text(
-                            text = stringResource(R.string.torrents_search_placeholder),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    trailingIcon = {
-                        if (state.query.isNotEmpty()) {
-                            IconButton(onClick = { onQueryChange("") }) {
-                                Icon(Icons.Default.Close, contentDescription = tr("Очистить запрос", "Clear query"))
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(
-                        onSearch = {
-                            focusManager.clearFocus()
-                            onSubmitSearch(null)
-                        }
-                    ),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("torrent_search_input")
-                )
-
-                FilledIconButton(
-                    onClick = {
-                        focusManager.clearFocus()
-                        onSubmitSearch(null)
-                    },
-                    enabled = state.query.isNotBlank() && !state.isSearching,
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .size(54.dp)
-                        .testTag("torrent_search_submit_button")
-                ) {
-                    if (state.isSearching) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    } else {
-                        Icon(Icons.Default.Search, contentDescription = tr("Найти торренты", "Search torrents"))
-                    }
+        item(key = "torrent_search_bar", contentType = "search_bar") {
+            TorrentSearchInputBar(
+                externalQuery = state.query,
+                isSearching = state.isSearching,
+                onQueryChange = onQueryChange,
+                onSubmitSearch = { submittedQuery ->
+                    focusManager.clearFocus()
+                    onSubmitSearch(submittedQuery)
                 }
-            }
+            )
         }
 
         item(key = "tracker_filter_row") {
@@ -473,7 +423,8 @@ fun TorrentsTabContent(
             else -> {
                 itemsIndexed(
                     items = state.filteredResults,
-                    key = { idx, item -> "${item.id}_$idx" }
+                    key = { idx, item -> "${item.id}_$idx" },
+                    contentType = { _, _ -> "torrent_result_card" }
                 ) { index, item ->
                     TorrentResultCard(
                         item = item,
@@ -514,6 +465,89 @@ fun TorrentsTabContent(
             onOpenServerConfig = onOpenServerConfigDialog,
             onDismiss = { showSavedTorrentsSheet = false }
         )
+    }
+}
+
+@Composable
+private fun TorrentSearchInputBar(
+    externalQuery: String,
+    isSearching: Boolean,
+    onQueryChange: (String) -> Unit,
+    onSubmitSearch: (String?) -> Unit
+) {
+    var localQuery by rememberSaveable { mutableStateOf(externalQuery) }
+    LaunchedEffect(externalQuery) {
+        if (localQuery != externalQuery) {
+            localQuery = externalQuery
+        }
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        OutlinedTextField(
+            value = localQuery,
+            onValueChange = { updated ->
+                localQuery = updated
+                onQueryChange(updated)
+            },
+            placeholder = {
+                Text(
+                    text = stringResource(R.string.torrents_search_placeholder),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            trailingIcon = {
+                if (localQuery.isNotEmpty()) {
+                    IconButton(
+                        onClick = {
+                            localQuery = ""
+                            onQueryChange("")
+                        }
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = tr("Очистить запрос", "Clear query"))
+                    }
+                }
+            },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(
+                onSearch = {
+                    if (localQuery.isNotBlank()) {
+                        onSubmitSearch(localQuery)
+                    }
+                }
+            ),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .weight(1f)
+                .testTag("torrent_search_input")
+        )
+
+        FilledIconButton(
+            onClick = {
+                onSubmitSearch(localQuery)
+            },
+            enabled = localQuery.isNotBlank() && !isSearching,
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .size(54.dp)
+                .testTag("torrent_search_submit_button")
+        ) {
+            if (isSearching) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            } else {
+                Icon(Icons.Default.Search, contentDescription = tr("Найти торренты", "Search torrents"))
+            }
+        }
     }
 }
 

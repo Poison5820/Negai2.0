@@ -104,6 +104,15 @@ import com.example.ui.i18n.localizedTitle
 import com.example.ui.i18n.tr
 import kotlin.math.roundToInt
 
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material.icons.filled.Bookmarks
+import androidx.compose.material.icons.filled.MotionPhotosOn
+import androidx.compose.material.icons.filled.PictureInPictureAlt
+import androidx.compose.material.icons.filled.ScreenRotation
+import androidx.compose.material.icons.filled.VolumeUp
+import com.example.player.AudioDelayProcessor
+import com.example.player.BluetoothAudioSyncController
+
 // ============================================================================
 // 1. ОФОРМЛЕНИЕ И ИНТЕРФЕЙС / APPEARANCE & INTERFACE
 // ============================================================================
@@ -117,13 +126,8 @@ internal fun AppearanceSettingsPage(
     val isEnglish = LocalIsEnglish.current
     var showQuickBarCustomizer by rememberSaveable { mutableStateOf(false) }
 
-    // Language selector
     SettingsSectionCard(
         title = tr("Язык интерфейса", "Interface Language"),
-        subtitle = tr(
-            "Переключение между системным языком, русским и английским в реальном времени",
-            "Switch between system auto-detection, Russian, and English in real time"
-        ),
         icon = Icons.Default.Language
     ) {
         FlowRow(
@@ -141,19 +145,10 @@ internal fun AppearanceSettingsPage(
                 )
             }
         }
-        Text(
-            text = settings.appLanguage.localizedSubtitle(isEnglish),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 
     SettingsSectionCard(
         title = tr("Цветовая тема OLED", "OLED Color Theme"),
-        subtitle = tr(
-            "Выберите акцентную палитру приложения с глубоким черным фоном #000000",
-            "Select the app accent palette on a true #000000 OLED black background"
-        ),
         icon = Icons.Default.Palette
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -165,25 +160,25 @@ internal fun AppearanceSettingsPage(
                     } else {
                         MaterialTheme.colorScheme.surfaceContainerLow
                     },
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(
                         width = if (selected) 1.5.dp else 1.dp,
                         color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .clickable { actions.onUpdateThemeMode(mode) }
                         .testTag("theme_mode_option_${mode.id}")
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(34.dp)
+                                .size(30.dp)
                                 .clip(CircleShape)
                                 .background(Color(mode.previewBgArgb))
                                 .border(1.5.dp, Color(mode.previewAccentArgb), CircleShape),
@@ -191,22 +186,16 @@ internal fun AppearanceSettingsPage(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(14.dp)
+                                    .size(12.dp)
                                     .clip(CircleShape)
                                     .background(Color(mode.previewAccentArgb))
                             )
                         }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = mode.localizedTitle(isEnglish),
-                                style = MaterialTheme.typography.titleSmall
-                            )
-                            Text(
-                                text = mode.localizedSubtitle(isEnglish),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text(
+                            text = mode.localizedTitle(isEnglish),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                            modifier = Modifier.weight(1f)
+                        )
                         RadioButton(
                             selected = selected,
                             onClick = { actions.onUpdateThemeMode(mode) }
@@ -219,10 +208,6 @@ internal fun AppearanceSettingsPage(
 
     SettingsSectionCard(
         title = tr("Тема кнопок и полосы плеера", "Player Controls & Timeline Theme"),
-        subtitle = tr(
-            "Визуальный стиль центральных кнопок Play/Pause, чипов и таймлайна в плеере (8 вариантов, включая без фона и без акцентов)",
-            "Visual style of center Play/Pause controls, action chips, and timeline in the player (8 presets, including frameless and accent-free)"
-        ),
         icon = Icons.Default.Tune
     ) {
         PlayerControlsThemeSelectorSection(
@@ -233,10 +218,6 @@ internal fun AppearanceSettingsPage(
 
     SettingsSectionCard(
         title = tr("Быстрые кнопки в плеере", "Player Quick Action Buttons"),
-        subtitle = tr(
-            "Выберите, какие кнопки показывать в нижней панели видеоплеера, и настройте их порядок",
-            "Choose which buttons appear in the bottom bar of the video player and reorder them"
-        ),
         icon = Icons.Default.Tune
     ) {
         Row(
@@ -250,11 +231,11 @@ internal fun AppearanceSettingsPage(
                         "Активно кнопок: ${settings.quickActions.size} из ${PlayerQuickAction.entries.size - 2}",
                         "Active buttons: ${settings.quickActions.size} of ${PlayerQuickAction.entries.size - 2}"
                     ),
-                    style = MaterialTheme.typography.titleSmall
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
                 )
                 Text(
                     text = settings.quickActions.joinToString(" • ") { it.localizedShortTitle(isEnglish) },
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -263,11 +244,12 @@ internal fun AppearanceSettingsPage(
             Spacer(modifier = Modifier.width(10.dp))
             FilledTonalButton(
                 onClick = { showQuickBarCustomizer = true },
+                shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.testTag("open_quick_actions_customizer_from_settings")
             ) {
-                Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(tr("Настроить", "Customize"))
+                Text(tr("Настроить", "Customize"), style = MaterialTheme.typography.labelMedium)
             }
         }
     }
@@ -281,26 +263,9 @@ internal fun AppearanceSettingsPage(
     }
 
     SettingsSectionCard(
-        title = tr("Масштаб элементов плеера (DPI) и автоскрытие", "Player UI Scale (DPI) & HUD Auto-Hide"),
-        subtitle = tr(
-            "Адаптация размера кнопок и текста под плотность пикселей (DPI) экрана и настройка таймера скрытия элементов",
-            "Adapt player button and text sizes to screen DPI density and configure the HUD auto-hide timer"
-        ),
+        title = tr("Масштаб интерфейса и автоскрытие", "UI Scale & HUD Auto-Hide"),
         icon = Icons.Default.Tune
     ) {
-        SettingToggleRow(
-            title = tr("Автоучёт DPI экрана устройства", "Automatic Screen DPI Scaling"),
-            subtitle = tr(
-                "Автоматически подбирать базовый масштаб элементов плеера под физическую ширину и DPI дисплея",
-                "Automatically adjust base player HUD scale according to physical screen width and DPI"
-            ),
-            checked = settings.playerAutoDpiScale,
-            onCheckedChange = actions.onUpdatePlayerAutoDpiScale,
-            testTag = "player_auto_dpi_switch"
-        )
-
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -308,18 +273,33 @@ internal fun AppearanceSettingsPage(
         ) {
             Text(
                 text = tr(
-                    "Масштаб элементов и текста плеера: ${settings.playerUiScalePercent}%",
-                    "Player UI & Text Scale: ${settings.playerUiScalePercent}%"
+                    "Масштаб интерфейса и текста: ${settings.playerUiScalePercent}%",
+                    "App UI & Text Scale: ${settings.playerUiScalePercent}%"
                 ),
-                style = MaterialTheme.typography.titleSmall
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                modifier = Modifier.weight(1f)
             )
-            if (settings.playerUiScalePercent != 100) {
-                OutlinedButton(
-                    onClick = { actions.onUpdatePlayerUiScalePercent(100) },
-                    modifier = Modifier.testTag("reset_player_ui_scale_btn")
-                ) {
-                    Text("100%")
-                }
+            Spacer(modifier = Modifier.width(8.dp))
+            FilledTonalButton(
+                onClick = { actions.onUpdatePlayerUiScalePercent(100) },
+                enabled = settings.playerUiScalePercent != 100,
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                modifier = Modifier
+                    .height(34.dp)
+                    .testTag("reset_player_ui_scale_btn")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.RestartAlt,
+                    contentDescription = tr("Сбросить масштаб до 100%", "Reset scale to 100%"),
+                    modifier = Modifier.size(15.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "100%",
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1
+                )
             }
         }
 
@@ -348,18 +328,10 @@ internal fun AppearanceSettingsPage(
 
         Text(
             text = tr(
-                "Время до скрытия элементов плеера: ${settings.controlsAutoHideSeconds} сек",
-                "Player HUD Controls Auto-Hide Delay: ${settings.controlsAutoHideSeconds} s"
+                "Время скрытия кнопок плеера: ${settings.controlsAutoHideSeconds} сек",
+                "Player Controls Auto-Hide Delay: ${settings.controlsAutoHideSeconds} s"
             ),
-            style = MaterialTheme.typography.titleSmall
-        )
-        Text(
-            text = tr(
-                "При прокрутке нижней панели кнопок или перемещении ползунка таймер автоматически сбрасывается",
-                "Scrolling the bottom button bar or scrubbing the timeline automatically resets the timer"
-            ),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
         )
 
         Slider(
@@ -386,30 +358,11 @@ internal fun AppearanceSettingsPage(
     }
 
     SettingsSectionCard(
-        title = tr("Плотность и элементы интерфейса", "UI Density & Elements"),
-        subtitle = tr(
-            "Настройка компактности карточек, превью кадров и информационных плашек",
-            "Configure card density, episode frame thumbnails, and HUD badges"
-        ),
-        icon = Icons.Default.Tune
+        title = tr("Элементы интерфейса", "Interface Elements"),
+        icon = Icons.Default.HighQuality
     ) {
         SettingToggleRow(
-            title = tr("Компактный режим интерфейса", "Compact UI Mode"),
-            subtitle = tr(
-                "Уменьшенные отступы карточек папок и серий — помещается больше элементов на экране",
-                "Reduced padding on folder and episode cards so more items fit on screen"
-            ),
-            checked = settings.compactUiMode,
-            onCheckedChange = actions.onUpdateCompactUiMode,
-            testTag = "compact_ui_switch"
-        )
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        SettingToggleRow(
             title = tr("Показывать превью кадров у серий", "Show Episode Frame Thumbnails"),
-            subtitle = tr(
-                "Извлекать миниатюры из видеофайлов внутри папок (отключите для мгновенного открытия больших папок)",
-                "Extract video frame thumbnails inside folders (disable for instant loading of huge folders)"
-            ),
             checked = settings.showEpisodeThumbnails,
             onCheckedChange = actions.onUpdateShowEpisodeThumbnails,
             testTag = "show_thumbnails_switch"
@@ -417,24 +370,9 @@ internal fun AppearanceSettingsPage(
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         SettingToggleRow(
             title = tr("Кнопка «Серии» в верхней панели плеера", "Show 'Episodes' Button in Top Player Bar"),
-            subtitle = tr(
-                "Быстрый вызов переключателя эпизодов прямо из верхней шапки во время просмотра сериала",
-                "Quickly open the episode switcher directly from the top header while watching a series"
-            ),
             checked = settings.showEpisodesButtonInHud,
             onCheckedChange = actions.onUpdateShowEpisodesButtonInHud,
             testTag = "show_episodes_hud_button_switch"
-        )
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        SettingToggleRow(
-            title = tr("Технические бейджи в плеере (Разрешение / Гц / Аудио)", "Technical HUD Badges (Resolution / Hz / Audio)"),
-            subtitle = tr(
-                "Отображать чипы 4K/1080p, частоту экрана (120 Гц), активный Anime4K и внешнюю озвучку в верхней панели плеера",
-                "Display 4K/1080p resolution, refresh rate (120 Hz), active Anime4K, and external dub chips in the top player bar"
-            ),
-            checked = settings.showHudBadges,
-            onCheckedChange = actions.onUpdateShowHudBadges,
-            testTag = "show_hud_badges_switch"
         )
     }
 }
@@ -455,15 +393,10 @@ internal fun PlaybackSettingsPage(
 
     SettingsSectionCard(
         title = tr("Поведение при запуске и завершении", "Startup & End-of-Playback Behavior"),
-        subtitle = tr(
-            "Автоматическое продолжение просмотра и переход между сериями",
-            "Automatic playback resume and episode transitions"
-        ),
         icon = Icons.Default.PlayArrow
     ) {
         SettingToggleRow(
             title = stringResource(R.string.settings_resume_playback_title),
-            subtitle = stringResource(R.string.settings_resume_playback_subtitle),
             checked = settings.resumePlayback,
             onCheckedChange = actions.onUpdateResumePlayback,
             testTag = "resume_playback_switch"
@@ -473,7 +406,7 @@ internal fun PlaybackSettingsPage(
 
         Text(
             text = tr("Действие по окончании серии", "Action When Episode Ends"),
-            style = MaterialTheme.typography.titleSmall
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
         )
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             PlaybackEndMode.entries.forEach { mode ->
@@ -500,14 +433,11 @@ internal fun PlaybackSettingsPage(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(mode.localizedTitle(isEnglish), style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                mode.localizedSubtitle(isEnglish),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text(
+                            text = mode.localizedTitle(isEnglish),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                            modifier = Modifier.weight(1f)
+                        )
                         RadioButton(
                             selected = selected,
                             onClick = { actions.onUpdatePlaybackEndMode(mode) }
@@ -519,52 +449,27 @@ internal fun PlaybackSettingsPage(
     }
 
     SettingsSectionCard(
-        title = tr("Встроенные главы (Chapters) в видео", "Embedded Video Chapters"),
-        subtitle = tr(
-            "Распознавание глав контейнера MKV / MP4 (Опенинг, Часть A, Часть B, Эндинг) и отображение засечек на полосе прокрутки",
-            "Parse MKV / MP4 container chapters (Opening, Part A, Part B, Ending) and display markers on the timeline"
-        ),
-        icon = Icons.Default.PlayArrow
+        title = tr("Главы на полосе прокрутки", "Chapters on Timeline"),
+        icon = Icons.Default.Bookmarks
     ) {
         SettingToggleRow(
-            title = tr("Поддержка встроенных глав (Chapters)", "Enable Embedded Chapters"),
-            subtitle = tr(
-                "Извлекать оглавление из файла и показывать текущую главу и список глав в плеере",
-                "Extract chapter list from video containers and display the current chapter in the player"
-            ),
-            checked = settings.enableEmbeddedChapters,
-            onCheckedChange = actions.onUpdateEnableEmbeddedChapters,
-            testTag = "enable_embedded_chapters_switch"
+            title = tr("Маркеры глав на полосе прокрутки", "Chapter Markers on Timeline"),
+            checked = settings.showChapterMarkersOnTimeline,
+            onCheckedChange = actions.onUpdateShowChapterMarkersOnTimeline,
+            testTag = "show_chapter_markers_switch"
         )
-        if (settings.enableEmbeddedChapters) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingToggleRow(
-                title = tr("Маркеры глав на полосе прокрутки", "Chapter Markers on Timeline"),
-                subtitle = tr(
-                    "Рисовать вертикальные деления глав прямо на таймлайне плеера",
-                    "Draw vertical chapter ticks directly on the player timeline bar"
-                ),
-                checked = settings.showChapterMarkersOnTimeline,
-                onCheckedChange = actions.onUpdateShowChapterMarkersOnTimeline,
-                testTag = "show_chapter_markers_switch"
-            )
-        }
     }
 
     SettingsSectionCard(
         title = tr("Перемотка, скорость и пропуск опенинга", "Seeking, Speed & Skip Intro"),
-        subtitle = tr(
-            "Точная настройка шага перемотки и кнопки быстрого пропуска заставки",
-            "Fine-tune seek step interval and the quick intro skip button"
-        ),
         icon = Icons.Default.Speed
     ) {
         Text(
             text = tr(
-                "Шаг перемотки кнопками и двойным тапом: ${settings.seekStepSeconds} сек",
-                "Button & double-tap seek step: ${settings.seekStepSeconds} s"
+                "Шаг перемотки: ${settings.seekStepSeconds} сек",
+                "Seek step: ${settings.seekStepSeconds} s"
             ),
-            style = MaterialTheme.typography.titleSmall
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
         )
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -584,10 +489,10 @@ internal fun PlaybackSettingsPage(
 
         Text(
             text = tr(
-                "Стандартная скорость воспроизведения: ${settings.defaultPlaybackSpeed}x",
+                "Скорость воспроизведения по умолчанию: ${settings.defaultPlaybackSpeed}x",
                 "Default playback speed: ${settings.defaultPlaybackSpeed}x"
             ),
-            style = MaterialTheme.typography.titleSmall
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
         )
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -606,11 +511,7 @@ internal fun PlaybackSettingsPage(
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
         SettingToggleRow(
-            title = tr("Кнопка быстрого пропуска опенинга (+Интро)", "Quick Skip Intro Button (+Intro)"),
-            subtitle = tr(
-                "Показывать в плеере кнопку мгновенного прыжка вперёд на длину заставки",
-                "Show a one-tap button in the player to jump ahead by the intro duration"
-            ),
+            title = tr("Кнопка пропуска опенинга (+Интро)", "Skip Intro Button (+Intro)"),
             checked = settings.showSkipIntroButton,
             onCheckedChange = actions.onUpdateShowSkipIntro,
             testTag = "skip_intro_switch"
@@ -622,15 +523,7 @@ internal fun PlaybackSettingsPage(
                     "Длина пропуска опенинга: +${settings.skipIntroSeconds} сек",
                     "Skip intro duration: +${settings.skipIntroSeconds} s"
                 ),
-                style = MaterialTheme.typography.titleSmall
-            )
-            Text(
-                text = tr(
-                    "Совет: удерживайте кнопку «+${settings.skipIntroSeconds}с Опенинг» прямо в плеере для быстрой настройки произвольного интервала",
-                    "Tip: long-press the '+${settings.skipIntroSeconds}s Intro' button directly in the player to configure any custom interval"
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
             )
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -653,31 +546,52 @@ internal fun PlaybackSettingsPage(
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedButton(
                     onClick = { actions.onUpdateSkipIntroSeconds((settings.skipIntroSeconds - 5).coerceIn(5, 600)) },
-                    modifier = Modifier.weight(1f).testTag("settings_skip_intro_minus_5")
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(36.dp)
+                        .testTag("settings_skip_intro_minus_5")
                 ) {
-                    Text(tr("-5 с", "-5s"))
+                    Text(tr("-5 с", "-5s"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
                 OutlinedButton(
                     onClick = { actions.onUpdateSkipIntroSeconds((settings.skipIntroSeconds - 1).coerceIn(5, 600)) },
-                    modifier = Modifier.weight(1f).testTag("settings_skip_intro_minus_1")
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(36.dp)
+                        .testTag("settings_skip_intro_minus_1")
                 ) {
-                    Text(tr("-1 с", "-1s"))
+                    Text(tr("-1 с", "-1s"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
                 OutlinedButton(
                     onClick = { actions.onUpdateSkipIntroSeconds((settings.skipIntroSeconds + 1).coerceIn(5, 600)) },
-                    modifier = Modifier.weight(1f).testTag("settings_skip_intro_plus_1")
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(36.dp)
+                        .testTag("settings_skip_intro_plus_1")
                 ) {
-                    Text(tr("+1 с", "+1s"))
+                    Text(tr("+1 с", "+1s"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
                 OutlinedButton(
                     onClick = { actions.onUpdateSkipIntroSeconds((settings.skipIntroSeconds + 5).coerceIn(5, 600)) },
-                    modifier = Modifier.weight(1f).testTag("settings_skip_intro_plus_5")
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(36.dp)
+                        .testTag("settings_skip_intro_plus_5")
                 ) {
-                    Text(tr("+5 с", "+5s"))
+                    Text(tr("+5 с", "+5s"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
             }
         }
@@ -685,18 +599,10 @@ internal fun PlaybackSettingsPage(
 
     SettingsSectionCard(
         title = tr("Картинка в картинке (PiP) и фоновый режим", "Picture-in-Picture (PiP) & Background Audio"),
-        subtitle = tr(
-            "Работа плеера при сворачивании приложения на рабочий стол",
-            "Player behavior when minimizing the app to the home screen"
-        ),
-        icon = Icons.Default.PlayArrow
+        icon = Icons.Default.PictureInPictureAlt
     ) {
         SettingToggleRow(
             title = tr("Автоматический вход в PiP при сворачивании", "Auto-Enter PiP When Minimized"),
-            subtitle = tr(
-                "Переводить активное видео в плавающее окно поверх других приложений при жесте «Домой»",
-                "Switch active video into a floating window over other apps when swiping Home"
-            ),
             checked = settings.autoEnterPip,
             onCheckedChange = actions.onUpdateAutoEnterPip,
             testTag = "auto_pip_switch"
@@ -704,10 +610,6 @@ internal fun PlaybackSettingsPage(
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         SettingToggleRow(
             title = tr("Продолжать звук в фоне", "Continue Audio in Background"),
-            subtitle = tr(
-                "Не ставить видео на паузу при выключении экрана или переходе в другое приложение без PiP",
-                "Keep audio playing when locking the screen or switching apps without PiP"
-            ),
             checked = settings.backgroundAudioPlay,
             onCheckedChange = actions.onUpdateBackgroundAudioPlay,
             testTag = "background_audio_switch"
@@ -729,29 +631,17 @@ internal fun GesturesSettingsPage(
 
     SettingsSectionCard(
         title = tr("Сенсорные жесты в видеоплеере", "Touch Gestures in Video Player"),
-        subtitle = tr(
-            "Включайте или отключайте отдельные жесты для защиты от случайных касаний",
-            "Enable or disable individual gestures to prevent accidental touches"
-        ),
         icon = Icons.Default.TouchApp
     ) {
         SettingToggleRow(
             title = tr("Вертикальные свайпы яркости и громкости", "Vertical Brightness & Volume Swipes"),
-            subtitle = tr(
-                "Свайп вверх/вниз слева меняет яркость экрана, справа — громкость звука",
-                "Swipe up/down on the left side to adjust screen brightness, or on the right side for volume"
-            ),
             checked = settings.gesturesBrightnessVolume,
             onCheckedChange = actions.onUpdateGesturesBrightnessVolume,
             testTag = "gesture_bright_vol_switch"
         )
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         SettingToggleRow(
-            title = tr("Горизонтальный свайп для точной перемотки", "Horizontal Swipe for Fine Seeking"),
-            subtitle = tr(
-                "Проведите пальцем влево или вправо по кадру для плавного скраббинга с предпросмотром времени",
-                "Slide left or right across the video frame for smooth scrubbing with live time preview"
-            ),
+            title = tr("Горизонтальный свайп для перемотки", "Horizontal Swipe for Seeking"),
             checked = settings.gestureHorizontalSeek,
             onCheckedChange = actions.onUpdateGestureHorizontalSeek,
             testTag = "gesture_horiz_seek_switch"
@@ -762,10 +652,6 @@ internal fun GesturesSettingsPage(
                 "Двойное нажатие для перемотки (±${settings.seekStepSeconds} сек)",
                 "Double-Tap to Seek (±${settings.seekStepSeconds}s)"
             ),
-            subtitle = tr(
-                "Двойной тап по левому или правому краю кадра мгновенно перематывает видео",
-                "Double-tap the left or right edge of the frame to seek backward or forward instantly"
-            ),
             checked = settings.gestureDoubleTapSeek,
             onCheckedChange = actions.onUpdateGestureDoubleTapSeek,
             testTag = "gesture_double_tap_switch"
@@ -773,10 +659,6 @@ internal fun GesturesSettingsPage(
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         SettingToggleRow(
             title = tr("Удержание пальца для ускорения", "Long-Press Speed Boost"),
-            subtitle = tr(
-                "Временно ускорять воспроизведение пока палец удерживается на экране",
-                "Temporarily speed up playback while holding your finger on the screen"
-            ),
             checked = settings.gestureLongPress2x,
             onCheckedChange = actions.onUpdateGestureLongPress2x,
             testTag = "gesture_long_press_switch"
@@ -788,7 +670,7 @@ internal fun GesturesSettingsPage(
                     "Скорость при удержании пальца: ${settings.longPressBoostSpeed}x",
                     "Long-press boost speed: ${settings.longPressBoostSpeed}x"
                 ),
-                style = MaterialTheme.typography.titleSmall
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
             )
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -807,12 +689,8 @@ internal fun GesturesSettingsPage(
     }
 
     SettingsSectionCard(
-        title = tr("Ориентация экрана в плеере", "Player Screen Orientation"),
-        subtitle = tr(
-            "Как поворачивать экран при открытии видеофайла",
-            "How the screen rotates when opening a video file"
-        ),
-        icon = Icons.Default.TouchApp
+        title = tr("Ориентация экрана при запуске видео", "Default Video Screen Orientation"),
+        icon = Icons.Default.ScreenRotation
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             PlayerOrientationMode.entries.forEach { mode ->
@@ -839,14 +717,11 @@ internal fun GesturesSettingsPage(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(mode.localizedTitle(isEnglish), style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                mode.localizedSubtitle(isEnglish),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text(
+                            text = mode.localizedTitle(isEnglish),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                            modifier = Modifier.weight(1f)
+                        )
                         RadioButton(
                             selected = selected,
                             onClick = { actions.onUpdateDefaultPlayerOrientation(mode) }
@@ -879,45 +754,11 @@ internal fun VideoSettingsPage(
     val isEnglish = LocalIsEnglish.current
 
     SettingsSectionCard(
-        title = tr("Частота экрана (LTPO / 120 Гц) и интерполяция кадров", "Display Refresh Rate (LTPO / 120 Hz) & Frame Interpolation"),
-        subtitle = tr(
-            "Автоматическая адаптация герцовки дисплея под FPS видео и сглаживание движения (MEMC)",
-            "Automatic display refresh rate matching to video FPS and GPU motion smoothing (MEMC)"
-        ),
-        icon = Icons.Default.Speed
+        title = tr("Интерполяция кадров (MEMC)", "Frame Interpolation (MEMC)"),
+        icon = Icons.Default.MotionPhotosOn
     ) {
         SettingToggleRow(
-            title = tr("Высокая частота обновления экрана (90 / 120 / 165 Гц)", "High Display Refresh Rate (90 / 120 / 165 Hz)"),
-            subtitle = tr(
-                "Разрешить использование максимальной частоты экрана устройства для плавной анимации и видео",
-                "Allow the app to use the device's maximum display refresh rate for smooth UI and video"
-            ),
-            checked = settings.highRefreshRateEnabled,
-            onCheckedChange = actions.onUpdateHighRefreshRateEnabled,
-            testTag = "high_refresh_rate_switch"
-        )
-
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-        SettingToggleRow(
-            title = tr("Адаптивная частота экрана LTPO", "LTPO Adaptive Display Refresh Rate"),
-            subtitle = tr(
-                "Автоматически выбирать кратную частоту дисплея под FPS ролика (например, 48/72/96/120 Гц для 24p или 60/120 Гц для 60p) и снижать герцовку на паузе для экономии заряда",
-                "Automatically select an exact integer-multiple refresh rate for the video's FPS (e.g. 48/72/96/120 Hz for 24p or 60/120 Hz for 60p) and lower Hz when paused to save battery"
-            ),
-            checked = settings.ltpoAdaptiveRefreshEnabled,
-            onCheckedChange = actions.onUpdateLtpoAdaptiveRefreshEnabled,
-            testTag = "ltpo_adaptive_refresh_switch"
-        )
-
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-        SettingToggleRow(
             title = tr("Включить интерполяцию кадров (MEMC)", "Enable Frame Interpolation (MEMC)"),
-            subtitle = tr(
-                "Реалтайм генерация промежуточных кадров на GPU для повышения плавности 24/30 FPS видео (по умолчанию выключено)",
-                "Real-time GPU intermediate frame synthesis for smoother 24/30 FPS video (off by default)"
-            ),
             checked = settings.frameInterpolationEnabled,
             onCheckedChange = actions.onUpdateFrameInterpolationEnabled,
             testTag = "frame_interpolation_enable_switch"
@@ -925,7 +766,7 @@ internal fun VideoSettingsPage(
 
         Text(
             text = tr("Профиль интерполяции кадров", "Frame Interpolation Profile"),
-            style = MaterialTheme.typography.titleSmall
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
         )
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             FrameInterpolationMode.entries.forEach { mode ->
@@ -956,14 +797,11 @@ internal fun VideoSettingsPage(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(mode.localizedTitle(isEnglish), style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                mode.localizedSubtitle(isEnglish),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text(
+                            text = mode.localizedTitle(isEnglish),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                            modifier = Modifier.weight(1f)
+                        )
                         RadioButton(
                             selected = selected,
                             onClick = { actions.onUpdateFrameInterpolationMode(mode) }
@@ -975,11 +813,7 @@ internal fun VideoSettingsPage(
     }
 
     SettingsSectionCard(
-        title = tr("Декодер видео (Media3 / ExoPlayer)", "Video Decoder (Media3 / ExoPlayer)"),
-        subtitle = tr(
-            "Управление аппаратным ускорением 4K HEVC 10-bit / AV1 / VP9",
-            "Hardware acceleration mode for 4K HEVC 10-bit / AV1 / VP9"
-        ),
+        title = tr("Декодер видео", "Video Decoder"),
         icon = Icons.Default.Memory
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1007,14 +841,11 @@ internal fun VideoSettingsPage(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(mode.localizedTitle(isEnglish), style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                mode.localizedSubtitle(isEnglish),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text(
+                            text = mode.localizedTitle(isEnglish),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                            modifier = Modifier.weight(1f)
+                        )
                         RadioButton(
                             selected = selected,
                             onClick = { actions.onUpdateDecoderMode(mode) }
@@ -1028,7 +859,7 @@ internal fun VideoSettingsPage(
 
         Text(
             text = tr("Масштаб кадра по умолчанию", "Default Aspect Ratio & Scale"),
-            style = MaterialTheme.typography.titleSmall
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
         )
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1046,19 +877,11 @@ internal fun VideoSettingsPage(
     }
 
     SettingsSectionCard(
-        title = tr("Anime4K GLSL — Шейдерный апскейлинг", "Anime4K GLSL — Real-Time Shader Upscaling"),
-        subtitle = tr(
-            "Двухпроходное восстановление контуров и повышение чёткости в реальном времени на GPU (по умолчанию выключено)",
-            "Two-pass real-time GPU line reconstruction and sharpening (off by default)"
-        ),
+        title = tr("Anime4K — Реалтайм апскейлинг", "Anime4K — Real-Time Upscaling"),
         icon = Icons.Default.AutoAwesome
     ) {
         SettingToggleRow(
             title = stringResource(R.string.anime4k_enable),
-            subtitle = tr(
-                "Активировать шейдерный конвейер OpenGL ES при воспроизведении",
-                "Activate the OpenGL ES shader pipeline during video playback"
-            ),
             checked = settings.anime4kEnabled,
             onCheckedChange = actions.onUpdateAnime4KEnabled,
             testTag = "anime4k_enable_switch"
@@ -1092,14 +915,11 @@ internal fun VideoSettingsPage(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(preset.localizedTitle(isEnglish), style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                preset.localizedDescription(isEnglish),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text(
+                            text = preset.localizedTitle(isEnglish),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                            modifier = Modifier.weight(1f)
+                        )
                         RadioButton(
                             selected = selected,
                             onClick = {
@@ -1120,7 +940,7 @@ internal fun VideoSettingsPage(
                 Text(stringResource(R.string.anime4k_strength), style = MaterialTheme.typography.bodyMedium)
                 Text(
                     text = "${(settings.anime4kStrength * 100).roundToInt()}%",
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.primary
                 )
             }
@@ -1145,22 +965,18 @@ internal fun AudioSettingsPage(
     actions: SettingsActions
 ) {
     val boostPresets = listOf(100, 125, 150, 175, 200)
-    val btOffsetPresets = listOf(-250L, -200L, -150L, -100L, -60L, -45L, 0L)
+    val fineTuneOffsetMs = if (settings.bluetoothAudioOffsetMs == BluetoothAudioSyncController.DEFAULT_BT_OFFSET_MS) {
+        0L
+    } else {
+        settings.bluetoothAudioOffsetMs.coerceIn(-300L, 300L)
+    }
 
     SettingsSectionCard(
         title = tr("Внешние звуковые дорожки и озвучки", "External Audio Tracks & Voiceovers"),
-        subtitle = tr(
-            "Автоматическое сопоставление файлов из папок Rus Sound, Audio, Озвучка по номеру серии",
-            "Automatic episode-matched audio binding from Rus Sound, Audio, and Dub subfolders"
-        ),
         icon = Icons.Default.GraphicEq
     ) {
         SettingToggleRow(
             title = tr("Автоподключение внешних аудиодорожек", "Auto-Bind External Audio Tracks"),
-            subtitle = tr(
-                "Сканировать соседние папки и автоматически прикреплять внешние .mka / .mp3 / .flac / .ac3 к видео",
-                "Scan sibling folders and automatically attach matching .mka / .mp3 / .flac / .ac3 files to episodes"
-            ),
             checked = settings.autoBindExternalAudio,
             onCheckedChange = actions.onUpdateAutoBindAudio,
             testTag = "auto_bind_audio_switch"
@@ -1168,10 +984,6 @@ internal fun AudioSettingsPage(
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         SettingToggleRow(
             title = tr("Приоритет внешней озвучки при запуске", "Prefer External Voiceover on Startup"),
-            subtitle = tr(
-                "Автоматически выбирать найденную внешнюю русскую озвучку вместо встроенной японской/английской дорожки",
-                "Automatically select discovered external voiceover tracks instead of the embedded audio track"
-            ),
             checked = settings.preferExternalAudioOnStart,
             onCheckedChange = actions.onUpdatePreferExternalAudioOnStart,
             testTag = "prefer_external_audio_switch"
@@ -1179,96 +991,101 @@ internal fun AudioSettingsPage(
     }
 
     SettingsSectionCard(
-        title = tr("Bluetooth-синхронизация (A2DP / LE Audio / TWS)", "Bluetooth Audio Sync (A2DP / LE Audio / TWS)"),
-        subtitle = tr(
-            "Автоматическая компенсация задержки беспроводных наушников и колонок без обрезки звука",
-            "Automatic wireless headphone & speaker latency compensation without clipping PCM samples"
-        ),
+        title = tr("Синхронизация звука Bluetooth", "Bluetooth Audio Sync"),
         icon = Icons.Default.BluetoothAudio
     ) {
-        SettingToggleRow(
-            title = tr("Автоподстройка задержки для Bluetooth", "Automatic Bluetooth Latency Compensation"),
-            subtitle = tr(
-                "Автоматически определять подключение Bluetooth-наушников (A2DP / BLE Audio) в реальном времени и сдвигать часы видео для идеального совпадения губ и речи",
-                "Detect Bluetooth headphones (A2DP / BLE Audio) in real time and shift the video clock for accurate lip-sync"
-            ),
-            checked = settings.bluetoothAudioAutoSync,
-            onCheckedChange = actions.onUpdateBluetoothAudioAutoSync,
-            testTag = "bluetooth_auto_sync_switch"
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = tr("Ручная коррекция к авто-задержке Bluetooth", "Manual Fine-Tune for Auto Bluetooth Delay"),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = AudioDelayProcessor.formatDelayLabel(fineTuneOffsetMs),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.testTag("bluetooth_fine_tune_value_text")
+            )
+        }
+
+        Slider(
+            value = fineTuneOffsetMs.toFloat(),
+            onValueChange = { actions.onUpdateBluetoothAudioOffsetMs(((it / 5f).roundToInt() * 5L).coerceIn(-300L, 300L)) },
+            valueRange = -300f..300f,
+            modifier = Modifier.testTag("bluetooth_offset_slider")
         )
 
-        if (settings.bluetoothAudioAutoSync) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedButton(
+                onClick = { actions.onUpdateBluetoothAudioOffsetMs((fineTuneOffsetMs - 50L).coerceIn(-300L, 300L)) },
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(36.dp)
+                    .testTag("bt_offset_minus_50")
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = tr("Базовая компенсация для Bluetooth A2DP", "Base Compensation for Bluetooth A2DP"),
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                    Text(
-                        text = tr(
-                            "Применяется когда звук идёт через Bluetooth (выберите -45 мс для игрового режима наушников)",
-                            "Applied when audio routes through Bluetooth (select -45 ms for headphone Gaming Mode)"
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = tr("${settings.bluetoothAudioOffsetMs} мс", "${settings.bluetoothAudioOffsetMs} ms"),
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Text(tr("-50 мс", "-50ms"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
             }
-
-            Slider(
-                value = settings.bluetoothAudioOffsetMs.toFloat(),
-                onValueChange = { actions.onUpdateBluetoothAudioOffsetMs((it / 5f).roundToInt() * 5L) },
-                valueRange = -400f..0f,
-                modifier = Modifier.testTag("bluetooth_offset_slider")
-            )
-
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            OutlinedButton(
+                onClick = { actions.onUpdateBluetoothAudioOffsetMs((fineTuneOffsetMs - 10L).coerceIn(-300L, 300L)) },
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(36.dp)
+                    .testTag("bt_offset_minus_10")
             ) {
-                btOffsetPresets.forEach { presetMs ->
-                    FilterChip(
-                        selected = settings.bluetoothAudioOffsetMs == presetMs,
-                        onClick = { actions.onUpdateBluetoothAudioOffsetMs(presetMs) },
-                        label = {
-                            Text(
-                                when (presetMs) {
-                                    -150L -> tr("-150 мс (Стандарт TWS)", "-150 ms (Standard TWS)")
-                                    -200L -> tr("-200 мс (Кодек LDAC/AAC)", "-200 ms (LDAC/AAC Codec)")
-                                    -100L -> tr("-100 мс (aptX LL)", "-100 ms (aptX LL)")
-                                    -60L -> tr("-60 мс (LE Audio)", "-60 ms (LE Audio)")
-                                    -45L -> tr("-45 мс (Игровой режим BT)", "-45 ms (Gaming Mode BT)")
-                                    0L -> tr("0 мс (Выкл)", "0 ms (Off)")
-                                    else -> tr("${presetMs} мс", "${presetMs} ms")
-                                }
-                            )
-                        },
-                        modifier = Modifier.testTag("bt_offset_preset_$presetMs")
-                    )
-                }
+                Text(tr("-10 мс", "-10ms"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
+            }
+            FilledTonalButton(
+                onClick = { actions.onUpdateBluetoothAudioOffsetMs(0L) },
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(36.dp)
+                    .testTag("bt_offset_reset")
+            ) {
+                Text(tr("0 мс", "0ms"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
+            }
+            OutlinedButton(
+                onClick = { actions.onUpdateBluetoothAudioOffsetMs((fineTuneOffsetMs + 10L).coerceIn(-300L, 300L)) },
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(36.dp)
+                    .testTag("bt_offset_plus_10")
+            ) {
+                Text(tr("+10 мс", "+10ms"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
+            }
+            OutlinedButton(
+                onClick = { actions.onUpdateBluetoothAudioOffsetMs((fineTuneOffsetMs + 50L).coerceIn(-300L, 300L)) },
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(36.dp)
+                    .testTag("bt_offset_plus_50")
+            ) {
+                Text(tr("+50 мс", "+50ms"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
             }
         }
     }
 
     SettingsSectionCard(
         title = tr("Программное усиление громкости (Audio Boost)", "Software Volume Boost (Audio Boost)"),
-        subtitle = tr(
-            "Усиление тихих озвучек до 200% с защитой от хрипов и клиппинга (Soft-Knee Limiter)",
-            "Boost quiet voiceovers up to 200% with soft-knee limiter clipping protection"
-        ),
-        icon = Icons.Default.GraphicEq
+        icon = Icons.Default.VolumeUp
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1277,11 +1094,11 @@ internal fun AudioSettingsPage(
         ) {
             Text(
                 text = tr("Уровень громкости по умолчанию", "Default Volume Level"),
-                style = MaterialTheme.typography.titleSmall
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
             )
             Text(
                 text = "${settings.defaultAudioBoostPercent}%",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 color = if (settings.defaultAudioBoostPercent > 100) {
                     MaterialTheme.colorScheme.primary
                 } else {
@@ -1327,18 +1144,10 @@ internal fun SubtitlesSettingsPage(
 
     SettingsSectionCard(
         title = tr("Автоподключение и отображение субтитров", "Subtitle Auto-Binding & Styling"),
-        subtitle = tr(
-            "Поддержка встроенных и внешних .SRT / .ASS / .SSA / .VTT с очисткой тегов форматирования",
-            "Support for embedded and external .SRT / .ASS / .SSA / .VTT with formatting tag cleanup"
-        ),
         icon = Icons.Default.Subtitles
     ) {
         SettingToggleRow(
             title = tr("Автоподключение внешних субтитров", "Auto-Bind External Subtitles"),
-            subtitle = tr(
-                "Автоматически находить субтитры в текущей папке и подпапках Subs / Subtitles / Rus Sub",
-                "Automatically discover subtitles in the current folder and Subs / Subtitles / Rus Sub subfolders"
-            ),
             checked = settings.autoBindExternalSubtitles,
             onCheckedChange = actions.onUpdateAutoBindSubs,
             testTag = "auto_bind_subs_switch"
@@ -1350,10 +1159,10 @@ internal fun SubtitlesSettingsPage(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(12.dp))
                 .background(Color(0xFF0A0F18))
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
-                .padding(vertical = 22.dp, horizontal = 16.dp),
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+                .padding(vertical = 18.dp, horizontal = 14.dp),
             contentAlignment = Alignment.Center
         ) {
             val bgColor = if (settings.subtitleBackgroundEnabled) {
@@ -1367,7 +1176,7 @@ internal fun SubtitlesSettingsPage(
                     "Subtitle appearance preview (1080p / 4K)"
                 ),
                 color = Color(settings.subtitleColorArgb),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
                     .background(bgColor)
@@ -1380,7 +1189,7 @@ internal fun SubtitlesSettingsPage(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(stringResource(R.string.subtitle_font_size_label))
+            Text(stringResource(R.string.subtitle_font_size_label), style = MaterialTheme.typography.bodyMedium)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(
                     onClick = { actions.onUpdateSubtitleFontSize(settings.subtitleFontSizeSp - 2f) }
@@ -1389,7 +1198,7 @@ internal fun SubtitlesSettingsPage(
                 }
                 Text(
                     text = "${settings.subtitleFontSizeSp.toInt()} sp",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.primary
                 )
                 IconButton(
@@ -1424,10 +1233,6 @@ internal fun SubtitlesSettingsPage(
 
         SettingToggleRow(
             title = stringResource(R.string.subtitle_bg_label),
-            subtitle = tr(
-                "Полупрозрачная плашка позади текста для идеальной читаемости на светлых сценах",
-                "Translucent dark box behind subtitle text for clear readability on bright scenes"
-            ),
             checked = settings.subtitleBackgroundEnabled,
             onCheckedChange = actions.onUpdateSubtitleBg,
             testTag = "subtitle_bg_switch"
@@ -1472,22 +1277,6 @@ internal fun StorageSettingsPage(
 
     SettingsSectionCard(
         title = tr("Доступ к памяти и подключенные папки", "Storage Access & Attached Folders"),
-        subtitle = if (hasAllFilesAccess) {
-            tr(
-                "Полный доступ ко всему хранилищу активен (включая внешние .mka и .ass)",
-                "Full storage access is active (including external .mka audio and .ass subtitles)"
-            )
-        } else if (hasStorageAccess) {
-            tr(
-                "Базовый доступ к видео активен. Для автопоиска внешних .mka/.ass рекомендуется полный доступ",
-                "Basic video access is active. Full storage access is recommended for automatic .mka/.ass discovery"
-            )
-        } else {
-            tr(
-                "Разрешение на чтение памяти ещё не предоставлено",
-                "Storage read permission has not been granted yet"
-            )
-        },
         icon = Icons.Default.Security
     ) {
         Row(
@@ -1523,7 +1312,7 @@ internal fun StorageSettingsPage(
                     "Подключенные вручную папки (${libraryRoots.size})",
                     "Manually Attached Folders (${libraryRoots.size})"
                 ),
-                style = MaterialTheme.typography.titleSmall
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
             )
             libraryRoots.forEach { root ->
                 Surface(
@@ -1537,10 +1326,10 @@ internal fun StorageSettingsPage(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(root.displayName, style = MaterialTheme.typography.titleSmall)
+                            Text(root.displayName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium))
                             Text(
                                 root.treeUri,
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -1560,19 +1349,11 @@ internal fun StorageSettingsPage(
     }
 
     SettingsSectionCard(
-        title = tr("Умные фильтры сканирования", "Smart Library Scan Filters"),
-        subtitle = tr(
-            "Отсеивание системного мусора, коротких клипов и записей экрана",
-            "Filter out system clutter, short clips, and screen recordings"
-        ),
+        title = tr("Фильтры сканирования", "Library Scan Filters"),
         icon = Icons.Default.Storage
     ) {
         SettingToggleRow(
             title = tr("Скрывать системные папки с файлом .nomedia", "Ignore System Folders with .nomedia"),
-            subtitle = tr(
-                "Игнорировать кэш мессенджеров и игр при прямом сканировании хранилища",
-                "Skip messenger and game caches during direct storage scanning"
-            ),
             checked = settings.ignoreNomediaFolders,
             onCheckedChange = actions.onUpdateIgnoreNomediaFolders,
             testTag = "ignore_nomedia_switch"
@@ -1580,10 +1361,6 @@ internal fun StorageSettingsPage(
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         SettingToggleRow(
             title = tr("Скрывать папку Камеры (DCIM) и Записи экрана", "Hide Camera (DCIM) & Screen Recordings"),
-            subtitle = tr(
-                "Оставить в библиотеке только фильмы, сериалы, аниме и загрузки",
-                "Keep only movies, series, anime, and downloads in your library"
-            ),
             checked = settings.excludeCameraAndScreenshots,
             onCheckedChange = actions.onUpdateExcludeCameraAndScreenshots,
             testTag = "exclude_camera_switch"
@@ -1595,7 +1372,7 @@ internal fun StorageSettingsPage(
                 "Минимальный размер видеофайла: ${if (settings.minVideoSizeMb == 0) "Без лимита" else "от ${settings.minVideoSizeMb} МБ"}",
                 "Minimum video file size: ${if (settings.minVideoSizeMb == 0) "No limit" else "${settings.minVideoSizeMb}+ MB"}"
             ),
-            style = MaterialTheme.typography.titleSmall
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
         )
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1614,10 +1391,6 @@ internal fun StorageSettingsPage(
 
     SettingsSectionCard(
         title = "${stringResource(R.string.exclusions_title)} (${hiddenFolders.size})",
-        subtitle = tr(
-            "Папки из этого списка и все их подпапки полностью исключены из библиотеки",
-            "Folders in this list and all their subfolders are excluded from the library"
-        ),
         icon = Icons.Default.VisibilityOff
     ) {
         FilledTonalButton(
@@ -1654,13 +1427,13 @@ internal fun StorageSettingsPage(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = hidden.folderName,
-                                style = MaterialTheme.typography.titleSmall,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
                                 text = hidden.displayPath,
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -1679,18 +1452,10 @@ internal fun StorageSettingsPage(
 
     SettingsSectionCard(
         title = tr("Обслуживание и сброс", "Maintenance & Reset"),
-        subtitle = tr(
-            "Настройки удаления файлов, очистка истории просмотра и возврат настроек по умолчанию",
-            "File deletion preferences, clear watch history, or restore all settings to defaults"
-        ),
         icon = Icons.Default.RestartAlt
     ) {
         SettingToggleRow(
             title = tr("Запрашивать подтверждение перед удалением", "Ask Confirmation Before Deleting"),
-            subtitle = tr(
-                "Показывать предупреждение перед безвозвратным удалением папок и серий с накопителя",
-                "Show warning dialog before permanently deleting folders and episodes from storage"
-            ),
             checked = !settings.skipDeleteConfirmation,
             onCheckedChange = { askConfirm -> actions.onUpdateSkipDeleteConfirmation(!askConfirm) },
             testTag = "confirm_before_delete_switch"
@@ -1733,12 +1498,12 @@ internal fun StorageSettingsPage(
 @Composable
 internal fun SettingsSectionCard(
     title: String,
-    subtitle: String,
+    subtitle: String? = null,
     icon: ImageVector = Icons.Default.HighQuality,
     content: @Composable () -> Unit
 ) {
     Card(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -1746,8 +1511,8 @@ internal fun SettingsSectionCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -1757,21 +1522,22 @@ internal fun SettingsSectionCard(
                     imageVector = icon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(20.dp)
                 )
                 Column {
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.titleMedium
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold)
                     )
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (!subtitle.isNullOrBlank()) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
-            Spacer(modifier = Modifier.height(2.dp))
             content()
         }
     }
@@ -1780,7 +1546,7 @@ internal fun SettingsSectionCard(
 @Composable
 internal fun SettingToggleRow(
     title: String,
-    subtitle: String,
+    subtitle: String? = null,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     testTag: String
@@ -1789,17 +1555,22 @@ internal fun SettingToggleRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onCheckedChange(!checked) }
-            .padding(vertical = 4.dp),
+            .padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.titleSmall)
             Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = title,
+                style = MaterialTheme.typography.bodyMedium
             )
+            if (!subtitle.isNullOrBlank()) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
         Spacer(modifier = Modifier.width(12.dp))
         Switch(

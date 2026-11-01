@@ -88,48 +88,27 @@ class BluetoothAudioSyncController(
         ): Long {
             if (!autoSyncEnabled || !route.isBluetoothActive) return 0L
 
-            val clampedUserOffset = clampBluetoothOffsetMs(userConfiguredA2dpOffsetMs)
-            // If the user explicitly selected a non-default preset (e.g. -45ms Gaming Mode, -60ms LE Audio, -200ms LDAC, or 0ms),
-            // honor their selected preset directly so proprietary TWS Gaming Mode works even when Android HAL caches mixer latency.
-            if (clampedUserOffset != DEFAULT_BT_OFFSET_MS) {
-                return clampedUserOffset
-            }
-
             val measured = when {
                 route.measuredLatencyMs > 0L -> route.measuredLatencyMs
                 route.halOutputLatencyMs > 0 -> route.halOutputLatencyMs.toLong()
                 else -> 0L
             }
 
-            if (measured > 0L) {
-                return -clampBluetoothOffsetMs(measured)
+            val baseAutoOffsetMs = when {
+                route.isGamingMode -> {
+                    if (measured in 1L..85L) -measured else -45L
+                }
+                measured > 0L -> -clampBluetoothOffsetMs(measured)
+                else -> route.profile.defaultCompensationMs
             }
 
-            return when (route.profile) {
-                BluetoothAudioProfile.NONE -> 0L
-                BluetoothAudioProfile.A2DP -> clampedUserOffset
-                BluetoothAudioProfile.LE_AUDIO -> {
-                    if (clampedUserOffset == DEFAULT_BT_OFFSET_MS) {
-                        BluetoothAudioProfile.LE_AUDIO.defaultCompensationMs
-                    } else {
-                        (clampedUserOffset * 40L / 100L).coerceIn(MIN_BT_OFFSET_MS, MAX_BT_OFFSET_MS)
-                    }
-                }
-                BluetoothAudioProfile.HEARING_AID -> {
-                    if (clampedUserOffset == DEFAULT_BT_OFFSET_MS) {
-                        BluetoothAudioProfile.HEARING_AID.defaultCompensationMs
-                    } else {
-                        (clampedUserOffset * 55L / 100L).coerceIn(MIN_BT_OFFSET_MS, MAX_BT_OFFSET_MS)
-                    }
-                }
-                BluetoothAudioProfile.SCO -> {
-                    if (clampedUserOffset == DEFAULT_BT_OFFSET_MS) {
-                        BluetoothAudioProfile.SCO.defaultCompensationMs
-                    } else {
-                        clampedUserOffset
-                    }
-                }
+            val fineTuneMs = if (userConfiguredA2dpOffsetMs == DEFAULT_BT_OFFSET_MS) {
+                0L
+            } else {
+                userConfiguredA2dpOffsetMs.coerceIn(-300L, 300L)
             }
+
+            return clampBluetoothOffsetMs(baseAutoOffsetMs + fineTuneMs)
         }
 
         /**

@@ -933,39 +933,50 @@ fun PlayerScreen(
 
         if (showHud || hudAlphaAnim.value > 0.001f) {
             val isEnglish = LocalIsEnglish.current
-            val baseDensity = LocalDensity.current
-            val effectiveHudScale = rememberPlayerEffectiveScale(settings)
-            val scaledDensity = remember(baseDensity, effectiveHudScale) {
-                Density(
-                    density = baseDensity.density * effectiveHudScale,
-                    fontScale = baseDensity.fontScale * effectiveHudScale
-                )
-            }
-            CompositionLocalProvider(LocalDensity provides scaledDensity) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            alpha = hudAlphaAnim.value
+            val currentConfigOrientation = LocalConfiguration.current.orientation
+            val toggleOrientationOneTap: () -> Unit = {
+                val currentlyHorizontal = when (orientationMode) {
+                    PlayerOrientationMode.LANDSCAPE -> true
+                    PlayerOrientationMode.PORTRAIT -> false
+                    PlayerOrientationMode.VIDEO_ASPECT -> {
+                        if (playbackState.videoWidth > 0 && playbackState.videoHeight > 0) {
+                            playbackState.videoWidth >= playbackState.videoHeight
+                        } else {
+                            currentConfigOrientation != android.content.res.Configuration.ORIENTATION_PORTRAIT
                         }
-                        .background(
-                            Brush.verticalGradient(
-                                0.0f to Color.Black.copy(alpha = 0.82f),
-                                0.28f to Color.Transparent,
-                                0.68f to Color.Transparent,
-                                1.0f to Color.Black.copy(alpha = 0.92f)
-                            )
+                    }
+                    PlayerOrientationMode.AUTO -> {
+                        currentConfigOrientation != android.content.res.Configuration.ORIENTATION_PORTRAIT
+                    }
+                }
+                orientationMode = orientationMode.toggleLandscapePortrait(currentlyHorizontal)
+                interactionTick++
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        alpha = hudAlphaAnim.value
+                    }
+                    .background(
+                        Brush.verticalGradient(
+                            0.0f to Color.Black.copy(alpha = 0.82f),
+                            0.28f to Color.Transparent,
+                            0.68f to Color.Transparent,
+                            1.0f to Color.Black.copy(alpha = 0.92f)
                         )
-                        .windowInsetsPadding(WindowInsets.displayCutout)
-                ) {
-                // TOP BAR (compact, grouped controls + direct Episodes/Chapters access)
+                    )
+                    .windowInsetsPadding(WindowInsets.displayCutout)
+            ) {
+                // TOP BAR (compact, grouped controls + resolution badge + direct Episodes access)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.TopCenter)
                         .padding(horizontal = 8.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     IconButton(
                         onClick = onBack,
@@ -1018,6 +1029,24 @@ fun PlayerScreen(
                     }
                     val hudPillBg = if (framelessHud) Color.Transparent else Color.White.copy(alpha = 0.14f)
 
+                    // Clear video resolution badge (4K, 1080p, 720p, etc.)
+                    val resolutionBadge = remember(
+                        playbackState.videoWidth,
+                        playbackState.videoHeight,
+                        playbackState.currentEpisode?.resolutionBadge
+                    ) {
+                        com.example.model.VideoResolutionFormatter.badgeFromDimensions(
+                            playbackState.videoWidth,
+                            playbackState.videoHeight
+                        ) ?: playbackState.currentEpisode?.resolutionBadge
+                    }
+                    if (resolutionBadge != null) {
+                        com.example.ui.components.ResolutionBadgeChip(
+                            badge = resolutionBadge,
+                            modifier = Modifier.testTag("player_resolution_badge")
+                        )
+                    }
+
                     // Direct immediate access to Episodes in Player Top Bar
                     if (settings.showEpisodesButtonInHud) {
                         val epButtonLabel = if (playbackState.playlist.size > 1) {
@@ -1062,58 +1091,13 @@ fun PlayerScreen(
                         }
                     }
 
-                    // Decoder button moved to Top Bar for fast access
-                    Surface(
-                        color = when {
-                            framelessHud -> Color.Transparent
-                            accentFreeHud -> Color.White.copy(alpha = 0.16f)
-                            playbackState.isHardwareAccelerated -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f)
-                            else -> Color.White.copy(alpha = 0.14f)
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        border = hudPillBorder,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable {
-                                interactionTick++
-                                activeSheet = ActivePlayerSheet.DECODER
-                            }
-                            .testTag("player_top_decoder_button")
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Memory,
-                                contentDescription = tr(
-                                    "Декодер: ${playbackState.activeDecoderMode.shortBadge}",
-                                    "Decoder: ${playbackState.activeDecoderMode.shortBadge}"
-                                ),
-                                tint = hudAccentColor,
-                                modifier = Modifier.size(15.dp)
-                            )
-                            Text(
-                                text = playbackState.activeDecoderMode.shortBadge,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color.White,
-                                maxLines = 1
-                            )
-                        }
-                    }
-
                     // Grouped compact top-right utility buttons
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(0.dp)
                     ) {
                         IconButton(
-                            onClick = {
-                                orientationMode = orientationMode.next()
-                                interactionTick++
-                            },
+                            onClick = toggleOrientationOneTap,
                             modifier = Modifier.testTag("player_orientation_button")
                         ) {
                             Icon(
@@ -1211,7 +1195,7 @@ fun PlayerScreen(
                         controlsTheme = settings.playerControlsTheme,
                         positionMsFlow = positionMsFlow,
                         durationMs = playbackState.durationMs,
-                        chapters = if (settings.enableEmbeddedChapters) playbackState.chapters else emptyList(),
+                        chapters = playbackState.chapters,
                         showChapterMarkers = settings.showChapterMarkersOnTimeline,
                         abLoopStartMs = playbackState.abLoopStartMs,
                         abLoopEndMs = playbackState.abLoopEndMs,
@@ -1285,9 +1269,7 @@ fun PlayerScreen(
                                     }
                                 }
                                 PlayerQuickAction.SKIP_INTRO -> onSeekByMs(settings.skipIntroSeconds * 1000L)
-                                PlayerQuickAction.ORIENTATION -> {
-                                    orientationMode = orientationMode.next()
-                                }
+                                PlayerQuickAction.ORIENTATION -> toggleOrientationOneTap()
                                 PlayerQuickAction.LOCK -> {
                                     isScreenLocked = true
                                     lockedPillVisible = true
@@ -1319,18 +1301,15 @@ fun PlayerScreen(
                     )
                 }
             }
-            }
         }
     }
 
     if (activeSheet != ActivePlayerSheet.NONE) {
         val baseSheetDensity = LocalDensity.current
-        val effectiveSheetScale = rememberPlayerEffectiveScale(settings)
-        val compactSheetDensity = remember(baseSheetDensity, effectiveSheetScale) {
-            val factor = (effectiveSheetScale * 0.88f).coerceIn(0.72f, 1.05f)
+        val compactSheetDensity = remember(baseSheetDensity) {
             Density(
-                density = baseSheetDensity.density * factor,
-                fontScale = baseSheetDensity.fontScale * (factor * 0.94f)
+                density = baseSheetDensity.density * 0.90f,
+                fontScale = baseSheetDensity.fontScale * 0.88f
             )
         }
         CompositionLocalProvider(LocalDensity provides compactSheetDensity) {

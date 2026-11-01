@@ -609,9 +609,14 @@ internal fun SkipIntroConfigModalSheet(
                         onUpdateSkipIntroSeconds(next)
                         customInputText = next.toString()
                     },
-                    modifier = Modifier.weight(1f).testTag("skip_intro_minus_5_btn")
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(36.dp)
+                        .testTag("skip_intro_minus_5_btn")
                 ) {
-                    Text(tr("-5 с", "-5s"), style = MaterialTheme.typography.labelSmall)
+                    Text(tr("-5 с", "-5s"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
                 OutlinedButton(
                     onClick = {
@@ -619,9 +624,14 @@ internal fun SkipIntroConfigModalSheet(
                         onUpdateSkipIntroSeconds(next)
                         customInputText = next.toString()
                     },
-                    modifier = Modifier.weight(1f).testTag("skip_intro_minus_1_btn")
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(36.dp)
+                        .testTag("skip_intro_minus_1_btn")
                 ) {
-                    Text(tr("-1 с", "-1s"), style = MaterialTheme.typography.labelSmall)
+                    Text(tr("-1 с", "-1s"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
                 OutlinedButton(
                     onClick = {
@@ -629,9 +639,14 @@ internal fun SkipIntroConfigModalSheet(
                         onUpdateSkipIntroSeconds(next)
                         customInputText = next.toString()
                     },
-                    modifier = Modifier.weight(1f).testTag("skip_intro_plus_1_btn")
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(36.dp)
+                        .testTag("skip_intro_plus_1_btn")
                 ) {
-                    Text(tr("+1 с", "+1s"), style = MaterialTheme.typography.labelSmall)
+                    Text(tr("+1 с", "+1s"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
                 OutlinedButton(
                     onClick = {
@@ -639,9 +654,14 @@ internal fun SkipIntroConfigModalSheet(
                         onUpdateSkipIntroSeconds(next)
                         customInputText = next.toString()
                     },
-                    modifier = Modifier.weight(1f).testTag("skip_intro_plus_5_btn")
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(36.dp)
+                        .testTag("skip_intro_plus_5_btn")
                 ) {
-                    Text(tr("+5 с", "+5s"), style = MaterialTheme.typography.labelSmall)
+                    Text(tr("+5 с", "+5s"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
             }
 

@@ -95,16 +95,12 @@ internal fun TorrServerSettingsPage(
     // 1. TorrServer Connection Card
     SettingsSectionCard(
         title = tr("Подключение к TorrServer (MatriX)", "TorrServer (MatriX) Connection"),
-        subtitle = tr(
-            "Просмотр торрентов и magnet-ссылок в реальном времени без ожидания полной загрузки",
-            "Stream torrents and magnet links in real time without waiting for full downloads"
-        ),
         icon = Icons.Default.Cloud
     ) {
         // Quick address presets
         Text(
             text = tr("Быстрый выбор адреса сервера", "Quick Server Address Presets"),
-            style = MaterialTheme.typography.titleSmall
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
         )
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -301,10 +297,6 @@ internal fun TorrServerSettingsPage(
                 "Мгновенный запуск одиночных фильмов",
                 "Instant Playback for Single-File Movies"
             ),
-            subtitle = tr(
-                "Если в торренте всего 1 видеофайл, сразу запускать плеер без показа списка файлов",
-                "If a torrent contains only 1 video file, start playback immediately without showing the file picker"
-            ),
             checked = settings.torrServerAutoPlaySingle,
             onCheckedChange = actions.onUpdateTorrServerAutoPlaySingle,
             testTag = "torrserver_autoplay_single_switch"
@@ -314,10 +306,6 @@ internal fun TorrServerSettingsPage(
 
         SettingToggleRow(
             title = tr("Сохранять открытые раздачи в списке TorrServer", "Save Opened Torrents to TorrServer List"),
-            subtitle = tr(
-                "Позволяет быстро вернуться к сериалу через кнопку «Торренты сервера»",
-                "Quickly resume a series later via the 'Server Torrents' sheet"
-            ),
             checked = settings.torrServerSaveToDb,
             onCheckedChange = actions.onUpdateTorrServerSaveToDb,
             testTag = "torrserver_save_db_switch"
@@ -327,18 +315,10 @@ internal fun TorrServerSettingsPage(
     // 2. Tracker Search & RuTracker / Rutor / Torznab Configuration
     SettingsSectionCard(
         title = tr("Поиск по трекерам (RuTracker, Rutor, Аниме)", "Tracker Search (RuTracker, Rutor, Anime)"),
-        subtitle = tr(
-            "Встроенные публичные зеркала + подключение своего Jackett / Prowlarr / Torznab для закрытых трекеров",
-            "Built-in public mirrors + custom Jackett / Prowlarr / Torznab integration for private trackers"
-        ),
         icon = Icons.Default.Search
     ) {
         SettingToggleRow(
             title = tr("Прямой поиск по Rutor и публичным агрегаторам", "Direct Search on Rutor & Public Aggregators"),
-            subtitle = tr(
-                "Искать русскоязычные раздачи фильмов, сериалов и 4K UHD напрямую без ключа API",
-                "Search movies, series, and 4K UHD releases directly without an API key"
-            ),
             checked = settings.enableDirectRutorSearch,
             onCheckedChange = actions.onUpdateEnableDirectRutorSearch,
             testTag = "enable_direct_rutor_switch"
@@ -348,10 +328,6 @@ internal fun TorrServerSettingsPage(
 
         SettingToggleRow(
             title = tr("Прямой поиск по аниме-трекерам (AniLibria / Nyaa)", "Direct Anime Tracker Search (AniLibria / Nyaa)"),
-            subtitle = tr(
-                "Автоматически искать релизы с русской озвучкой и субтитрами при поиске аниме",
-                "Automatically search anime releases with voiceovers and subtitles"
-            ),
             checked = settings.enableAnimeTrackerSearch,
             onCheckedChange = actions.onUpdateEnableAnimeTrackerSearch,
             testTag = "enable_anime_tracker_switch"
@@ -361,10 +337,6 @@ internal fun TorrServerSettingsPage(
 
         SettingToggleRow(
             title = tr("Обход блокировок зеркал через DNS-over-HTTPS (DoH)", "Bypass Mirror Blocks via DNS-over-HTTPS (DoH)"),
-            subtitle = tr(
-                "Разрешать домены трекеров через зашифрованный Google / Cloudflare DNS, если провайдер блокирует обычный DNS",
-                "Resolve tracker domains via encrypted Google / Cloudflare DNS when standard ISP DNS is blocked"
-            ),
             checked = settings.enableTrackerDoh,
             onCheckedChange = actions.onUpdateEnableTrackerDoh,
             testTag = "enable_tracker_doh_switch"
@@ -373,16 +345,8 @@ internal fun TorrServerSettingsPage(
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
         Text(
-            text = tr("Индексатор Jackett / Prowlarr / Torznab (для RuTracker, Kinozal, NNM-Club)", "Jackett / Prowlarr / Torznab Indexer (RuTracker, Kinozal, NNM-Club)"),
-            style = MaterialTheme.typography.titleSmall
-        )
-        Text(
-            text = tr(
-                "Поскольку RuTracker и Kinozal требуют авторизацию, укажите адрес вашего Jackett, Prowlarr или публичного Torznab/Jackett-сервера, чтобы получать прямые результаты с RuTracker на первом месте.",
-                "For private trackers requiring authentication (RuTracker, Kinozal), enter your Jackett, Prowlarr, or Torznab endpoint URL to prioritize their results."
-            ),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            text = tr("Индексатор Jackett / Prowlarr / Torznab (RuTracker, Kinozal)", "Jackett / Prowlarr / Torznab Indexer (RuTracker, Kinozal)"),
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
         )
 
         OutlinedTextField(

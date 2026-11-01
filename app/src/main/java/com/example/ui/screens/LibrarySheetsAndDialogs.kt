@@ -990,3 +990,474 @@ internal fun PermanentDeleteConfirmDialog(
     )
 }
 
+@Composable
+internal fun RenameMediaDialog(
+    currentName: String,
+    isFolder: Boolean,
+    onConfirmRename: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val ext = if (!isFolder && currentName.contains('.')) {
+        currentName.substringAfterLast('.', "")
+    } else {
+        ""
+    }
+    val initialBaseName = if (ext.isNotBlank()) {
+        currentName.substringBeforeLast('.')
+    } else {
+        currentName
+    }
+    var newName by rememberSaveable(currentName) { mutableStateOf(initialBaseName) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.testTag("rename_media_dialog"),
+        title = {
+            Text(
+                text = if (isFolder) {
+                    tr("Переименовать папку", "Rename Folder")
+                } else {
+                    tr("Переименовать файл", "Rename File")
+                },
+                style = MaterialTheme.typography.titleLarge
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    label = {
+                        Text(
+                            if (isFolder) tr("Новое имя папки", "New folder name")
+                            else tr("Новое имя файла", "New file name")
+                        )
+                    },
+                    suffix = if (ext.isNotBlank()) {
+                        {
+                            Text(
+                                text = ".$ext",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    } else null,
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("rename_media_input")
+                )
+                Text(
+                    text = if (isFolder) {
+                        tr(
+                            "Папка на накопителе и все привязанные пути в библиотеке будут обновлены.",
+                            "The folder on storage and all linked library paths will be updated."
+                        )
+                    } else {
+                        tr(
+                            "Расширение файла (.$ext) сохранится автоматически, как и прогресс просмотра.",
+                            "The file extension (.$ext) and playback progress will be preserved automatically."
+                        )
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val trimmed = newName.trim()
+                    if (trimmed.isNotEmpty()) {
+                        val finalName = if (ext.isNotBlank() && !trimmed.endsWith(".$ext", ignoreCase = true)) {
+                            "$trimmed.$ext"
+                        } else {
+                            trimmed
+                        }
+                        onConfirmRename(finalName)
+                    }
+                },
+                enabled = newName.trim().isNotEmpty(),
+                modifier = Modifier.testTag("rename_media_confirm_button")
+            ) {
+                Text(tr("Сохранить", "Save"))
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.testTag("rename_media_cancel_button")
+            ) {
+                Text(tr("Отмена", "Cancel"))
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+internal fun MediaFileInfoModalSheet(
+    info: com.example.data.DetailedMediaFileInfo,
+    onRenameRequest: (() -> Unit)? = null,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = Modifier.testTag("media_file_info_sheet")
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (info.isFolder) {
+                            tr("Сведения о папке", "Folder Information")
+                        } else {
+                            tr("Сведения о файле", "File Information")
+                        },
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.testTag("media_file_info_title")
+                    )
+                    Text(
+                        text = info.fileName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (onRenameRequest != null) {
+                    FilledTonalButton(
+                        onClick = onRenameRequest,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.testTag("media_file_info_rename_button")
+                    ) {
+                        Text(tr("Переименовать", "Rename"))
+                    }
+                }
+            }
+
+            // General / Container card
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    Text(
+                        text = tr("Контейнер и хранение", "Container & Storage"),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    TechnicalInfoRow(
+                        label = tr("Формат", "Format"),
+                        value = info.containerFormat
+                    )
+                    TechnicalInfoRow(
+                        label = tr("Размер", "Size"),
+                        value = if (info.sizeBytes > 0L) {
+                            "${info.sizeFormatted} (${String.format(java.util.Locale.US, "%,d", info.sizeBytes)} B)"
+                        } else {
+                            info.sizeFormatted
+                        }
+                    )
+                    if (info.durationMs > 0L) {
+                        TechnicalInfoRow(
+                            label = tr("Длительность", "Duration"),
+                            value = info.durationFormatted
+                        )
+                    }
+                    if (info.overallBitrateLabel != "—") {
+                        TechnicalInfoRow(
+                            label = tr("Общий поток", "Overall Bitrate"),
+                            value = info.overallBitrateLabel
+                        )
+                    }
+                    if (info.isFolder) {
+                        TechnicalInfoRow(
+                            label = tr("Видеофайлов", "Video Files"),
+                            value = "${info.episodeCount} (${tr("просмотрено", "watched")}: ${info.watchedCount})"
+                        )
+                    } else if (info.chaptersCount > 0) {
+                        TechnicalInfoRow(
+                            label = tr("Встроенные главы", "Chapters"),
+                            value = "${info.chaptersCount}"
+                        )
+                    }
+                    if (info.lastModifiedFormatted != "—") {
+                        TechnicalInfoRow(
+                            label = tr("Изменён", "Modified"),
+                            value = info.lastModifiedFormatted
+                        )
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    Text(
+                        text = tr("Полный путь", "Full Path"),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = info.fullPath,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.testTag("media_file_info_full_path")
+                    )
+                }
+            }
+
+            // Video stream card
+            info.videoStream?.let { v ->
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(7.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = tr("Видеопоток", "Video Stream"),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Surface(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = RoundedCornerShape(7.dp)
+                            ) {
+                                Text(
+                                    text = v.resolutionBadge,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+                        TechnicalInfoRow(
+                            label = tr("Кодек", "Codec"),
+                            value = "${v.codecName} (${v.mimeType})"
+                        )
+                        TechnicalInfoRow(
+                            label = tr("Профиль", "Profile"),
+                            value = v.profileLevel
+                        )
+                        TechnicalInfoRow(
+                            label = tr("Разрешение", "Resolution"),
+                            value = if (v.width > 0 && v.height > 0) {
+                                "${v.width} × ${v.height} (${v.aspectRatioLabel})"
+                            } else {
+                                "${v.resolutionBadge} (${v.aspectRatioLabel})"
+                            }
+                        )
+                        TechnicalInfoRow(
+                            label = tr("Частота кадров", "Frame Rate"),
+                            value = v.frameRateLabel
+                        )
+                        TechnicalInfoRow(
+                            label = tr("Цвет / Диапазон", "Color / Dynamic Range"),
+                            value = v.colorAndHdrLabel
+                        )
+                        TechnicalInfoRow(
+                            label = tr("Битрейт видео", "Video Bitrate"),
+                            value = v.bitrateLabel
+                        )
+                    }
+                }
+            }
+
+            // Audio streams card
+            if (info.audioStreams.isNotEmpty()) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = tr(
+                                "Аудиодорожки (${info.audioStreams.size})",
+                                "Audio Tracks (${info.audioStreams.size})"
+                            ),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        info.audioStreams.forEachIndexed { idx, a ->
+                            if (idx > 0) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                            }
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "#${a.index} • ${a.title}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Surface(
+                                        color = if (a.isExternal) {
+                                            MaterialTheme.colorScheme.secondaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.surfaceContainerHighest
+                                        },
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Text(
+                                            text = if (a.isExternal) {
+                                                tr("Внешняя", "External")
+                                            } else {
+                                                tr("Встроенная", "Embedded")
+                                            },
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = if (a.isExternal) {
+                                                MaterialTheme.colorScheme.onSecondaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = "${a.codecName} • ${a.channelsLabel} • ${a.sampleRateLabel} • ${a.bitrateLabel} • ${a.language}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Subtitle streams card
+            if (info.subtitleStreams.isNotEmpty()) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = tr(
+                                "Субтитры (${info.subtitleStreams.size})",
+                                "Subtitles (${info.subtitleStreams.size})"
+                            ),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        info.subtitleStreams.forEachIndexed { idx, s ->
+                            if (idx > 0) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "#${s.index} • ${s.title}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = "${s.formatName} • ${s.language}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Surface(
+                                    color = if (s.isExternal) {
+                                        MaterialTheme.colorScheme.secondaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceContainerHighest
+                                    },
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = if (s.isExternal) {
+                                            tr("Внешние", "External")
+                                        } else {
+                                            tr("Встроенные", "Embedded")
+                                        },
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (s.isExternal) {
+                                            MaterialTheme.colorScheme.onSecondaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TechnicalInfoRow(
+    label: String,
+    value: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(0.42f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(0.58f)
+        )
+    }
+}
+
+

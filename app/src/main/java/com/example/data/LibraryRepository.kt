@@ -510,6 +510,141 @@ class LibraryRepository private constructor(
         episodesToDelete.size
     }
 
+    /**
+     * Renames a folder on disk and updates the in-memory library, progress entries, and disk cache.
+     * Returns the new folder ID (or null if rename failed).
+     */
+    suspend fun renameFolder(
+        folder: VideoFolderItem,
+        rawNewName: String
+    ): String? = withContext(Dispatchers.IO) {
+        val result = StorageAccessHelper.renameFolderOnStorage(appContext, folder, rawNewName)
+            ?: return@withContext null
+        val (newFolderId, newFolderName, newDisplayPath) = result
+
+        val oldFolderPath = StorageAccessHelper.normalizeLocalPathKey(folder.id)
+        val newFolderPath = StorageAccessHelper.normalizeLocalPathKey(newFolderId)
+
+        val currentScanned = _allScannedFolders.value
+        val updatedFolders = currentScanned.map { item ->
+            if (item.id != folder.id) {
+                item
+            } else {
+                val updatedEpisodes = item.episodes.map { ep ->
+                    val newEpUri = if (oldFolderPath != null && newFolderPath != null && newFolderId != folder.id) {
+                        when {
+                            ep.uri.startsWith("file://$oldFolderPath/") ->
+                                "file://$newFolderPath/" + ep.uri.removePrefix("file://$oldFolderPath/")
+                            ep.uri.startsWith("$oldFolderPath/") ->
+                                "$newFolderPath/" + ep.uri.removePrefix("$oldFolderPath/")
+                            else -> ep.uri
+                        }
+                    } else {
+                        ep.uri
+                    }
+                    if (newEpUri != ep.uri) {
+                        val existingProg = dao.getProgressForVideo(ep.uri)
+                        if (existingProg != null) {
+                            dao.deleteProgress(ep.uri)
+                            dao.upsertProgress(
+                                existingProg.copy(
+                                    videoUri = newEpUri,
+                                    folderId = newFolderId,
+                                    folderName = newFolderName
+                                )
+                            )
+                        }
+                    } else {
+                        val existingProg = dao.getProgressForVideo(ep.uri)
+                        if (existingProg != null) {
+                            dao.upsertProgress(
+                                existingProg.copy(
+                                    folderId = newFolderId,
+                                    folderName = newFolderName
+                                )
+                            )
+                        }
+                    }
+                    ep.copy(
+                        uri = newEpUri,
+                        folderId = newFolderId,
+                        folderName = newFolderName
+                    )
+                }
+                item.copy(
+                    id = newFolderId,
+                    name = newFolderName,
+                    displayPath = newDisplayPath,
+                    episodes = updatedEpisodes
+                )
+            }
+        }
+
+        _allScannedFolders.value = updatedFolders
+        FolderLibraryCache.write(appContext, updatedFolders)
+        checkAndGetValidLastPlayed()
+        newFolderId
+    }
+
+    /**
+     * Renames a single episode file on disk, preserves its playback progress, and updates the folder.
+     */
+    suspend fun renameEpisode(
+        folderId: String,
+        episode: EpisodeItem,
+        rawNewName: String
+    ): EpisodeItem? = withContext(Dispatchers.IO) {
+        val result = StorageAccessHelper.renameEpisodeFile(appContext, episode, rawNewName)
+            ?: return@withContext null
+        val (newUri, newFileName) = result
+
+        val parsed = MediaAutoMatcher.parseEpisodeInfo(newFileName)
+        val cleanTitle = parsed.cleanTitle.ifBlank {
+            newFileName.substringBeforeLast('.').ifBlank { newFileName }
+        }
+        val updatedEpisode = episode.copy(
+            uri = newUri,
+            fileName = newFileName,
+            cleanTitle = cleanTitle,
+            episodeNumber = parsed.episode ?: episode.episodeNumber,
+            seasonNumber = parsed.season ?: episode.seasonNumber
+        )
+
+        val existingProgress = dao.getProgressForVideo(episode.uri)
+        if (existingProgress != null) {
+            if (newUri != episode.uri) {
+                dao.deleteProgress(episode.uri)
+            }
+            dao.upsertProgress(
+                existingProgress.copy(
+                    videoUri = newUri,
+                    title = cleanTitle
+                )
+            )
+            if (preferencesRepository.lastPlayedVideoUriFlow.first() == episode.uri) {
+                preferencesRepository.setLastPlayedVideoUri(newUri)
+            }
+        }
+
+        val currentScanned = _allScannedFolders.value
+        val updatedFolders = currentScanned.map { folder ->
+            if (folder.id != folderId) {
+                folder
+            } else {
+                folder.copy(
+                    episodes = folder.episodes.map { ep ->
+                        if (ep.uri == episode.uri) updatedEpisode else ep
+                    }
+                )
+            }
+        }
+
+        _allScannedFolders.value = updatedFolders
+        FolderLibraryCache.write(appContext, updatedFolders)
+        checkAndGetValidLastPlayed()
+        updatedEpisode
+    }
+
     suspend fun savePlaybackProgress(
         episode: EpisodeItem,
         positionMs: Long,

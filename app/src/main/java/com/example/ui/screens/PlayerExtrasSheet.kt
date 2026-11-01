@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Speed
@@ -342,7 +343,7 @@ fun PlayerToolsModalSheet(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            // 0a. Player UI Scale (75% - 140% + Auto DPI) & HUD Auto-Hide Timeout
+            // 0a. Global App & Player UI Scale (75% - 140% + Auto DPI) & HUD Auto-Hide Timeout
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -351,17 +352,27 @@ fun PlayerToolsModalSheet(
                 ) {
                     Text(
                         text = tr(
-                            "Масштаб интерфейса плеера ($playerUiScalePercent%)",
-                            "Player UI & Text Scale ($playerUiScalePercent%)"
+                            "Масштаб интерфейса ($playerUiScalePercent%)",
+                            "UI & Text Scale ($playerUiScalePercent%)"
                         ),
                         style = MaterialTheme.typography.titleSmall
                     )
-                    FilterChip(
-                        selected = playerAutoDpiScale,
-                        onClick = { onUpdatePlayerAutoDpiScale(!playerAutoDpiScale) },
-                        label = { Text(tr("Авто DPI", "Auto DPI")) },
-                        modifier = Modifier.testTag("tools_auto_dpi_chip")
-                    )
+                    FilledTonalButton(
+                        onClick = { onUpdatePlayerUiScalePercent(100) },
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier
+                            .height(32.dp)
+                            .testTag("tools_reset_ui_scale_btn")
+                    ) {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("100%", style = MaterialTheme.typography.labelSmall)
+                    }
                 }
                 Slider(
                     value = playerUiScalePercent.coerceIn(75, 140).toFloat(),
