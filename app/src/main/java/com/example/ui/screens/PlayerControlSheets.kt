@@ -72,7 +72,11 @@ import com.example.ui.i18n.localizedTitle
 import com.example.ui.i18n.tr
 import kotlin.math.roundToInt
 
-@OptIn(ExperimentalMaterial3Api::class)
+internal val PlayerPopupSheetContainerColor = Color(0xFF0E131F).copy(alpha = 0.65f)
+internal val PlayerPopupSheetScrimColor = Color.Black.copy(alpha = 0.18f)
+internal val PlayerPopupCardColor = Color(0xFF141B29).copy(alpha = 0.65f)
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AudioTracksModalSheet(
     audioOptions: List<AudioTrackUiOption>,
@@ -82,6 +86,8 @@ fun AudioTracksModalSheet(
     bluetoothRoute: BluetoothAudioRouteState = BluetoothAudioRouteState(),
     bluetoothAutoSyncEnabled: Boolean = true,
     bluetoothAppliedOffsetMs: Long = 0L,
+    bluetoothConfiguredOffsetMs: Long = -150L,
+    lastAudioResyncTimestampMs: Long = 0L,
     onToggleBluetoothAutoSync: (Boolean) -> Unit = {},
     onSelectAudio: (AudioTrackUiOption) -> Unit,
     onSetAudioBoostPercent: (Int) -> Unit,
@@ -91,24 +97,34 @@ fun AudioTracksModalSheet(
     onPickExternalAudioFile: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val isEnglish = LocalIsEnglish.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        containerColor = PlayerPopupSheetContainerColor,
+        scrimColor = PlayerPopupSheetScrimColor
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Default.GraphicEq, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text("Аудиодорожки", style = MaterialTheme.typography.titleLarge)
+                Icon(
+                    Icons.Default.GraphicEq,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    tr("Аудиодорожки и синхронизация", "Audio Tracks & Sync"),
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
 
             Button(
@@ -117,41 +133,47 @@ fun AudioTracksModalSheet(
                     .fillMaxWidth()
                     .testTag("player_attach_audio_button")
             ) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Подключить внешнюю аудиодорожку (.mka, .mp3, .aac…)")
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    tr("Подключить внешнюю аудиодорожку (.mka, .mp3, .aac…)", "Attach External Audio (.mka, .mp3, .aac…)"),
+                    style = MaterialTheme.typography.labelMedium
+                )
             }
 
             if (audioOptions.isEmpty()) {
                 Text(
-                    text = "Аудиодорожки в контейнере не обнаружены. Подключите внешний аудиофайл кнопкой выше.",
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = tr(
+                        "Аудиодорожки в контейнере не обнаружены. Подключите внешний аудиофайл кнопкой выше.",
+                        "No audio tracks found in container. Attach an external audio file above."
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = 8.dp)
+                    modifier = Modifier.padding(vertical = 4.dp)
                 )
             } else {
                 audioOptions.forEachIndexed { idx, opt ->
                     Card(
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = if (opt.isSelected) {
                                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f)
                             } else {
-                                MaterialTheme.colorScheme.surfaceContainer
+                                PlayerPopupCardColor
                             }
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .clickable { onSelectAudio(opt) }
                             .testTag("audio_track_option_$idx")
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             RadioButton(
                                 selected = opt.isSelected,
@@ -160,18 +182,18 @@ fun AudioTracksModalSheet(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = opt.label,
-                                    style = MaterialTheme.typography.titleSmall,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis
                                 )
                             }
                             Surface(
                                 color = if (opt.isExternal) {
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
                                 } else {
-                                    MaterialTheme.colorScheme.surfaceContainerHighest
+                                    Color.White.copy(alpha = 0.12f)
                                 },
-                                shape = RoundedCornerShape(8.dp)
+                                shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
                                     text = opt.badge,
@@ -181,7 +203,7 @@ fun AudioTracksModalSheet(
                                     } else {
                                         MaterialTheme.colorScheme.onSurfaceVariant
                                     },
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                                 )
                             }
                         }
@@ -189,15 +211,14 @@ fun AudioTracksModalSheet(
                 }
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
 
-            // Bluetooth Route & Dynamic Latency Compensation Card (Gaming Mode auto-detection)
-            val isEnglish = LocalIsEnglish.current
+            // Bluetooth Route & Auto-Compensation Card (without raw HAL latency badge)
             Surface(
                 color = if (bluetoothRoute.isBluetoothActive) {
-                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
+                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.48f)
                 } else {
-                    MaterialTheme.colorScheme.surfaceContainer
+                    PlayerPopupCardColor
                 },
                 shape = RoundedCornerShape(12.dp),
                 border = BorderStroke(
@@ -205,7 +226,7 @@ fun AudioTracksModalSheet(
                     if (bluetoothRoute.isBluetoothActive) {
                         MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
                     } else {
-                        MaterialTheme.colorScheme.outlineVariant
+                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     }
                 ),
                 modifier = Modifier
@@ -215,8 +236,8 @@ fun AudioTracksModalSheet(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -232,86 +253,100 @@ fun AudioTracksModalSheet(
                             }
                             Text(
                                 text = routeTitle,
-                                style = MaterialTheme.typography.titleSmall
+                                style = MaterialTheme.typography.bodyMedium
                             )
                         }
 
-                        // Measured Latency Badge (Gaming Mode / Standard)
-                        Surface(
-                            color = if (bluetoothRoute.isGamingMode) {
-                                MaterialTheme.colorScheme.tertiaryContainer
-                            } else if (bluetoothRoute.isBluetoothActive) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.surfaceContainerHighest
-                            },
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text = bluetoothRoute.displayLatencyLabel(isEnglish),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (bluetoothRoute.isGamingMode) {
-                                    MaterialTheme.colorScheme.onTertiaryContainer
-                                } else if (bluetoothRoute.isBluetoothActive) {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
+                        Switch(
+                            checked = bluetoothAutoSyncEnabled,
+                            onCheckedChange = onToggleBluetoothAutoSync,
+                            modifier = Modifier.testTag("audio_bt_autosync_switch")
+                        )
                     }
 
                     val routeSub = if (bluetoothRoute.isBluetoothActive) {
-                        val gamingDetail = if (bluetoothRoute.isGamingMode) {
-                            if (isEnglish) "Gaming Mode detected • ultra-low audio latency active." else "Обнаружен игровой режим • минимальная задержка звука."
+                        if (bluetoothAutoSyncEnabled) {
+                            tr(
+                                "Авто-компенсация Bluetooth: ${AudioDelayProcessor.formatDelayLabel(bluetoothAppliedOffsetMs)}. Для игрового режима наушников выберите пресет -45 мс ниже.",
+                                "Bluetooth auto-compensation: ${AudioDelayProcessor.formatDelayLabel(bluetoothAppliedOffsetMs)}. For headphone Gaming Mode, pick the -45 ms preset below."
+                            )
                         } else {
-                            if (isEnglish) "Standard audio buffer • adapts automatically if gaming mode is toggled on headphones." else "Стандартный аудиобуфер • при включении игрового режима на наушниках плеер подстроится автоматически."
+                            tr(
+                                "Авто-компенсация Bluetooth выключена • используется только ручной сдвиг.",
+                                "Bluetooth auto-compensation off • using manual offset only."
+                            )
                         }
-                        "${if (isEnglish) "Auto-compensation" else "Авто-компенсация"}: ${AudioDelayProcessor.formatDelayLabel(bluetoothAppliedOffsetMs)} • $gamingDetail"
                     } else {
-                        if (isEnglish) {
-                            "0 ms latency • Connect Bluetooth headphones and latency will be detected automatically."
-                        } else {
-                            "Задержка 0 мс • При подключении Bluetooth задержка и игровой режим определяются автоматически."
-                        }
+                        tr(
+                            "При подключении Bluetooth-наушников применяется выбранный профиль компенсации.",
+                            "Selected compensation profile is applied automatically when Bluetooth headphones connect."
+                        )
                     }
 
                     Text(
                         text = routeSub,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            // Audio Synchronization & Delay Controls (±5s, ±50/250ms steps + stream resync)
+            // Audio Synchronization & Delay Controls + Presets (Wired / Gaming Mode / LE Audio / Standard BT)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Ручная коррекция задержки аудио", style = MaterialTheme.typography.titleSmall)
-                    if (bluetoothAppliedOffsetMs != 0L) {
-                        Text(
-                            text = "Итого с учётом Bluetooth: ${AudioDelayProcessor.formatDelayLabel(effectiveAudioDelayMs)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    Text(
+                        tr("Синхронизация аудио и видео", "Audio & Video Sync Offset"),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = tr(
+                            "Итоговый сдвиг потока: ${AudioDelayProcessor.formatDelayLabel(effectiveAudioDelayMs)}",
+                            "Effective stream offset: ${AudioDelayProcessor.formatDelayLabel(effectiveAudioDelayMs)}"
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.testTag("effective_audio_delay_text")
+                    )
                 }
                 Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = AudioDelayProcessor.formatDelayLabel(audioDelayMs),
+                        text = AudioDelayProcessor.formatDelayLabel(effectiveAudioDelayMs),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
                             .testTag("audio_delay_value_text")
+                    )
+                }
+            }
+
+            // Quick Delay & Gaming Mode Presets
+            val delayPresets = listOf(
+                0L to tr("0 мс (Провод)", "0 ms (Wired)"),
+                -45L to tr("-45 мс (Игровой BT)", "-45 ms (Gaming BT)"),
+                -60L to tr("-60 мс (LE Audio)", "-60 ms (LE Audio)"),
+                -150L to tr("-150 мс (Стандарт BT)", "-150 ms (Standard BT)"),
+                -200L to tr("-200 мс (LDAC)", "-200 ms (LDAC)")
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                delayPresets.forEach { (presetMs, label) ->
+                    val isPresetSelected = effectiveAudioDelayMs == presetMs ||
+                        (bluetoothRoute.isBluetoothActive && bluetoothAutoSyncEnabled && bluetoothConfiguredOffsetMs == presetMs && audioDelayMs == 0L)
+                    FilterChip(
+                        selected = isPresetSelected,
+                        onClick = { onSetAudioDelayMs(presetMs) },
+                        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                        modifier = Modifier.testTag("audio_delay_preset_${presetMs}")
                     )
                 }
             }
@@ -325,35 +360,35 @@ fun AudioTracksModalSheet(
                     modifier = Modifier
                         .weight(1f)
                         .testTag("audio_delay_minus_250")
-                ) { Text("-250мс") }
+                ) { Text("-250мс", style = MaterialTheme.typography.labelSmall) }
 
                 OutlinedButton(
                     onClick = { onAdjustAudioDelayMs(-50L) },
                     modifier = Modifier
                         .weight(1f)
                         .testTag("audio_delay_minus_50")
-                ) { Text("-50мс") }
+                ) { Text("-50мс", style = MaterialTheme.typography.labelSmall) }
 
                 FilledTonalButton(
                     onClick = { onSetAudioDelayMs(0L) },
                     modifier = Modifier
                         .weight(1f)
                         .testTag("audio_delay_reset")
-                ) { Text("0 мс") }
+                ) { Text("0 мс", style = MaterialTheme.typography.labelSmall) }
 
                 OutlinedButton(
                     onClick = { onAdjustAudioDelayMs(50L) },
                     modifier = Modifier
                         .weight(1f)
                         .testTag("audio_delay_plus_50")
-                ) { Text("+50мс") }
+                ) { Text("+50мс", style = MaterialTheme.typography.labelSmall) }
 
                 OutlinedButton(
                     onClick = { onAdjustAudioDelayMs(250L) },
                     modifier = Modifier
                         .weight(1f)
                         .testTag("audio_delay_plus_250")
-                ) { Text("+250мс") }
+                ) { Text("+250мс", style = MaterialTheme.typography.labelSmall) }
             }
 
             Slider(
@@ -372,12 +407,27 @@ fun AudioTracksModalSheet(
                     .fillMaxWidth()
                     .testTag("audio_resync_button")
             ) {
-                Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Синхронизировать аудиопоток с видео")
+                Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    tr("Синхронизировать аудиопоток с видео", "Resynchronize Audio & Video Streams"),
+                    style = MaterialTheme.typography.labelMedium
+                )
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            if (lastAudioResyncTimestampMs > 0L) {
+                Text(
+                    text = tr(
+                        "✓ Аудио- и видеопоток пересинхронизированы по текущему таймкоду (сдвиг: ${AudioDelayProcessor.formatDelayLabel(effectiveAudioDelayMs)})",
+                        "✓ Audio & video streams resynchronized to current position (offset: ${AudioDelayProcessor.formatDelayLabel(effectiveAudioDelayMs)})"
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.testTag("audio_resync_status_text")
+                )
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
 
             AudioBoostControlSection(
                 audioBoostPercent = audioBoostPercent,
@@ -405,22 +455,28 @@ fun SubtitleControlModalSheet(
     val isEnglish = LocalIsEnglish.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        containerColor = PlayerPopupSheetContainerColor,
+        scrimColor = PlayerPopupSheetScrimColor
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Default.Subtitles, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text(tr("Субтитры (SRT / ASS)", "Subtitles (SRT / ASS)"), style = MaterialTheme.typography.titleLarge)
+                Icon(
+                    Icons.Default.Subtitles,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(tr("Субтитры (SRT / ASS)", "Subtitles (SRT / ASS)"), style = MaterialTheme.typography.titleMedium)
             }
 
             Button(
@@ -429,13 +485,16 @@ fun SubtitleControlModalSheet(
                     .fillMaxWidth()
                     .testTag("player_load_subtitle_button")
             ) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(tr("Загрузить внешние субтитры (.SRT / .ASS)", "Load External Subtitles (.SRT / .ASS)"))
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    tr("Загрузить внешние субтитры (.SRT / .ASS)", "Load External Subtitles (.SRT / .ASS)"),
+                    style = MaterialTheme.typography.labelMedium
+                )
             }
 
             // Track Selection
-            Text(tr("Активная дорожка субтитров", "Active Subtitle Track"), style = MaterialTheme.typography.titleSmall)
+            Text(tr("Активная дорожка субтитров", "Active Subtitle Track"), style = MaterialTheme.typography.bodyMedium)
             subtitleOptions.forEachIndexed { idx, opt ->
                 Card(
                     shape = RoundedCornerShape(12.dp),
@@ -443,7 +502,7 @@ fun SubtitleControlModalSheet(
                         containerColor = if (opt.isSelected) {
                             MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f)
                         } else {
-                            MaterialTheme.colorScheme.surfaceContainer
+                            PlayerPopupCardColor
                         }
                     ),
                     modifier = Modifier
@@ -455,7 +514,7 @@ fun SubtitleControlModalSheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -465,13 +524,13 @@ fun SubtitleControlModalSheet(
                         )
                         Text(
                             text = if (isEnglish && opt.label == "Выключены") "Off" else opt.label,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.weight(1f),
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                         Surface(
-                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            color = Color.White.copy(alpha = 0.12f),
                             shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
@@ -492,9 +551,9 @@ fun SubtitleControlModalSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(tr("Задержка субтитров", "Subtitle Delay"), style = MaterialTheme.typography.titleSmall)
+                Text(tr("Задержка субтитров", "Subtitle Delay"), style = MaterialTheme.typography.bodyMedium)
                 Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
@@ -502,7 +561,7 @@ fun SubtitleControlModalSheet(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
                             .testTag("subtitle_delay_value_text")
                     )
                 }
@@ -517,35 +576,35 @@ fun SubtitleControlModalSheet(
                     modifier = Modifier
                         .weight(1f)
                         .testTag("subtitle_delay_minus_500")
-                ) { Text(tr("-0.5с", "-0.5s")) }
+                ) { Text(tr("-0.5с", "-0.5s"), style = MaterialTheme.typography.labelSmall) }
 
                 OutlinedButton(
                     onClick = { onAdjustDelayMs(-100L) },
                     modifier = Modifier
                         .weight(1f)
                         .testTag("subtitle_delay_minus_100")
-                ) { Text(tr("-0.1с", "-0.1s")) }
+                ) { Text(tr("-0.1с", "-0.1s"), style = MaterialTheme.typography.labelSmall) }
 
                 FilledTonalButton(
                     onClick = { onSetDelayMs(0L) },
                     modifier = Modifier
                         .weight(1f)
                         .testTag("subtitle_delay_reset")
-                ) { Text(tr("0.0с", "0.0s")) }
+                ) { Text(tr("0.0с", "0.0s"), style = MaterialTheme.typography.labelSmall) }
 
                 OutlinedButton(
                     onClick = { onAdjustDelayMs(100L) },
                     modifier = Modifier
                         .weight(1f)
                         .testTag("subtitle_delay_plus_100")
-                ) { Text(tr("+0.1с", "+0.1s")) }
+                ) { Text(tr("+0.1с", "+0.1s"), style = MaterialTheme.typography.labelSmall) }
 
                 OutlinedButton(
                     onClick = { onAdjustDelayMs(500L) },
                     modifier = Modifier
                         .weight(1f)
                         .testTag("subtitle_delay_plus_500")
-                ) { Text(tr("+0.5с", "+0.5s")) }
+                ) { Text(tr("+0.5с", "+0.5s"), style = MaterialTheme.typography.labelSmall) }
             }
 
             Slider(
@@ -566,7 +625,7 @@ fun SubtitleControlModalSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(tr("Размер шрифта", "Font Size"), style = MaterialTheme.typography.titleSmall)
+                Text(tr("Размер шрифта", "Font Size"), style = MaterialTheme.typography.bodyMedium)
                 Text(
                     text = "${settings.subtitleFontSizeSp.roundToInt()} sp",
                     style = MaterialTheme.typography.labelSmall,
@@ -581,16 +640,16 @@ fun SubtitleControlModalSheet(
             )
 
             // Subtitle Color Swatches
-            Text(tr("Цвет субтитров", "Subtitle Color"), style = MaterialTheme.typography.titleSmall)
+            Text(tr("Цвет субтитров", "Subtitle Color"), style = MaterialTheme.typography.bodyMedium)
             FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 SubtitleColorPreset.entries.forEach { preset ->
                     val selected = settings.subtitleColorArgb == preset.argb
                     Box(
                         modifier = Modifier
-                            .size(48.dp)
+                            .size(40.dp)
                             .clip(CircleShape)
                             .background(Color(preset.argb))
                             .border(
@@ -607,7 +666,7 @@ fun SubtitleControlModalSheet(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = preset.localizedLabel(isEnglish),
                                 tint = Color.Black,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
@@ -619,7 +678,7 @@ fun SubtitleControlModalSheet(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(tr("Тёмная подложка под текстом", "Dark Background Box"), style = MaterialTheme.typography.bodyMedium)
+                Text(tr("Тёмная подложка под текстом", "Dark Background Box"), style = MaterialTheme.typography.bodySmall)
                 Switch(
                     checked = settings.subtitleBackgroundEnabled,
                     onCheckedChange = onSetBackgroundEnabled
@@ -645,48 +704,75 @@ fun Anime4KControlModalSheet(
     val isEnglish = LocalIsEnglish.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        containerColor = PlayerPopupSheetContainerColor,
+        scrimColor = PlayerPopupSheetScrimColor
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(
+                    Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
                 Text(
                     tr("Anime4K — Реалтайм апскейлинг", "Anime4K — Real-Time Upscaling"),
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleMedium
                 )
+            }
+
+            if (settings.isAnime4kAutoDowngradedForMemc) {
+                Surface(
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.72f),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("anime4k_memc_auto_fast_banner")
+                ) {
+                    Text(
+                        text = tr(
+                            "⚡ Авто-оптимизация GPU: при одновременной работе с интерполяцией кадров (MEMC) Anime4K автоматически переключён в быстрый однопроходный режим (Anime4K_Fast) для стабильного FPS без рывков.",
+                            "⚡ Auto GPU Optimization: while Frame Interpolation (MEMC) is active, Anime4K automatically runs in fast single-pass mode (Anime4K_Fast) to prevent frame drops."
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
+                    )
+                }
             }
 
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    containerColor = PlayerPopupCardColor
                 ),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(tr("Активировать Anime4K", "Enable Anime4K"), style = MaterialTheme.typography.titleMedium)
+                        Text(tr("Активировать Anime4K", "Enable Anime4K"), style = MaterialTheme.typography.bodyMedium)
                         Text(
                             tr(
-                                "Многопроходный OpenGL ES шейдер реконструкции линий",
-                                "Multi-pass OpenGL ES line reconstruction shader"
+                                "OpenGL ES шейдер реконструкции линий",
+                                "OpenGL ES line reconstruction shader"
                             ),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -698,22 +784,22 @@ fun Anime4KControlModalSheet(
                 }
             }
 
-            Text(tr("Пресеты качества", "Quality Presets"), style = MaterialTheme.typography.titleSmall)
+            Text(tr("Пресеты качества", "Quality Presets"), style = MaterialTheme.typography.bodyMedium)
             Anime4KPreset.entries.forEach { preset ->
                 val isSelected = settings.effectiveAnime4KPreset == preset ||
                     (!settings.anime4kEnabled && preset == Anime4KPreset.OFF)
                 Card(
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = if (isSelected) {
                             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f)
                         } else {
-                            MaterialTheme.colorScheme.surfaceContainer
+                            PlayerPopupCardColor
                         }
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .clickable {
                             if (preset == Anime4KPreset.OFF) {
                                 onToggleEnabled(false)
@@ -726,9 +812,9 @@ fun Anime4KControlModalSheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         RadioButton(
                             selected = isSelected,
@@ -741,22 +827,22 @@ fun Anime4KControlModalSheet(
                             }
                         )
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(preset.localizedTitle(isEnglish), style = MaterialTheme.typography.titleSmall)
+                            Text(preset.localizedTitle(isEnglish), style = MaterialTheme.typography.bodyMedium)
                             Text(
                                 preset.localizedDescription(isEnglish),
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Surface(
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            shape = RoundedCornerShape(8.dp)
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.75f),
+                            shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
                                 text = preset.badgeLabel,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                             )
                         }
                     }
@@ -769,7 +855,7 @@ fun Anime4KControlModalSheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(tr("Интенсивность реконструкции", "Reconstruction Strength"), style = MaterialTheme.typography.titleSmall)
+                Text(tr("Интенсивность реконструкции", "Reconstruction Strength"), style = MaterialTheme.typography.bodyMedium)
                 Text(
                     text = "${(settings.anime4kStrength * 100).roundToInt()}%",
                     style = MaterialTheme.typography.labelSmall,
@@ -795,15 +881,15 @@ fun Anime4KControlModalSheet(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Default.Compare, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                    Icon(Icons.Default.Compare, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
                     Column {
-                        Text(tr("Сравнение До / После", "Before / After Comparison"), style = MaterialTheme.typography.titleSmall)
+                        Text(tr("Сравнение До / После", "Before / After Comparison"), style = MaterialTheme.typography.bodyMedium)
                         Text(
                             tr(
                                 "Слева оригинал, справа улучшение Anime4K",
                                 "Original on the left, Anime4K on the right"
                             ),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -842,35 +928,41 @@ fun DecoderAndVideoModalSheet(
     val isEnglish = LocalIsEnglish.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        containerColor = PlayerPopupSheetContainerColor,
+        scrimColor = PlayerPopupSheetScrimColor
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Default.Memory, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(
+                    Icons.Default.Memory,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
                 Text(
                     tr("Аппаратный декодер и видео", "Hardware Decoder & Video"),
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleMedium
                 )
             }
 
             // Live Codec Telemetry Box
             Surface(
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                shape = RoundedCornerShape(14.dp),
+                color = PlayerPopupCardColor,
+                shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
-                    modifier = Modifier.padding(14.dp),
+                    modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
@@ -884,58 +976,58 @@ fun DecoderAndVideoModalSheet(
                         } else {
                             "Поток: ${videoWidth}×${videoHeight} • Ускорение: ${if (isHardwareAccelerated) "Аппаратное (MediaCodec GPU)" else "Программное (CPU)"}"
                         },
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            Text(tr("Режим декодера", "Decoder Mode"), style = MaterialTheme.typography.titleSmall)
+            Text(tr("Режим декодера", "Decoder Mode"), style = MaterialTheme.typography.bodyMedium)
             DecoderMode.entries.forEach { mode ->
                 val selected = activeDecoderMode == mode
                 Surface(
                     color = if (selected) {
                         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f)
                     } else {
-                        MaterialTheme.colorScheme.surfaceContainer
+                        PlayerPopupCardColor
                     },
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(
                         1.dp,
-                        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .clickable { onSelectDecoderMode(mode) }
                         .testTag("decoder_mode_chip_${mode.id}")
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         RadioButton(
                             selected = selected,
                             onClick = { onSelectDecoderMode(mode) }
                         )
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(mode.localizedTitle(isEnglish), style = MaterialTheme.typography.titleSmall)
+                            Text(mode.localizedTitle(isEnglish), style = MaterialTheme.typography.bodyMedium)
                             Text(
                                 text = mode.localizedSubtitle(isEnglish),
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Surface(
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            shape = RoundedCornerShape(8.dp)
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.75f),
+                            shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
                                 text = mode.shortBadge,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                             )
                         }
                     }

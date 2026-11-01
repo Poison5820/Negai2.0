@@ -1245,8 +1245,11 @@ fun TorrentReleaseDetailsModalSheet(
                 }
             }
 
-            // Parsed Tech & Voiceover tags
-            if (activeDetails.parsedTechTags.isNotEmpty() || activeDetails.parsedVoiceoverTags.isNotEmpty()) {
+            // Parsed Tech, Voiceover & Subtitle tags
+            if (activeDetails.parsedTechTags.isNotEmpty() ||
+                activeDetails.parsedVoiceoverTags.isNotEmpty() ||
+                activeDetails.parsedSubtitleTags.isNotEmpty()
+            ) {
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
@@ -1289,7 +1292,7 @@ fun TorrentReleaseDetailsModalSheet(
 
                         if (activeDetails.parsedVoiceoverTags.isNotEmpty()) {
                             Text(
-                                text = tr("Озвучка и перевод", "Voiceover & Subtitles"),
+                                text = tr("Озвучка и перевод", "Voiceover & Translation"),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.secondary
                             )
@@ -1306,6 +1309,32 @@ fun TorrentReleaseDetailsModalSheet(
                                             text = vTag,
                                             style = MaterialTheme.typography.labelMedium,
                                             color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (activeDetails.parsedSubtitleTags.isNotEmpty()) {
+                            Text(
+                                text = tr("Субтитры", "Subtitles"),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                activeDetails.parsedSubtitleTags.forEach { sTag ->
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text(
+                                            text = sTag,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onTertiaryContainer,
                                             modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
                                         )
                                     }

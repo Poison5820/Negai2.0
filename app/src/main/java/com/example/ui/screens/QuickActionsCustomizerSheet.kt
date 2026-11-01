@@ -94,15 +94,16 @@ fun QuickActionsCustomizerSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        containerColor = PlayerPopupSheetContainerColor,
+        scrimColor = PlayerPopupSheetScrimColor
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // Header
             Row(
@@ -112,25 +113,26 @@ fun QuickActionsCustomizerSheet(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Tune,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
                     )
                     Column {
                         Text(
                             text = tr("Быстрые кнопки в плеере", "Player Quick Action Buttons"),
-                            style = MaterialTheme.typography.titleLarge
+                            style = MaterialTheme.typography.titleMedium
                         )
                         Text(
                             text = tr(
                                 "Выберите кнопки нижней панели и настройте их порядок",
                                 "Choose bottom bar buttons and customize their order"
                             ),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }

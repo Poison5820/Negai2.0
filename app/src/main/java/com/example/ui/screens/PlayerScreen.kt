@@ -675,36 +675,36 @@ fun PlayerScreen(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(top = 64.dp, start = 16.dp, end = 16.dp)
+                .padding(top = 56.dp, start = 14.dp, end = 14.dp)
         ) {
             val resumedPos = playbackState.resumedFromPositionMs ?: 0L
             Surface(
-                color = Color.Black.copy(alpha = 0.86f),
-                shape = RoundedCornerShape(20.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)),
+                color = Color(0xFF0E131F).copy(alpha = 0.65f),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.48f)),
                 modifier = Modifier.testTag("player_resumed_banner")
             ) {
                 Row(
-                    modifier = Modifier.padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                    modifier = Modifier.padding(start = 10.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Replay,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(15.dp)
                     )
                     Text(
                         text = tr("Продолжено с ${formatTimeMs(resumedPos)}", "Resumed from ${formatTimeMs(resumedPos)}"),
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall,
                         color = Color.White
                     )
                     Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.78f),
+                        shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .clickable {
                                 onRestartFromBeginning()
                                 interactionTick++
@@ -713,20 +713,20 @@ fun PlayerScreen(
                     ) {
                         Text(
                             text = tr("С начала", "From start"),
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
                         )
                     }
                     IconButton(
                         onClick = onDismissResumeBanner,
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = tr("Скрыть уведомление", "Dismiss banner"),
                             tint = Color.White.copy(alpha = 0.75f),
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(14.dp)
                         )
                     }
                 }
@@ -776,31 +776,31 @@ fun PlayerScreen(
             }
 
             Surface(
-                color = Color.Black.copy(alpha = 0.88f),
-                shape = RoundedCornerShape(22.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)),
+                color = Color(0xFF0E131F).copy(alpha = 0.65f),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.50f)),
                 modifier = Modifier
-                    .width(230.dp)
+                    .width(190.dp)
                     .testTag("swipe_seek_hud")
             ) {
                 Column(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Icon(
                             imageVector = if (isForward) Icons.Default.FastForward else Icons.Default.FastRewind,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                         Text(
                             text = tr("${deltaSign}${absDeltaSec} сек", "${deltaSign}${absDeltaSec} s"),
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -815,7 +815,7 @@ fun PlayerScreen(
                             progress = { progressFrac },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(4.dp)
+                                .height(3.dp)
                                 .clip(CircleShape),
                             color = MaterialTheme.colorScheme.primary,
                             trackColor = Color.White.copy(alpha = 0.2f)
@@ -839,27 +839,27 @@ fun PlayerScreen(
             val absSec = abs(doubleTapAccumulatedSec)
             val signPrefix = if (isForward) "+" else "-"
             Surface(
-                color = Color(0xCC101624),
-                shape = RoundedCornerShape(22.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.58f)),
+                color = Color(0xFF0E131F).copy(alpha = 0.65f),
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.50f)),
                 modifier = Modifier.testTag("double_tap_seek_pill")
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     if (!isForward) {
                         Icon(
                             imageVector = Icons.Default.FastRewind,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                     Text(
                         text = tr("$signPrefix$absSec сек", "$signPrefix$absSec s"),
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White
                     )
@@ -868,7 +868,7 @@ fun PlayerScreen(
                             imageVector = Icons.Default.FastForward,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
@@ -1104,53 +1104,6 @@ fun PlayerScreen(
                         }
                     }
 
-                    if (settings.showHudBadges) {
-                        val badgeLabel = buildString {
-                            if (refreshPlan.memcActive ||
-                                (settings.effectiveFrameInterpolationMode.isEnabled && !refreshPlan.memcAutoBypassedBySpeed)
-                            ) {
-                                append("MEMC")
-                            }
-                            if (refreshPlan.hudBadgeText.isNotBlank()) {
-                                if (isNotEmpty()) append("•")
-                                append(
-                                    if (isEnglish) {
-                                        refreshPlan.hudBadgeText.replace("Гц", "Hz")
-                                    } else {
-                                        refreshPlan.hudBadgeText
-                                    }
-                                )
-                            }
-                            if (isEmpty()) {
-                                append(
-                                    if (isEnglish) {
-                                        "${refreshPlan.targetDisplayHz.roundToInt()}Hz"
-                                    } else {
-                                        "${refreshPlan.targetDisplayHz.roundToInt()}Гц"
-                                    }
-                                )
-                            }
-                        }
-                        Surface(
-                            color = hudPillBg,
-                            shape = RoundedCornerShape(9.dp),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(9.dp))
-                                .clickable {
-                                    interactionTick++
-                                    activeSheet = ActivePlayerSheet.FRAME_INTERPOLATION
-                                }
-                                .testTag("player_hw_badge")
-                        ) {
-                            Text(
-                                text = badgeLabel,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = hudAccentColor,
-                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp)
-                            )
-                        }
-                    }
-
                     // Grouped compact top-right utility buttons
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -1370,177 +1323,193 @@ fun PlayerScreen(
         }
     }
 
-    when (activeSheet) {
-        ActivePlayerSheet.SPEED -> SpeedQuickModalSheet(
-            playbackSpeed = playbackState.playbackSpeed,
-            onSelectSpeed = onSelectSpeed,
-            onDismiss = { activeSheet = ActivePlayerSheet.NONE }
-        )
-
-        ActivePlayerSheet.AUDIO -> AudioTracksModalSheet(
-            audioOptions = playbackState.audioTrackOptions,
-            audioBoostPercent = playbackState.audioBoostPercent,
-            audioDelayMs = playbackState.audioDelayMs,
-            effectiveAudioDelayMs = playbackState.effectiveAudioDelayMs,
-            bluetoothRoute = playbackState.bluetoothAudioRoute,
-            bluetoothAutoSyncEnabled = playbackState.bluetoothAutoSyncEnabled,
-            bluetoothAppliedOffsetMs = playbackState.bluetoothAppliedOffsetMs,
-            onToggleBluetoothAutoSync = onToggleBluetoothAutoSync,
-            onSelectAudio = onSelectAudio,
-            onSetAudioBoostPercent = onSetAudioBoostPercent,
-            onAdjustAudioDelayMs = onAdjustAudioDelay,
-            onSetAudioDelayMs = onSetAudioDelay,
-            onResyncAudio = onResyncAudio,
-            onPickExternalAudioFile = onPickExternalAudio,
-            onDismiss = { activeSheet = ActivePlayerSheet.NONE }
-        )
-
-        ActivePlayerSheet.SUBTITLES -> SubtitleControlModalSheet(
-            subtitleOptions = playbackState.subtitleTrackOptions,
-            subtitleDelayMs = playbackState.subtitleDelayMs,
-            settings = settings,
-            onSelectSubtitle = onSelectSubtitle,
-            onLoadExternalSubtitleFile = onPickExternalSubtitle,
-            onAdjustDelayMs = onAdjustSubtitleDelay,
-            onSetDelayMs = onSetSubtitleDelay,
-            onSetFontSizeSp = onSetSubtitleFontSize,
-            onSetColorArgb = onSetSubtitleColor,
-            onSetBackgroundEnabled = onSetSubtitleBg,
-            onDismiss = { activeSheet = ActivePlayerSheet.NONE }
-        )
-
-        ActivePlayerSheet.FRAME_INTERPOLATION -> FrameInterpolationModalSheet(
-            frameInterpolationEnabled = settings.frameInterpolationEnabled,
-            interpolationMode = settings.frameInterpolationMode,
-            highRefreshRateEnabled = settings.highRefreshRateEnabled,
-            ltpoAdaptiveEnabled = settings.ltpoAdaptiveRefreshEnabled,
-            sourceFrameRate = playbackState.sourceFrameRate,
-            targetDisplayHz = targetDisplayHz,
-            refreshPlan = refreshPlan,
-            onToggleFrameInterpolation = onToggleFrameInterpolation,
-            onSelectInterpolationMode = onSelectFrameInterpolationMode,
-            onToggleHighRefreshRate = onToggleHighRefreshRate,
-            onToggleLtpoAdaptive = onToggleLtpoAdaptive,
-            onDismiss = { activeSheet = ActivePlayerSheet.NONE }
-        )
-
-        ActivePlayerSheet.ANIME4K -> Anime4KControlModalSheet(
-            settings = settings,
-            splitCompareEnabled = splitCompareEnabled,
-            splitPosition = splitPosition,
-            onToggleEnabled = onToggleAnime4KEnabled,
-            onSelectPreset = onSelectAnime4KPreset,
-            onChangeStrength = onChangeAnime4KStrength,
-            onToggleSplitCompare = onToggleSplitCompare,
-            onChangeSplitPosition = onChangeSplitPos,
-            onDismiss = { activeSheet = ActivePlayerSheet.NONE }
-        )
-
-        ActivePlayerSheet.DECODER -> DecoderAndVideoModalSheet(
-            activeDecoderMode = playbackState.activeDecoderMode,
-            activeCodecName = playbackState.activeVideoCodecName,
-            isHardwareAccelerated = playbackState.isHardwareAccelerated,
-            videoWidth = playbackState.videoWidth,
-            videoHeight = playbackState.videoHeight,
-            onSelectDecoderMode = onSelectDecoderMode,
-            onDismiss = { activeSheet = ActivePlayerSheet.NONE }
-        )
-
-        ActivePlayerSheet.EPISODES -> EpisodesModalSheet(
-            playlist = playbackState.playlist,
-            currentIndex = playbackState.currentEpisodeIndex,
-            onSelectEpisodeIndex = onSelectEpisodeIndex,
-            onPreviousEpisode = onPreviousEpisode,
-            onNextEpisode = onNextEpisode,
-            onDismiss = { activeSheet = ActivePlayerSheet.NONE }
-        )
-
-        ActivePlayerSheet.CHAPTERS -> {
-            val sheetPosMs by positionMsFlow.collectAsStateWithLifecycle()
-            ChaptersModalSheet(
-                chapters = if (settings.enableEmbeddedChapters) playbackState.chapters else emptyList(),
-                currentPositionMs = sheetPosMs,
-                onSelectChapter = onSelectChapter,
-                onPreviousChapter = onPreviousChapter,
-                onNextChapter = onNextChapter,
-                onDismiss = { activeSheet = ActivePlayerSheet.NONE }
+    if (activeSheet != ActivePlayerSheet.NONE) {
+        val baseSheetDensity = LocalDensity.current
+        val effectiveSheetScale = rememberPlayerEffectiveScale(settings)
+        val compactSheetDensity = remember(baseSheetDensity, effectiveSheetScale) {
+            val factor = (effectiveSheetScale * 0.88f).coerceIn(0.72f, 1.05f)
+            Density(
+                density = baseSheetDensity.density * factor,
+                fontScale = baseSheetDensity.fontScale * (factor * 0.94f)
             )
         }
+        CompositionLocalProvider(LocalDensity provides compactSheetDensity) {
+            when (activeSheet) {
+                ActivePlayerSheet.SPEED -> SpeedQuickModalSheet(
+                    playbackSpeed = playbackState.playbackSpeed,
+                    onSelectSpeed = onSelectSpeed,
+                    onDismiss = { activeSheet = ActivePlayerSheet.NONE }
+                )
 
-        ActivePlayerSheet.AUDIO_BOOST -> AudioBoostQuickModalSheet(
-            audioBoostPercent = playbackState.audioBoostPercent,
-            onSetAudioBoostPercent = onSetAudioBoostPercent,
-            onDismiss = { activeSheet = ActivePlayerSheet.NONE }
-        )
+                ActivePlayerSheet.AUDIO -> AudioTracksModalSheet(
+                    audioOptions = playbackState.audioTrackOptions,
+                    audioBoostPercent = playbackState.audioBoostPercent,
+                    audioDelayMs = playbackState.audioDelayMs,
+                    effectiveAudioDelayMs = playbackState.effectiveAudioDelayMs,
+                    bluetoothRoute = playbackState.bluetoothAudioRoute,
+                    bluetoothAutoSyncEnabled = playbackState.bluetoothAutoSyncEnabled,
+                    bluetoothAppliedOffsetMs = playbackState.bluetoothAppliedOffsetMs,
+                    bluetoothConfiguredOffsetMs = playbackState.bluetoothConfiguredOffsetMs,
+                    lastAudioResyncTimestampMs = playbackState.lastAudioResyncTimestampMs,
+                    onToggleBluetoothAutoSync = onToggleBluetoothAutoSync,
+                    onSelectAudio = onSelectAudio,
+                    onSetAudioBoostPercent = onSetAudioBoostPercent,
+                    onAdjustAudioDelayMs = onAdjustAudioDelay,
+                    onSetAudioDelayMs = onSetAudioDelay,
+                    onResyncAudio = onResyncAudio,
+                    onPickExternalAudioFile = onPickExternalAudio,
+                    onDismiss = { activeSheet = ActivePlayerSheet.NONE }
+                )
 
-        ActivePlayerSheet.SLEEP_TIMER -> SleepTimerQuickModalSheet(
-            sleepTimerPreset = playbackState.sleepTimerPreset,
-            sleepTimerRemainingMs = playbackState.sleepTimerRemainingMs,
-            onSetSleepTimer = onSetSleepTimer,
-            onDismiss = { activeSheet = ActivePlayerSheet.NONE }
-        )
+                ActivePlayerSheet.SUBTITLES -> SubtitleControlModalSheet(
+                    subtitleOptions = playbackState.subtitleTrackOptions,
+                    subtitleDelayMs = playbackState.subtitleDelayMs,
+                    settings = settings,
+                    onSelectSubtitle = onSelectSubtitle,
+                    onLoadExternalSubtitleFile = onPickExternalSubtitle,
+                    onAdjustDelayMs = onAdjustSubtitleDelay,
+                    onSetDelayMs = onSetSubtitleDelay,
+                    onSetFontSizeSp = onSetSubtitleFontSize,
+                    onSetColorArgb = onSetSubtitleColor,
+                    onSetBackgroundEnabled = onSetSubtitleBg,
+                    onDismiss = { activeSheet = ActivePlayerSheet.NONE }
+                )
 
-        ActivePlayerSheet.SKIP_INTRO_CONFIG -> SkipIntroConfigModalSheet(
-            skipIntroSeconds = settings.skipIntroSeconds,
-            onUpdateSkipIntroSeconds = onUpdateSkipIntroSeconds,
-            onSkipNow = {
-                onSeekByMs(settings.skipIntroSeconds * 1000L)
-                interactionTick++
-            },
-            onDismiss = { activeSheet = ActivePlayerSheet.NONE }
-        )
+                ActivePlayerSheet.FRAME_INTERPOLATION -> FrameInterpolationModalSheet(
+                    frameInterpolationEnabled = settings.frameInterpolationEnabled,
+                    interpolationMode = settings.frameInterpolationMode,
+                    highRefreshRateEnabled = settings.highRefreshRateEnabled,
+                    ltpoAdaptiveEnabled = settings.ltpoAdaptiveRefreshEnabled,
+                    sourceFrameRate = playbackState.sourceFrameRate,
+                    targetDisplayHz = targetDisplayHz,
+                    refreshPlan = refreshPlan,
+                    isAnime4kAutoFastActive = settings.isAnime4kAutoDowngradedForMemc,
+                    onToggleFrameInterpolation = onToggleFrameInterpolation,
+                    onSelectInterpolationMode = onSelectFrameInterpolationMode,
+                    onToggleHighRefreshRate = onToggleHighRefreshRate,
+                    onToggleLtpoAdaptive = onToggleLtpoAdaptive,
+                    onDismiss = { activeSheet = ActivePlayerSheet.NONE }
+                )
 
-        ActivePlayerSheet.TOOLS -> {
-            val toolsPosMs by positionMsFlow.collectAsStateWithLifecycle()
-            PlayerToolsModalSheet(
-                playbackSpeed = playbackState.playbackSpeed,
-                scaleMode = scaleMode,
-                audioBoostPercent = playbackState.audioBoostPercent,
-                sleepTimerPreset = playbackState.sleepTimerPreset,
-                sleepTimerRemainingMs = playbackState.sleepTimerRemainingMs,
-                abLoopPointAMs = playbackState.abLoopStartMs,
-                abLoopPointBMs = playbackState.abLoopEndMs,
-                currentPositionMs = toolsPosMs,
-                playbackEndMode = playbackState.playbackEndMode,
-                controlsTheme = settings.playerControlsTheme,
-                activeOrientationMode = orientationMode,
-                playerUiScalePercent = settings.playerUiScalePercent,
-                playerAutoDpiScale = settings.playerAutoDpiScale,
-                controlsAutoHideSeconds = settings.controlsAutoHideSeconds,
-                skipIntroSeconds = settings.skipIntroSeconds,
-                onSelectSpeed = onSelectSpeed,
-                onSelectScaleMode = onSelectScaleMode,
-                onSetAudioBoostPercent = onSetAudioBoostPercent,
-                onSetSleepTimer = onSetSleepTimer,
-                onMarkAbPointA = onMarkAbPointA,
-                onMarkAbPointB = onMarkAbPointB,
-                onClearAbLoop = onClearAbLoop,
-                onSelectPlaybackEndMode = onSelectPlaybackEndMode,
-                onSelectControlsTheme = onSelectControlsTheme,
-                onSelectOrientationMode = { orientationMode = it },
-                onUpdatePlayerUiScalePercent = onUpdatePlayerUiScalePercent,
-                onUpdatePlayerAutoDpiScale = onUpdatePlayerAutoDpiScale,
-                onUpdateControlsAutoHideSeconds = onUpdateControlsAutoHideSeconds,
-                onUpdateSkipIntroSeconds = onUpdateSkipIntroSeconds,
-                onLockControls = {
-                    isScreenLocked = true
-                    lockedPillVisible = true
-                    controlsVisible = false
-                },
-                onOpenQuickActionsCustomizer = {
-                    activeSheet = ActivePlayerSheet.CUSTOMIZE_QUICK_ACTIONS
-                },
-                onDismiss = { activeSheet = ActivePlayerSheet.NONE }
-            )
+                ActivePlayerSheet.ANIME4K -> Anime4KControlModalSheet(
+                    settings = settings,
+                    splitCompareEnabled = splitCompareEnabled,
+                    splitPosition = splitPosition,
+                    onToggleEnabled = onToggleAnime4KEnabled,
+                    onSelectPreset = onSelectAnime4KPreset,
+                    onChangeStrength = onChangeAnime4KStrength,
+                    onToggleSplitCompare = onToggleSplitCompare,
+                    onChangeSplitPosition = onChangeSplitPos,
+                    onDismiss = { activeSheet = ActivePlayerSheet.NONE }
+                )
+
+                ActivePlayerSheet.DECODER -> DecoderAndVideoModalSheet(
+                    activeDecoderMode = playbackState.activeDecoderMode,
+                    activeCodecName = playbackState.activeVideoCodecName,
+                    isHardwareAccelerated = playbackState.isHardwareAccelerated,
+                    videoWidth = playbackState.videoWidth,
+                    videoHeight = playbackState.videoHeight,
+                    onSelectDecoderMode = onSelectDecoderMode,
+                    onDismiss = { activeSheet = ActivePlayerSheet.NONE }
+                )
+
+                ActivePlayerSheet.EPISODES -> EpisodesModalSheet(
+                    playlist = playbackState.playlist,
+                    currentIndex = playbackState.currentEpisodeIndex,
+                    onSelectEpisodeIndex = onSelectEpisodeIndex,
+                    onPreviousEpisode = onPreviousEpisode,
+                    onNextEpisode = onNextEpisode,
+                    onDismiss = { activeSheet = ActivePlayerSheet.NONE }
+                )
+
+                ActivePlayerSheet.CHAPTERS -> {
+                    val sheetPosMs by positionMsFlow.collectAsStateWithLifecycle()
+                    ChaptersModalSheet(
+                        chapters = if (settings.enableEmbeddedChapters) playbackState.chapters else emptyList(),
+                        currentPositionMs = sheetPosMs,
+                        onSelectChapter = onSelectChapter,
+                        onPreviousChapter = onPreviousChapter,
+                        onNextChapter = onNextChapter,
+                        onDismiss = { activeSheet = ActivePlayerSheet.NONE }
+                    )
+                }
+
+                ActivePlayerSheet.AUDIO_BOOST -> AudioBoostQuickModalSheet(
+                    audioBoostPercent = playbackState.audioBoostPercent,
+                    onSetAudioBoostPercent = onSetAudioBoostPercent,
+                    onDismiss = { activeSheet = ActivePlayerSheet.NONE }
+                )
+
+                ActivePlayerSheet.SLEEP_TIMER -> SleepTimerQuickModalSheet(
+                    sleepTimerPreset = playbackState.sleepTimerPreset,
+                    sleepTimerRemainingMs = playbackState.sleepTimerRemainingMs,
+                    onSetSleepTimer = onSetSleepTimer,
+                    onDismiss = { activeSheet = ActivePlayerSheet.NONE }
+                )
+
+                ActivePlayerSheet.SKIP_INTRO_CONFIG -> SkipIntroConfigModalSheet(
+                    skipIntroSeconds = settings.skipIntroSeconds,
+                    onUpdateSkipIntroSeconds = onUpdateSkipIntroSeconds,
+                    onSkipNow = {
+                        onSeekByMs(settings.skipIntroSeconds * 1000L)
+                        interactionTick++
+                    },
+                    onDismiss = { activeSheet = ActivePlayerSheet.NONE }
+                )
+
+                ActivePlayerSheet.TOOLS -> {
+                    val toolsPosMs by positionMsFlow.collectAsStateWithLifecycle()
+                    PlayerToolsModalSheet(
+                        playbackSpeed = playbackState.playbackSpeed,
+                        scaleMode = scaleMode,
+                        audioBoostPercent = playbackState.audioBoostPercent,
+                        sleepTimerPreset = playbackState.sleepTimerPreset,
+                        sleepTimerRemainingMs = playbackState.sleepTimerRemainingMs,
+                        abLoopPointAMs = playbackState.abLoopStartMs,
+                        abLoopPointBMs = playbackState.abLoopEndMs,
+                        currentPositionMs = toolsPosMs,
+                        playbackEndMode = playbackState.playbackEndMode,
+                        controlsTheme = settings.playerControlsTheme,
+                        activeOrientationMode = orientationMode,
+                        playerUiScalePercent = settings.playerUiScalePercent,
+                        playerAutoDpiScale = settings.playerAutoDpiScale,
+                        controlsAutoHideSeconds = settings.controlsAutoHideSeconds,
+                        skipIntroSeconds = settings.skipIntroSeconds,
+                        onSelectSpeed = onSelectSpeed,
+                        onSelectScaleMode = onSelectScaleMode,
+                        onSetAudioBoostPercent = onSetAudioBoostPercent,
+                        onSetSleepTimer = onSetSleepTimer,
+                        onMarkAbPointA = onMarkAbPointA,
+                        onMarkAbPointB = onMarkAbPointB,
+                        onClearAbLoop = onClearAbLoop,
+                        onSelectPlaybackEndMode = onSelectPlaybackEndMode,
+                        onSelectControlsTheme = onSelectControlsTheme,
+                        onSelectOrientationMode = { orientationMode = it },
+                        onUpdatePlayerUiScalePercent = onUpdatePlayerUiScalePercent,
+                        onUpdatePlayerAutoDpiScale = onUpdatePlayerAutoDpiScale,
+                        onUpdateControlsAutoHideSeconds = onUpdateControlsAutoHideSeconds,
+                        onUpdateSkipIntroSeconds = onUpdateSkipIntroSeconds,
+                        onLockControls = {
+                            isScreenLocked = true
+                            lockedPillVisible = true
+                            controlsVisible = false
+                        },
+                        onOpenQuickActionsCustomizer = {
+                            activeSheet = ActivePlayerSheet.CUSTOMIZE_QUICK_ACTIONS
+                        },
+                        onDismiss = { activeSheet = ActivePlayerSheet.NONE }
+                    )
+                }
+
+                ActivePlayerSheet.CUSTOMIZE_QUICK_ACTIONS -> QuickActionsCustomizerSheet(
+                    selectedActions = settings.quickActions,
+                    onUpdateActions = onUpdateQuickActions,
+                    onDismiss = { activeSheet = ActivePlayerSheet.NONE }
+                )
+
+                ActivePlayerSheet.NONE -> Unit
+            }
         }
-
-        ActivePlayerSheet.CUSTOMIZE_QUICK_ACTIONS -> QuickActionsCustomizerSheet(
-            selectedActions = settings.quickActions,
-            onUpdateActions = onUpdateQuickActions,
-            onDismiss = { activeSheet = ActivePlayerSheet.NONE }
-        )
-
-        ActivePlayerSheet.NONE -> Unit
     }
 }
 
@@ -1651,76 +1620,35 @@ private fun PlayerTimelineSection(
             }
 
             if (chapters.isNotEmpty()) {
-                Row(
-                    modifier = Modifier.weight(1f, fill = false),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                val shownChapter = activeChapter ?: chapters.first()
+                Surface(
+                    color = Color(0xFF0E131F).copy(alpha = 0.65f),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable(onClick = onOpenChaptersSheet)
+                        .testTag("player_active_chapter_pill")
                 ) {
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.72f),
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable(onClick = onPreviousChapter)
-                            .testTag("player_prev_chapter_button")
+                    Row(
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.SkipPrevious,
-                            contentDescription = tr("Предыдущая глава", "Previous chapter"),
-                            tint = Color.White,
-                            modifier = Modifier
-                                .padding(horizontal = 6.dp, vertical = 5.dp)
-                                .size(15.dp)
+                            imageVector = Icons.Default.Bookmarks,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp)
                         )
-                    }
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.74f),
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
-                        modifier = Modifier
-                            .weight(1f, fill = false)
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable(onClick = onOpenChaptersSheet)
-                            .testTag("player_active_chapter_pill")
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Bookmarks,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Text(
-                                text = (activeChapter ?: chapters.first()).title,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.72f),
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable(onClick = onNextChapter)
-                            .testTag("player_next_chapter_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SkipNext,
-                            contentDescription = tr("Следующая глава", "Next chapter"),
-                            tint = Color.White,
-                            modifier = Modifier
-                                .padding(horizontal = 6.dp, vertical = 5.dp)
-                                .size(15.dp)
+                        Text(
+                            text = shownChapter.title,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -1730,7 +1658,7 @@ private fun PlayerTimelineSection(
 
             if (showSkipIntroButton) {
                 Surface(
-                    color = Color.Black.copy(alpha = 0.72f),
+                    color = Color(0xFF0E131F).copy(alpha = 0.65f),
                     shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)),
                     modifier = Modifier

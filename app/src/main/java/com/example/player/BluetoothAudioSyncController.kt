@@ -88,6 +88,13 @@ class BluetoothAudioSyncController(
         ): Long {
             if (!autoSyncEnabled || !route.isBluetoothActive) return 0L
 
+            val clampedUserOffset = clampBluetoothOffsetMs(userConfiguredA2dpOffsetMs)
+            // If the user explicitly selected a non-default preset (e.g. -45ms Gaming Mode, -60ms LE Audio, -200ms LDAC, or 0ms),
+            // honor their selected preset directly so proprietary TWS Gaming Mode works even when Android HAL caches mixer latency.
+            if (clampedUserOffset != DEFAULT_BT_OFFSET_MS) {
+                return clampedUserOffset
+            }
+
             val measured = when {
                 route.measuredLatencyMs > 0L -> route.measuredLatencyMs
                 route.halOutputLatencyMs > 0 -> route.halOutputLatencyMs.toLong()
@@ -98,7 +105,6 @@ class BluetoothAudioSyncController(
                 return -clampBluetoothOffsetMs(measured)
             }
 
-            val clampedUserOffset = clampBluetoothOffsetMs(userConfiguredA2dpOffsetMs)
             return when (route.profile) {
                 BluetoothAudioProfile.NONE -> 0L
                 BluetoothAudioProfile.A2DP -> clampedUserOffset

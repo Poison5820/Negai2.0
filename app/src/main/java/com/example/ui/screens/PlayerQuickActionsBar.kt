@@ -499,16 +499,17 @@ internal fun SkipIntroConfigModalSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        containerColor = PlayerPopupSheetContainerColor,
+        scrimColor = PlayerPopupSheetScrimColor,
         modifier = Modifier.testTag("skip_intro_config_modal_sheet")
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -517,40 +518,41 @@ internal fun SkipIntroConfigModalSheet(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(
                         imageVector = Icons.Default.FastForward,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
                     )
                     Column {
                         Text(
                             text = tr("Интервал пропуска опенинга", "Skip Intro Interval"),
-                            style = MaterialTheme.typography.titleLarge
+                            style = MaterialTheme.typography.titleMedium
                         )
                         Text(
                             text = tr(
                                 "Выберите готовый пресет или укажите любое количество секунд",
                                 "Pick a preset or enter any custom duration in seconds"
                             ),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
                 Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(10.dp)
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f),
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
                         text = tr("+${skipIntroSeconds} с", "+${skipIntroSeconds} s"),
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                     )
                 }
             }
@@ -558,12 +560,12 @@ internal fun SkipIntroConfigModalSheet(
             // Presets
             Text(
                 text = tr("Готовые интервалы", "Presets"),
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary
             )
             FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 presets.forEach { sec ->
                     FilterChip(
@@ -572,7 +574,7 @@ internal fun SkipIntroConfigModalSheet(
                             onUpdateSkipIntroSeconds(sec)
                             customInputText = sec.toString()
                         },
-                        label = { Text(tr("+${sec} с", "+${sec}s")) },
+                        label = { Text(tr("+${sec} с", "+${sec}s"), style = MaterialTheme.typography.labelSmall) },
                         modifier = Modifier.testTag("skip_intro_preset_chip_$sec")
                     )
                 }
@@ -581,7 +583,7 @@ internal fun SkipIntroConfigModalSheet(
             // Smooth Slider for arbitrary custom value (5s .. 240s) + direct input (5s .. 600s)
             Text(
                 text = tr("Произвольный интервал (5–600 сек)", "Custom Interval (5–600 sec)"),
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary
             )
 
@@ -598,7 +600,7 @@ internal fun SkipIntroConfigModalSheet(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedButton(
@@ -609,7 +611,7 @@ internal fun SkipIntroConfigModalSheet(
                     },
                     modifier = Modifier.weight(1f).testTag("skip_intro_minus_5_btn")
                 ) {
-                    Text(tr("-5 с", "-5s"))
+                    Text(tr("-5 с", "-5s"), style = MaterialTheme.typography.labelSmall)
                 }
                 OutlinedButton(
                     onClick = {
@@ -619,7 +621,7 @@ internal fun SkipIntroConfigModalSheet(
                     },
                     modifier = Modifier.weight(1f).testTag("skip_intro_minus_1_btn")
                 ) {
-                    Text(tr("-1 с", "-1s"))
+                    Text(tr("-1 с", "-1s"), style = MaterialTheme.typography.labelSmall)
                 }
                 OutlinedButton(
                     onClick = {
@@ -629,7 +631,7 @@ internal fun SkipIntroConfigModalSheet(
                     },
                     modifier = Modifier.weight(1f).testTag("skip_intro_plus_1_btn")
                 ) {
-                    Text(tr("+1 с", "+1s"))
+                    Text(tr("+1 с", "+1s"), style = MaterialTheme.typography.labelSmall)
                 }
                 OutlinedButton(
                     onClick = {
@@ -639,13 +641,13 @@ internal fun SkipIntroConfigModalSheet(
                     },
                     modifier = Modifier.weight(1f).testTag("skip_intro_plus_5_btn")
                 ) {
-                    Text(tr("+5 с", "+5s"))
+                    Text(tr("+5 с", "+5s"), style = MaterialTheme.typography.labelSmall)
                 }
             }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
@@ -659,7 +661,7 @@ internal fun SkipIntroConfigModalSheet(
                             }
                         }
                     },
-                    label = { Text(tr("Точное значение (сек)", "Exact value (sec)")) },
+                    label = { Text(tr("Точное значение (сек)", "Exact value (sec)"), style = MaterialTheme.typography.labelSmall) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier
@@ -677,9 +679,9 @@ internal fun SkipIntroConfigModalSheet(
                     },
                     modifier = Modifier.testTag("skip_intro_apply_and_skip_btn")
                 ) {
-                    Icon(Icons.Default.FastForward, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(tr("Пропустить (+${skipIntroSeconds}с)", "Skip (+${skipIntroSeconds}s)"))
+                    Icon(Icons.Default.FastForward, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(tr("Пропустить (+${skipIntroSeconds}с)", "Skip (+${skipIntroSeconds}s)"), style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
@@ -698,14 +700,15 @@ internal fun SpeedQuickModalSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        containerColor = PlayerPopupSheetContainerColor,
+        scrimColor = PlayerPopupSheetScrimColor
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -714,28 +717,29 @@ internal fun SpeedQuickModalSheet(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Speed,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
                     )
                     Text(
                         tr("Скорость воспроизведения", "Playback Speed"),
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleMedium
                     )
                 }
 
                 Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(10.dp)
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f),
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
                         text = formatPlaybackSpeedLabel(playbackSpeed),
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                     )
                 }
             }
@@ -752,7 +756,7 @@ internal fun SpeedQuickModalSheet(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 OutlinedButton(
                     onClick = {
@@ -761,16 +765,16 @@ internal fun SpeedQuickModalSheet(
                     },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Default.Remove, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("0.05x")
+                    Icon(Icons.Default.Remove, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text("0.05x", style = MaterialTheme.typography.labelSmall)
                 }
 
                 FilledTonalButton(
                     onClick = { onSelectSpeed(1.0f) },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(tr("1.0x Норма", "1.0x Normal"))
+                    Text(tr("1.0x Норма", "1.0x Normal"), style = MaterialTheme.typography.labelSmall)
                 }
 
                 OutlinedButton(
@@ -780,21 +784,21 @@ internal fun SpeedQuickModalSheet(
                     },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("0.05x")
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text("0.05x", style = MaterialTheme.typography.labelSmall)
                 }
             }
 
             FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f, 2.5f, 3.0f).forEach { preset ->
                     FilterChip(
                         selected = abs(playbackSpeed - preset) < 0.02f,
                         onClick = { onSelectSpeed(preset) },
-                        label = { Text(formatPlaybackSpeedLabel(preset)) },
+                        label = { Text(formatPlaybackSpeedLabel(preset), style = MaterialTheme.typography.labelSmall) },
                         modifier = Modifier.testTag("speed_preset_chip_$preset")
                     )
                 }
@@ -816,28 +820,30 @@ internal fun EpisodesQuickModalSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        containerColor = PlayerPopupSheetContainerColor,
+        scrimColor = PlayerPopupSheetScrimColor
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.PlaylistPlay,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
                 )
                 Text(
                     text = tr("Серии в плейлисте (${playlist.size})", "Episodes in Playlist (${playlist.size})"),
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleMedium
                 )
             }
 
@@ -845,11 +851,11 @@ internal fun EpisodesQuickModalSheet(
                 val isCurrent = idx == currentEpisodeIndex
                 Surface(
                     color = if (isCurrent) {
-                        MaterialTheme.colorScheme.primaryContainer
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f)
                     } else {
-                        MaterialTheme.colorScheme.surfaceContainer
+                        PlayerPopupCardColor
                     },
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(12.dp),
                     border = if (isCurrent) {
                         BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
                     } else {
@@ -857,7 +863,7 @@ internal fun EpisodesQuickModalSheet(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .clickable {
                             onSelectEpisodeIndex(idx)
                             onDismiss()
@@ -868,17 +874,17 @@ internal fun EpisodesQuickModalSheet(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                                .padding(horizontal = 12.dp, vertical = 9.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Surface(
                                 color = if (isCurrent) {
                                     MaterialTheme.colorScheme.primary
                                 } else {
-                                    MaterialTheme.colorScheme.surfaceContainerHighest
+                                    Color.White.copy(alpha = 0.12f)
                                 },
-                                shape = RoundedCornerShape(8.dp)
+                                shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
                                     text = ep.episodeBadge ?: "#${idx + 1}",
@@ -888,13 +894,13 @@ internal fun EpisodesQuickModalSheet(
                                     } else {
                                         MaterialTheme.colorScheme.primary
                                     },
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                                 )
                             }
 
                             Text(
                                 text = ep.cleanTitle,
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodySmall,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f)
@@ -915,7 +921,7 @@ internal fun EpisodesQuickModalSheet(
                                     .fillMaxWidth()
                                     .height(3.dp),
                                 color = MaterialTheme.colorScheme.primary,
-                                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                                trackColor = Color.White.copy(alpha = 0.12f)
                             )
                         }
                     }
@@ -937,14 +943,15 @@ internal fun AudioBoostQuickModalSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        containerColor = PlayerPopupSheetContainerColor,
+        scrimColor = PlayerPopupSheetScrimColor
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             AudioBoostControlSection(
                 audioBoostPercent = audioBoostPercent,
@@ -955,7 +962,7 @@ internal fun AudioBoostQuickModalSheet(
                     "Использует системный DSP LoudnessEnhancer для усиления тихих озвучек без изменения скорости речи.",
                     "Uses system DSP LoudnessEnhancer to amplify quiet voiceovers without altering speech pitch or speed."
                 ),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -976,14 +983,15 @@ internal fun SleepTimerQuickModalSheet(
     val isEnglish = LocalIsEnglish.current
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        containerColor = PlayerPopupSheetContainerColor,
+        scrimColor = PlayerPopupSheetScrimColor
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -992,14 +1000,15 @@ internal fun SleepTimerQuickModalSheet(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Bedtime,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
                     )
-                    Text(tr("Таймер сна", "Sleep Timer"), style = MaterialTheme.typography.titleLarge)
+                    Text(tr("Таймер сна", "Sleep Timer"), style = MaterialTheme.typography.titleMedium)
                 }
 
                 if (sleepTimerPreset != SleepTimerPreset.OFF) {
@@ -1009,30 +1018,28 @@ internal fun SleepTimerQuickModalSheet(
                         formatTimeMs(sleepTimerRemainingMs)
                     }
                     Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f),
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
                             text = statusText,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(2.dp))
-
             FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 SleepTimerPreset.entries.forEach { preset ->
                     FilterChip(
                         selected = sleepTimerPreset == preset,
                         onClick = { onSetSleepTimer(preset) },
-                        label = { Text(preset.localizedTitle(isEnglish)) },
+                        label = { Text(preset.localizedTitle(isEnglish), style = MaterialTheme.typography.labelSmall) },
                         modifier = Modifier.testTag("sleep_sheet_chip_${preset.id}")
                     )
                 }

@@ -354,8 +354,8 @@ class ExampleUnitTest {
         assertTrue(com.example.data.StorageAccessHelper.isCameraOrScreenshotsPath("/storage/emulated/0/Pictures/Screenshots"))
         org.junit.Assert.assertFalse(com.example.data.StorageAccessHelper.isCameraOrScreenshotsPath("/storage/emulated/0/Movies/Anime"))
 
-        // 8 organized settings categories (including TorrServer & Torrents)
-        assertEquals(8, com.example.model.SettingsCategory.entries.size)
+        // 9 organized settings categories (including TorrServer & Torrents and Device Info & Decoders)
+        assertEquals(9, com.example.model.SettingsCategory.entries.size)
     }
 }
 

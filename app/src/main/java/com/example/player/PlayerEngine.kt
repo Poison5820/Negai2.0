@@ -118,6 +118,7 @@ data class PlaybackRuntimeState(
     val bluetoothConfiguredOffsetMs: Long = BluetoothAudioSyncController.DEFAULT_BT_OFFSET_MS,
     val bluetoothAppliedOffsetMs: Long = 0L,
     val effectiveAudioDelayMs: Long = 0L,
+    val lastAudioResyncTimestampMs: Long = 0L,
     val playbackEndMode: PlaybackEndMode = PlaybackEndMode.AUTO_NEXT,
     val sleepTimerPreset: SleepTimerPreset = SleepTimerPreset.OFF,
     val sleepTimerRemainingMs: Long = 0L,
@@ -855,7 +856,9 @@ class PlayerEngine private constructor(
                 )
             }
 
-            audioDelayProcessor.setDelayMs(0L)
+            manualAudioDelayMs = 0L
+            bluetoothSyncController.refreshRouteState()
+            recalculateEffectiveAudioDelay(resyncIfPlaying = false)
             activePlayer.setMediaSources(sources, safeIndex, startPos)
             activePlayer.prepare()
             activePlayer.playWhenReady = true
@@ -1604,7 +1607,17 @@ class PlayerEngine private constructor(
     }
 
     fun setAudioDelayMs(delayMs: Long) {
-        manualAudioDelayMs = AudioDelayProcessor.clampDelayMs(delayMs)
+        val clamped = AudioDelayProcessor.clampDelayMs(delayMs)
+        val route = bluetoothSyncController.currentRouteState
+        if (route.isBluetoothActive && bluetoothAutoSyncEnabled && clamped in listOf(-250L, -200L, -150L, -100L, -60L, -45L, 0L)) {
+            manualAudioDelayMs = 0L
+            bluetoothConfiguredOffsetMs = clamped
+            engineScope.launch {
+                repository.preferencesRepository.updateBluetoothAudioOffsetMs(clamped)
+            }
+        } else {
+            manualAudioDelayMs = clamped
+        }
         recalculateEffectiveAudioDelay(resyncIfPlaying = false)
     }
 
@@ -1652,10 +1665,16 @@ class PlayerEngine private constructor(
         bluetoothSyncController.refreshRouteState()
         recalculateEffectiveAudioDelay(resyncIfPlaying = false)
         audioDelayProcessor.forceResyncFlush()
+        val wasPlaying = player.playWhenReady
         val pos = player.currentPosition.coerceAtLeast(0L)
         val idx = player.currentMediaItemIndex.coerceAtLeast(0)
+        player.playWhenReady = false
         player.seekTo(idx, pos)
+        player.playWhenReady = wasPlaying
         _positionMs.value = pos
+        _state.update {
+            it.copy(lastAudioResyncTimestampMs = System.currentTimeMillis())
+        }
         updatePositionAndSubtitlesNow(forceSyncRuntimePosition = true)
     }
 

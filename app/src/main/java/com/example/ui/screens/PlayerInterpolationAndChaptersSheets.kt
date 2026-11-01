@@ -88,6 +88,7 @@ fun FrameInterpolationModalSheet(
     sourceFrameRate: Float,
     targetDisplayHz: Float,
     refreshPlan: RefreshRatePlan,
+    isAnime4kAutoFastActive: Boolean = false,
     onToggleFrameInterpolation: (Boolean) -> Unit,
     onSelectInterpolationMode: (FrameInterpolationMode) -> Unit,
     onToggleHighRefreshRate: (Boolean) -> Unit,
@@ -99,24 +100,26 @@ fun FrameInterpolationModalSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        containerColor = PlayerPopupSheetContainerColor,
+        scrimColor = PlayerPopupSheetScrimColor
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.MotionPhotosOn,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
                 )
                 Column {
                     Text(
@@ -124,31 +127,52 @@ fun FrameInterpolationModalSheet(
                             "Интерполяция кадров и частота LTPO",
                             "Frame Interpolation & LTPO Refresh Rate"
                         ),
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleMedium
                     )
                     Text(
                         text = tr(
                             "Реалтайм сглаживание движения (GPU MEMC) и адаптивная герцовка экрана",
                             "Real-time GPU motion smoothing (MEMC) and adaptive display refresh rate"
                         ),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (isAnime4kAutoFastActive) {
+                Surface(
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.72f),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("interpolation_anime4k_fast_notice")
+                ) {
+                    Text(
+                        text = tr(
+                            "⚡ Защита от перегрузки GPU: Anime4K автоматически переведён в быстрый однопроходный режим (Anime4K_Fast) на время работы интерполяции кадров.",
+                            "⚡ GPU Overload Protection: Anime4K automatically runs in fast single-pass mode (Anime4K_Fast) while frame interpolation is active."
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
                     )
                 }
             }
 
             // Live FPS -> Display Hz Telemetry Card
             Surface(
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                shape = RoundedCornerShape(16.dp),
+                color = PlayerPopupCardColor,
+                shape = RoundedCornerShape(12.dp),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)),
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("interpolation_telemetry_card")
             ) {
                 Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -167,13 +191,14 @@ fun FrameInterpolationModalSheet(
                                 } else {
                                     "23.976 FPS"
                                 },
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
                             )
                         }
                         Icon(
                             imageVector = Icons.Default.Speed,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
                         )
                         Column(horizontalAlignment = Alignment.End) {
                             Text(
@@ -185,7 +210,7 @@ fun FrameInterpolationModalSheet(
                             val outHz = targetDisplayHz.roundToInt()
                             Text(
                                 text = tr("$outFps FPS @ $outHz Гц", "$outFps FPS @ $outHz Hz"),
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
@@ -193,7 +218,7 @@ fun FrameInterpolationModalSheet(
 
                     Surface(
                         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
@@ -213,9 +238,9 @@ fun FrameInterpolationModalSheet(
                                     "Standard native frame output without interpolation."
                                 )
                             },
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
                         )
                     }
                 }
@@ -224,28 +249,28 @@ fun FrameInterpolationModalSheet(
             // Master Switch for Frame Interpolation
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    containerColor = PlayerPopupCardColor
                 ),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = tr("Включить интерполяцию кадров", "Enable Frame Interpolation"),
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
                             text = tr(
                                 "Повышение плавности 24/30p видео до 60/120 FPS (по умолчанию выключено)",
                                 "Smooth 24/30p video up to 60/120 FPS (disabled by default)"
                             ),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -263,32 +288,32 @@ fun FrameInterpolationModalSheet(
                     "Режим интерполяции кадров (GPU MEMC)",
                     "Frame Interpolation Mode (GPU MEMC)"
                 ),
-                style = MaterialTheme.typography.titleSmall
+                style = MaterialTheme.typography.bodyMedium
             )
 
             FrameInterpolationMode.entries.forEach { mode ->
                 val selected = effectiveMode == mode
                 Card(
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = if (selected) {
                             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f)
                         } else {
-                            MaterialTheme.colorScheme.surfaceContainer
+                            PlayerPopupCardColor
                         }
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .clickable { onSelectInterpolationMode(mode) }
                         .testTag("interpolation_mode_card_${mode.id}")
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         RadioButton(
                             selected = selected,
@@ -297,23 +322,23 @@ fun FrameInterpolationModalSheet(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = mode.localizedTitle(isEnglish),
-                                style = MaterialTheme.typography.titleSmall
+                                style = MaterialTheme.typography.bodyMedium
                             )
                             Text(
                                 text = mode.localizedSubtitle(isEnglish),
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Surface(
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            shape = RoundedCornerShape(8.dp)
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.75f),
+                            shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
                                 text = mode.localizedBadge(isEnglish),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                             )
                         }
                     }
@@ -328,18 +353,18 @@ fun FrameInterpolationModalSheet(
                     "Управление частотой экрана (LTPO / 120 Гц)",
                     "Display Refresh Rate Control (LTPO / 120 Hz)"
                 ),
-                style = MaterialTheme.typography.titleSmall
+                style = MaterialTheme.typography.bodyMedium
             )
 
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    containerColor = PlayerPopupCardColor
                 ),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -349,14 +374,14 @@ fun FrameInterpolationModalSheet(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = tr("Адаптивная частота LTPO", "LTPO Adaptive Refresh Rate"),
-                                style = MaterialTheme.typography.titleSmall
+                                style = MaterialTheme.typography.bodyMedium
                             )
                             Text(
                                 text = tr(
                                     "Автоматически подбирать кратную герцовку экрана под FPS видео (24p → 48/96/120 Гц) и снижать частоту на паузе",
                                     "Automatically match display refresh rate to integer multiples of video FPS (24p → 48/96/120 Hz) and lower Hz when paused"
                                 ),
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -378,14 +403,14 @@ fun FrameInterpolationModalSheet(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = tr("Высокая частота 90 / 120 / 165 Гц", "High Refresh Rate 90 / 120 / 165 Hz"),
-                                style = MaterialTheme.typography.titleSmall
+                                style = MaterialTheme.typography.bodyMedium
                             )
                             Text(
                                 text = tr(
                                     "Разрешить использование максимальной частоты обновления дисплея",
                                     "Allow using the display's maximum refresh rate"
                                 ),
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -437,15 +462,16 @@ fun EpisodesModalSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        containerColor = PlayerPopupSheetContainerColor,
+        scrimColor = PlayerPopupSheetScrimColor
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 20.dp)
                 .testTag("episodes_modal_sheet"),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -454,17 +480,18 @@ fun EpisodesModalSheet(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.PlaylistPlay,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
                     )
                     Column {
                         Text(
                             text = tr("Серии (${playlist.size})", "Episodes (${playlist.size})"),
-                            style = MaterialTheme.typography.titleLarge
+                            style = MaterialTheme.typography.titleMedium
                         )
                         if (playlist.isNotEmpty()) {
                             Text(
@@ -472,7 +499,7 @@ fun EpisodesModalSheet(
                                     "Сейчас: ${currentIndex + 1} из ${playlist.size}",
                                     "Now playing: ${currentIndex + 1} of ${playlist.size}"
                                 ),
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
@@ -486,18 +513,18 @@ fun EpisodesModalSheet(
                             enabled = currentIndex > 0,
                             modifier = Modifier.testTag("episodes_sheet_prev_button")
                         ) {
-                            Icon(Icons.Default.SkipPrevious, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(tr("Пред.", "Prev"))
+                            Icon(Icons.Default.SkipPrevious, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(tr("Пред.", "Prev"), style = MaterialTheme.typography.labelSmall)
                         }
                         FilledTonalButton(
                             onClick = onNextEpisode,
                             enabled = currentIndex < playlist.lastIndex,
                             modifier = Modifier.testTag("episodes_sheet_next_button")
                         ) {
-                            Text(tr("След.", "Next"))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(Icons.Default.SkipNext, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Text(tr("След.", "Next"), style = MaterialTheme.typography.labelSmall)
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Icon(Icons.Default.SkipNext, contentDescription = null, modifier = Modifier.size(15.dp))
                         }
                     }
                 }
@@ -507,17 +534,17 @@ fun EpisodesModalSheet(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text(tr("Поиск по номеру или названию серии…", "Search by episode number or title…")) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    placeholder = { Text(tr("Поиск по номеру или названию серии…", "Search by episode number or title…"), style = MaterialTheme.typography.bodySmall) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Clear, contentDescription = tr("Очистить", "Clear"))
+                                Icon(Icons.Default.Clear, contentDescription = tr("Очистить", "Clear"), modifier = Modifier.size(18.dp))
                             }
                         }
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("episodes_sheet_search_input")
@@ -526,23 +553,23 @@ fun EpisodesModalSheet(
 
             if (filteredEpisodes.isEmpty()) {
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                    shape = RoundedCornerShape(14.dp),
+                    color = PlayerPopupCardColor,
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         text = tr("Серии по запросу не найдены", "No episodes match your search"),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(14.dp)
                     )
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 420.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .heightIn(max = 360.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     itemsIndexed(
                         items = filteredEpisodes,
@@ -558,7 +585,7 @@ fun EpisodesModalSheet(
                         }
 
                         Card(
-                            shape = RoundedCornerShape(14.dp),
+                            shape = RoundedCornerShape(12.dp),
                             border = if (isCurrent) {
                                 BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
                             } else {
@@ -568,12 +595,12 @@ fun EpisodesModalSheet(
                                 containerColor = if (isCurrent) {
                                     MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f)
                                 } else {
-                                    MaterialTheme.colorScheme.surfaceContainer
+                                    PlayerPopupCardColor
                                 }
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp))
+                                .clip(RoundedCornerShape(12.dp))
                                 .clickable {
                                     onSelectEpisodeIndex(originalIndex)
                                     onDismiss()
@@ -583,19 +610,19 @@ fun EpisodesModalSheet(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    .padding(horizontal = 12.dp, vertical = 9.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(36.dp)
+                                        .size(30.dp)
                                         .clip(CircleShape)
                                         .background(
                                             if (isCurrent) {
                                                 MaterialTheme.colorScheme.primary
                                             } else {
-                                                MaterialTheme.colorScheme.surfaceContainerHighest
+                                                Color.White.copy(alpha = 0.12f)
                                             }
                                         ),
                                     contentAlignment = Alignment.Center
@@ -605,12 +632,12 @@ fun EpisodesModalSheet(
                                             imageVector = Icons.Default.PlayArrow,
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.onPrimary,
-                                            modifier = Modifier.size(18.dp)
+                                            modifier = Modifier.size(16.dp)
                                         )
                                     } else {
                                         Text(
                                             text = "${ep.episodeNumber ?: (originalIndex + 1)}",
-                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                     }
@@ -623,7 +650,7 @@ fun EpisodesModalSheet(
                                     ) {
                                         Text(
                                             text = ep.cleanTitle,
-                                            style = MaterialTheme.typography.titleSmall.copy(
+                                            style = MaterialTheme.typography.bodyMedium.copy(
                                                 fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium
                                             ),
                                             maxLines = 1,
@@ -647,7 +674,7 @@ fun EpisodesModalSheet(
                                     if (metaParts.isNotEmpty()) {
                                         Text(
                                             text = metaParts.joinToString(" • "),
-                                            style = MaterialTheme.typography.bodySmall,
+                                            style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
@@ -660,7 +687,7 @@ fun EpisodesModalSheet(
                                         imageVector = Icons.Default.CheckCircle,
                                         contentDescription = tr("Просмотрено", "Watched"),
                                         tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(16.dp)
                                     )
                                 }
                             }
@@ -674,6 +701,7 @@ fun EpisodesModalSheet(
 
 /**
  * Dedicated independent modal sheet for embedded container Chapters (OP / ED / Scenes).
+ * Clean chapter list with start timestamp and one-tap seek (no extra prev/next buttons).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -681,8 +709,8 @@ fun ChaptersModalSheet(
     chapters: List<VideoChapter>,
     currentPositionMs: Long,
     onSelectChapter: (VideoChapter) -> Unit,
-    onPreviousChapter: () -> Unit,
-    onNextChapter: () -> Unit,
+    onPreviousChapter: () -> Unit = {},
+    onNextChapter: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val activeChapterIndex = remember(chapters, currentPositionMs) {
@@ -691,84 +719,63 @@ fun ChaptersModalSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        containerColor = PlayerPopupSheetContainerColor,
+        scrimColor = PlayerPopupSheetScrimColor
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 20.dp)
                 .testTag("chapters_modal_sheet"),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Bookmark,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
+                Icon(
+                    imageVector = Icons.Default.Bookmark,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Column {
+                    Text(
+                        text = tr("Главы видео (${chapters.size})", "Video Chapters (${chapters.size})"),
+                        style = MaterialTheme.typography.titleMedium
                     )
-                    Column {
-                        Text(
-                            text = tr("Главы видео (${chapters.size})", "Video Chapters (${chapters.size})"),
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Text(
-                            text = tr(
-                                "Оглавление контейнера (Интро, Опенинг, Сцены, Эндинг)",
-                                "Embedded container chapters (Intro, Opening, Scenes, Ending)"
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                if (chapters.isNotEmpty()) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        OutlinedButton(
-                            onClick = onPreviousChapter,
-                            modifier = Modifier.testTag("chapters_sheet_prev_button")
-                        ) {
-                            Icon(Icons.Default.SkipPrevious, contentDescription = null, modifier = Modifier.size(16.dp))
-                        }
-                        FilledTonalButton(
-                            onClick = onNextChapter,
-                            modifier = Modifier.testTag("chapters_sheet_next_button")
-                        ) {
-                            Icon(Icons.Default.SkipNext, contentDescription = null, modifier = Modifier.size(16.dp))
-                        }
-                    }
+                    Text(
+                        text = tr(
+                            "Нажмите на главу для перехода к её началу",
+                            "Tap a chapter to jump to its start time"
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
             if (chapters.isEmpty()) {
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                    shape = RoundedCornerShape(16.dp),
+                    color = PlayerPopupCardColor,
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
-                        modifier = Modifier.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
                             text = tr("В этом видеофайле нет встроенных глав", "No embedded chapters in this video file"),
-                            style = MaterialTheme.typography.titleSmall
+                            style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
                             text = tr(
                                 "Встроенные главы автоматически считываются из контейнеров MKV / MP4 и из тегов разделов файла.",
                                 "Embedded chapters are automatically parsed from MKV / MP4 containers and chapter tags."
                             ),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -777,8 +784,8 @@ fun ChaptersModalSheet(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 420.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .heightIn(max = 360.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     itemsIndexed(
                         items = chapters,
@@ -786,7 +793,7 @@ fun ChaptersModalSheet(
                     ) { index, chapter ->
                         val isCurrent = index == activeChapterIndex
                         Card(
-                            shape = RoundedCornerShape(14.dp),
+                            shape = RoundedCornerShape(12.dp),
                             border = if (isCurrent) {
                                 BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
                             } else {
@@ -796,12 +803,12 @@ fun ChaptersModalSheet(
                                 containerColor = if (isCurrent) {
                                     MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f)
                                 } else {
-                                    MaterialTheme.colorScheme.surfaceContainer
+                                    PlayerPopupCardColor
                                 }
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp))
+                                .clip(RoundedCornerShape(12.dp))
                                 .clickable {
                                     onSelectChapter(chapter)
                                     onDismiss()
@@ -811,19 +818,19 @@ fun ChaptersModalSheet(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    .padding(horizontal = 12.dp, vertical = 9.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(34.dp)
+                                        .size(30.dp)
                                         .clip(CircleShape)
                                         .background(
                                             if (isCurrent) {
                                                 MaterialTheme.colorScheme.primary
                                             } else {
-                                                MaterialTheme.colorScheme.surfaceContainerHighest
+                                                Color.White.copy(alpha = 0.12f)
                                             }
                                         ),
                                     contentAlignment = Alignment.Center
@@ -833,12 +840,12 @@ fun ChaptersModalSheet(
                                             imageVector = Icons.Default.PlayArrow,
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.onPrimary,
-                                            modifier = Modifier.size(18.dp)
+                                            modifier = Modifier.size(16.dp)
                                         )
                                     } else {
                                         Text(
                                             text = "${index + 1}",
-                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                     }
@@ -847,23 +854,18 @@ fun ChaptersModalSheet(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = chapter.title,
-                                        style = MaterialTheme.typography.titleSmall.copy(
+                                        style = MaterialTheme.typography.bodyMedium.copy(
                                             fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium
                                         ),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
-                                    val durationSec = ((chapter.endTimeMs - chapter.startTimeMs).coerceAtLeast(0L) / 1000L)
                                     Text(
-                                        text = if (durationSec > 0L) {
-                                            tr(
-                                                "${formatTimeMs(chapter.startTimeMs)} – ${formatTimeMs(chapter.endTimeMs)} (${durationSec} сек)",
-                                                "${formatTimeMs(chapter.startTimeMs)} – ${formatTimeMs(chapter.endTimeMs)} (${durationSec}s)"
-                                            )
-                                        } else {
-                                            formatTimeMs(chapter.startTimeMs)
-                                        },
-                                        style = MaterialTheme.typography.bodySmall,
+                                        text = tr(
+                                            "Начало: ${formatTimeMs(chapter.startTimeMs)}",
+                                            "Start: ${formatTimeMs(chapter.startTimeMs)}"
+                                        ),
+                                        style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
@@ -872,7 +874,7 @@ fun ChaptersModalSheet(
                                     color = if (isCurrent) {
                                         MaterialTheme.colorScheme.primary
                                     } else {
-                                        MaterialTheme.colorScheme.surfaceContainerHighest
+                                        Color.White.copy(alpha = 0.12f)
                                     },
                                     shape = RoundedCornerShape(8.dp)
                                 ) {

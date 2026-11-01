@@ -755,8 +755,18 @@ private class Anime4KRenderer(
             referenceOrigTex = fboSrc.texId
         }
 
-        // Step B: Run Anime4K Shader Passes on activeSourceFbo
-        when (preset) {
+        // Step B: Run Anime4K Shader Passes on activeSourceFbo.
+        // When MEMC interpolation is active at high refresh rates, automatically use single-pass ANIME4K_FAST
+        // instead of multi-pass CNN/CNNX FBO upscaling to prevent GPU bandwidth bottlenecks and stutter.
+        val effectiveShaderPreset = if (memcMode != FrameInterpolationMode.OFF &&
+            (preset == Anime4KPreset.ANIME4K_UPSCALE_CNN || preset == Anime4KPreset.ANIME4K_UPSCALE_CNNX)
+        ) {
+            Anime4KPreset.ANIME4K_FAST
+        } else {
+            preset
+        }
+
+        when (effectiveShaderPreset) {
             Anime4KPreset.ANIME4K_FAST -> {
                 GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
                 GLES20.glViewport(vp.x, vp.y, vp.w, vp.h)

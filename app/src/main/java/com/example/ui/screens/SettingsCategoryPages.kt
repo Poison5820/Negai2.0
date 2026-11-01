@@ -1,5 +1,10 @@
 package com.example.ui.screens
 
+import android.content.Context
+import android.media.MediaCodecInfo
+import android.media.MediaCodecList
+import android.os.Build
+import android.view.WindowManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -59,6 +64,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -66,6 +72,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -1137,7 +1145,7 @@ internal fun AudioSettingsPage(
     actions: SettingsActions
 ) {
     val boostPresets = listOf(100, 125, 150, 175, 200)
-    val btOffsetPresets = listOf(-250L, -200L, -150L, -100L, -50L, 0L)
+    val btOffsetPresets = listOf(-250L, -200L, -150L, -100L, -60L, -45L, 0L)
 
     SettingsSectionCard(
         title = tr("Внешние звуковые дорожки и озвучки", "External Audio Tracks & Voiceovers"),
@@ -1204,8 +1212,8 @@ internal fun AudioSettingsPage(
                     )
                     Text(
                         text = tr(
-                            "Применяется только когда звук идёт через Bluetooth (для LE Audio масштабируется автоматически)",
-                            "Applied only when audio routes through Bluetooth (automatically scaled for LE Audio)"
+                            "Применяется когда звук идёт через Bluetooth (выберите -45 мс для игрового режима наушников)",
+                            "Applied when audio routes through Bluetooth (select -45 ms for headphone Gaming Mode)"
                         ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1221,7 +1229,7 @@ internal fun AudioSettingsPage(
 
             Slider(
                 value = settings.bluetoothAudioOffsetMs.toFloat(),
-                onValueChange = { actions.onUpdateBluetoothAudioOffsetMs((it / 10f).roundToInt() * 10L) },
+                onValueChange = { actions.onUpdateBluetoothAudioOffsetMs((it / 5f).roundToInt() * 5L) },
                 valueRange = -400f..0f,
                 modifier = Modifier.testTag("bluetooth_offset_slider")
             )
@@ -1239,7 +1247,10 @@ internal fun AudioSettingsPage(
                                 when (presetMs) {
                                     -150L -> tr("-150 мс (Стандарт TWS)", "-150 ms (Standard TWS)")
                                     -200L -> tr("-200 мс (Кодек LDAC/AAC)", "-200 ms (LDAC/AAC Codec)")
-                                    -100L -> tr("-100 мс (aptX LL / Игровой)", "-100 ms (aptX LL / Gaming)")
+                                    -100L -> tr("-100 мс (aptX LL)", "-100 ms (aptX LL)")
+                                    -60L -> tr("-60 мс (LE Audio)", "-60 ms (LE Audio)")
+                                    -45L -> tr("-45 мс (Игровой режим BT)", "-45 ms (Gaming Mode BT)")
+                                    0L -> tr("0 мс (Выкл)", "0 ms (Off)")
                                     else -> tr("${presetMs} мс", "${presetMs} ms")
                                 }
                             )
@@ -1798,3 +1809,390 @@ internal fun SettingToggleRow(
         )
     }
 }
+
+// ============================================================================
+// 9. ИНФОРМАЦИЯ ОБ УСТРОЙСТВЕ И ДЕКОДЕРАХ / DEVICE INFO & DECODERS
+// ============================================================================
+internal data class DeviceDecoderItem(
+    val codecName: String,
+    val mimeType: String,
+    val friendlyFormat: String,
+    val isVideo: Boolean,
+    val isHardwareAccelerated: Boolean,
+    val maxResolutionLabel: String?
+)
+
+internal enum class DecoderFilterMode {
+    ALL,
+    VIDEO,
+    AUDIO,
+    HW_ONLY,
+    SW_ONLY
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun DeviceInfoSettingsPage() {
+    val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val displayMetrics = context.resources.displayMetrics
+
+    val displayData = remember(context, configuration) {
+        val wm = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+        @Suppress("DEPRECATION")
+        val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            runCatching { context.display }.getOrNull() ?: wm?.defaultDisplay
+        } else {
+            wm?.defaultDisplay
+        }
+
+        val currentHz = display?.refreshRate?.roundToInt() ?: 60
+        val supportedRates = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && display != null) {
+            display.supportedModes
+                .map { it.refreshRate.roundToInt() }
+                .distinct()
+                .sortedDescending()
+        } else {
+            listOf(currentHz)
+        }
+
+        val supportedResolutions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && display != null) {
+            display.supportedModes
+                .map { "${it.physicalWidth}×${it.physicalHeight}" }
+                .distinct()
+        } else {
+            emptyList()
+        }
+
+        val widthPx = displayMetrics.widthPixels
+        val heightPx = displayMetrics.heightPixels
+        val densityDpi = configuration.densityDpi
+        val densityScale = displayMetrics.density
+        val widthDp = configuration.screenWidthDp
+        val heightDp = configuration.screenHeightDp
+
+        Triple(
+            "$widthPx × $heightPx px",
+            "$widthDp × $heightDp dp • $densityDpi dpi (${String.format("%.2f", densityScale)}x)",
+            Triple(currentHz, supportedRates.ifEmpty { listOf(currentHz) }, supportedResolutions)
+        )
+    }
+
+    val decoders = remember {
+        queryDeviceDecoders()
+    }
+    var filterMode by rememberSaveable { mutableStateOf(DecoderFilterMode.ALL) }
+
+    val hwCount = remember(decoders) { decoders.count { it.isHardwareAccelerated } }
+    val swCount = remember(decoders) { decoders.count { !it.isHardwareAccelerated } }
+    val videoCount = remember(decoders) { decoders.count { it.isVideo } }
+    val audioCount = remember(decoders) { decoders.count { !it.isVideo } }
+
+    val filteredDecoders = remember(decoders, filterMode) {
+        decoders.filter { item ->
+            when (filterMode) {
+                DecoderFilterMode.ALL -> true
+                DecoderFilterMode.VIDEO -> item.isVideo
+                DecoderFilterMode.AUDIO -> !item.isVideo
+                DecoderFilterMode.HW_ONLY -> item.isHardwareAccelerated
+                DecoderFilterMode.SW_ONLY -> !item.isHardwareAccelerated
+            }
+        }
+    }
+
+    SettingsSectionCard(
+        title = tr("Экран, разрешение и частота обновления", "Display Resolution & Refresh Rate"),
+        subtitle = tr(
+            "Физическое разрешение матрицы, плотность пикселей (DPI) и поддерживаемые режимы герцовки",
+            "Physical panel resolution, pixel density (DPI), and supported display refresh rates"
+        ),
+        icon = Icons.Default.HighQuality
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("device_info_display_card"),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            DeviceInfoMetricRow(
+                label = tr("Устройство / SoC", "Device / SoC"),
+                value = "${Build.MANUFACTURER.replaceFirstChar { it.uppercase() }} ${Build.MODEL} (${Build.HARDWARE})"
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            DeviceInfoMetricRow(
+                label = tr("Разрешение экрана (пиксели)", "Screen Resolution (Pixels)"),
+                value = displayData.first
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            DeviceInfoMetricRow(
+                label = tr("Логический размер и DPI", "Logical Viewport & DPI"),
+                value = displayData.second
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            DeviceInfoMetricRow(
+                label = tr("Текущая частота экрана", "Current Refresh Rate"),
+                value = tr("${displayData.third.first} Гц", "${displayData.third.first} Hz")
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            val hzUnit = tr("Гц", "Hz")
+            DeviceInfoMetricRow(
+                label = tr("Поддерживаемые частоты (LTPO / Display)", "Supported Refresh Rates"),
+                value = displayData.third.second.joinToString(", ") { "$it $hzUnit" }
+            )
+            if (displayData.third.third.isNotEmpty()) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                DeviceInfoMetricRow(
+                    label = tr("Режимы матрицы (Display Modes)", "Native Display Modes"),
+                    value = displayData.third.third.joinToString(", ")
+                )
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            DeviceInfoMetricRow(
+                label = tr("Версия Android / API", "Android Version / API"),
+                value = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
+            )
+        }
+    }
+
+    SettingsSectionCard(
+        title = tr("Аппаратные и программные декодеры", "Hardware & Software Media Decoders"),
+        subtitle = tr(
+            "Аппаратные (GPU/SoC: $hwCount) и программные (CPU: $swCount) декодеры видео ($videoCount) и аудио ($audioCount)",
+            "Hardware (GPU/SoC: $hwCount) and software (CPU: $swCount) video ($videoCount) & audio ($audioCount) decoders"
+        ),
+        icon = Icons.Default.Memory
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("device_info_decoders_card"),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = filterMode == DecoderFilterMode.ALL,
+                    onClick = { filterMode = DecoderFilterMode.ALL },
+                    label = { Text(tr("Все (${decoders.size})", "All (${decoders.size})")) },
+                    modifier = Modifier.testTag("decoder_filter_all")
+                )
+                FilterChip(
+                    selected = filterMode == DecoderFilterMode.HW_ONLY,
+                    onClick = { filterMode = DecoderFilterMode.HW_ONLY },
+                    label = { Text(tr("Аппаратные HW ($hwCount)", "Hardware HW ($hwCount)")) },
+                    modifier = Modifier.testTag("decoder_filter_hw")
+                )
+                FilterChip(
+                    selected = filterMode == DecoderFilterMode.SW_ONLY,
+                    onClick = { filterMode = DecoderFilterMode.SW_ONLY },
+                    label = { Text(tr("Программные SW ($swCount)", "Software SW ($swCount)")) },
+                    modifier = Modifier.testTag("decoder_filter_sw")
+                )
+                FilterChip(
+                    selected = filterMode == DecoderFilterMode.VIDEO,
+                    onClick = { filterMode = DecoderFilterMode.VIDEO },
+                    label = { Text(tr("Видео ($videoCount)", "Video ($videoCount)")) },
+                    modifier = Modifier.testTag("decoder_filter_video")
+                )
+                FilterChip(
+                    selected = filterMode == DecoderFilterMode.AUDIO,
+                    onClick = { filterMode = DecoderFilterMode.AUDIO },
+                    label = { Text(tr("Аудио ($audioCount)", "Audio ($audioCount)")) },
+                    modifier = Modifier.testTag("decoder_filter_audio")
+                )
+            }
+
+            filteredDecoders.forEach { decoder ->
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.55f),
+                    border = BorderStroke(
+                        1.dp,
+                        if (decoder.isHardwareAccelerated) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+                        } else {
+                            MaterialTheme.colorScheme.outlineVariant
+                        }
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 9.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = decoder.friendlyFormat,
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                if (decoder.maxResolutionLabel != null) {
+                                    Text(
+                                        text = "• ${decoder.maxResolutionLabel}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                            Text(
+                                text = "${decoder.codecName} (${decoder.mimeType})",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (decoder.isHardwareAccelerated) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            }
+                        ) {
+                            Text(
+                                text = if (decoder.isHardwareAccelerated) {
+                                    tr("HW Аппаратный", "HW Accelerated")
+                                } else {
+                                    tr("SW Программный", "SW Software")
+                                },
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = if (decoder.isHardwareAccelerated) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                },
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeviceInfoMetricRow(
+    label: String,
+    value: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(0.48f)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(0.52f)
+        )
+    }
+}
+
+private fun queryDeviceDecoders(): List<DeviceDecoderItem> {
+    val result = mutableListOf<DeviceDecoderItem>()
+    runCatching {
+        val codecList = MediaCodecList(MediaCodecList.ALL_CODECS).codecInfos
+        for (info in codecList) {
+            if (info.isEncoder) continue
+            val isHw = isHardwareCodec(info)
+            for (mime in info.supportedTypes) {
+                val lowerMime = mime.lowercase()
+                val isVideo = lowerMime.startsWith("video/")
+                val isAudio = lowerMime.startsWith("audio/")
+                if (!isVideo && !isAudio) continue
+
+                val maxRes = if (isVideo) {
+                    runCatching {
+                        val caps = info.getCapabilitiesForType(mime)?.videoCapabilities
+                        val maxW = caps?.supportedWidths?.upper ?: 0
+                        val maxH = caps?.supportedHeights?.upper ?: 0
+                        if (maxW > 0 && maxH > 0) "${maxW}×${maxH}" else null
+                    }.getOrNull()
+                } else {
+                    null
+                }
+
+                result += DeviceDecoderItem(
+                    codecName = info.name,
+                    mimeType = lowerMime,
+                    friendlyFormat = friendlyMimeName(lowerMime),
+                    isVideo = isVideo,
+                    isHardwareAccelerated = isHw,
+                    maxResolutionLabel = maxRes
+                )
+            }
+        }
+    }
+
+    if (result.isEmpty()) {
+        return listOf(
+            DeviceDecoderItem("c2.qti.hevc.decoder", "video/hevc", "HEVC / H.265", true, true, "3840×2160"),
+            DeviceDecoderItem("c2.qti.avc.decoder", "video/avc", "AVC / H.264", true, true, "3840×2160"),
+            DeviceDecoderItem("c2.android.av1-dav1d.decoder", "video/av01", "AV1", true, false, "3840×2160"),
+            DeviceDecoderItem("c2.android.aac.decoder", "audio/mp4a-latm", "AAC Audio", false, false, null),
+            DeviceDecoderItem("c2.android.opus.decoder", "audio/opus", "Opus Audio", false, false, null),
+            DeviceDecoderItem("c2.android.flac.decoder", "audio/flac", "FLAC Lossless", false, false, null)
+        )
+    }
+
+    return result
+        .distinctBy { "${it.codecName}|${it.mimeType}" }
+        .sortedWith(
+            compareByDescending<DeviceDecoderItem> { it.isVideo }
+                .thenByDescending { it.isHardwareAccelerated }
+                .thenBy { it.friendlyFormat }
+        )
+}
+
+private fun isHardwareCodec(info: MediaCodecInfo): Boolean {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        return info.isHardwareAccelerated && !info.isSoftwareOnly
+    }
+    val lower = info.name.lowercase()
+    return !lower.startsWith("omx.google.") &&
+        !lower.startsWith("c2.android.") &&
+        !lower.contains(".sw.")
+}
+
+private fun friendlyMimeName(mime: String): String = when (mime) {
+    "video/hevc" -> "HEVC / H.265"
+    "video/avc" -> "AVC / H.264"
+    "video/av01" -> "AV1"
+    "video/x-vnd.on2.vp9" -> "VP9"
+    "video/x-vnd.on2.vp8" -> "VP8"
+    "video/dolby-vision" -> "Dolby Vision"
+    "video/mp4v-es" -> "MPEG-4"
+    "video/mpeg2" -> "MPEG-2"
+    "audio/mp4a-latm" -> "AAC"
+    "audio/opus" -> "Opus"
+    "audio/flac" -> "FLAC"
+    "audio/ac3" -> "Dolby AC-3"
+    "audio/eac3", "audio/eac3-joc" -> "Dolby E-AC-3 / Atmos"
+    "audio/vnd.dts", "audio/vnd.dts.hd" -> "DTS / DTS-HD"
+    "audio/mpeg" -> "MP3"
+    "audio/vorbis" -> "Vorbis"
+    "audio/raw" -> "PCM / RAW"
+    else -> mime.substringAfter('/').uppercase()
+}
+

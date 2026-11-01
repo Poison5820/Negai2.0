@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Storage
@@ -264,6 +265,8 @@ fun SettingsTabContent(
                             recentCount = recentCount,
                             actions = actions
                         )
+
+                        SettingsCategory.DEVICE_INFO -> DeviceInfoSettingsPage()
                     }
                 }
 
@@ -396,6 +399,7 @@ private fun SettingsCategory.icon(): ImageVector = when (this) {
     SettingsCategory.SUBTITLES -> Icons.Default.Subtitles
     SettingsCategory.TORRSERVER -> Icons.Default.Dns
     SettingsCategory.STORAGE -> Icons.Default.Storage
+    SettingsCategory.DEVICE_INFO -> Icons.Default.Memory
 }
 
 private fun categorySummary(
@@ -489,6 +493,13 @@ private fun categorySummary(
                 else -> "Требуется доступ"
             }
             "$accessLabel • Исключений: $excludedCount"
+        }
+    }
+    SettingsCategory.DEVICE_INFO -> {
+        if (isEnglish) {
+            "Screen resolution, refresh rate (Hz) & HW/SW MediaCodec decoders"
+        } else {
+            "Разрешение экрана, герцовка (Гц) и аппаратные/программные декодеры"
         }
     }
 }

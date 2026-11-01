@@ -65,15 +65,25 @@ class AudioDelayProcessor : BaseAudioProcessor() {
     @Synchronized
     fun setDelayMs(newDelayMs: Long) {
         val clamped = clampDelayMs(newDelayMs)
-        val deltaMs = clamped - appliedDelayMs
+        val prevDelayMs = appliedDelayMs
         delayMs = clamped
         appliedDelayMs = clamped
-        if (inputAudioFormat != AudioFormat.NOT_SET && deltaMs != 0L) {
-            if (useClockShiftForNegativeDelay && clamped <= 0L && appliedDelayMs - deltaMs <= 0L) {
-                pendingSilenceBytes = 0L
-                pendingSkipBytes = 0L
+        if (inputAudioFormat != AudioFormat.NOT_SET && clamped != prevDelayMs) {
+            if (useClockShiftForNegativeDelay) {
+                // Negative delays are handled instantaneously via MediaClock shift (mediaClockOffsetUs).
+                // For positive delays (> 0 ms), apply only the exact delta between old and new positive components
+                // so live adjustments (+50ms / -50ms / 0ms) shift audio accurately without accumulating duplicate silence.
+                val prevPositiveMs = prevDelayMs.coerceAtLeast(0L)
+                val newPositiveMs = clamped.coerceAtLeast(0L)
+                val positiveDeltaMs = newPositiveMs - prevPositiveMs
+                if (positiveDeltaMs != 0L) {
+                    applyDeltaBytes(positiveDeltaMs)
+                } else if (clamped <= 0L) {
+                    pendingSilenceBytes = 0L
+                    pendingSkipBytes = 0L
+                }
             } else {
-                recalculateFromScratch()
+                applyDeltaBytes(clamped - prevDelayMs)
             }
         }
     }

@@ -593,6 +593,15 @@ object TorrentSearchService {
 
                 val trackerGroup = TorrentTrackerGroup.classify(rawTracker)
                 val displayTracker = TorrentTrackerGroup.formatDisplayTracker(rawTracker)
+                val jacVoices = buildList {
+                    val voicesArr = obj.optJSONArray("voices")
+                    if (voicesArr != null) {
+                        for (vIdx in 0 until voicesArr.length()) {
+                            val v = voicesArr.optString(vIdx).trim()
+                            if (v.isNotEmpty()) add(v)
+                        }
+                    }
+                }
 
                 add(
                     TorrentSearchResult(
@@ -608,7 +617,8 @@ object TorrentSearchService {
                         sizeLabel = sizeLabel,
                         seeders = seeders,
                         leechers = leechers,
-                        publishedLabel = dateLabel
+                        publishedLabel = dateLabel,
+                        voiceovers = jacVoices
                     )
                 )
             }
@@ -1236,7 +1246,15 @@ object TorrentSearchService {
 
         // 3. Build structured fallback description if tracker page has no text body or isn't reachable
         val techTags = TorrentSearchResult.extractTechTags(result.title)
-        val voiceoverTags = TorrentSearchResult.extractVoiceoverTags(result.title)
+        val voiceoverTags = TorrentSearchResult.extractVoiceoverTags(
+            title = result.title,
+            extraVoices = result.voiceovers,
+            descriptionText = descriptionText
+        )
+        val subtitleTags = TorrentSearchResult.extractSubtitleTags(
+            title = result.title,
+            descriptionText = descriptionText
+        )
         val episodeInfo = TorrentSearchResult.extractEpisodeInfo(result.title)
 
         if (descriptionText.isBlank()) {
@@ -1244,6 +1262,7 @@ object TorrentSearchService {
                 result = result,
                 techTags = techTags,
                 voiceoverTags = voiceoverTags,
+                subtitleTags = subtitleTags,
                 episodeInfo = episodeInfo
             )
             if (rawTopicUrl == null) {
@@ -1256,6 +1275,7 @@ object TorrentSearchService {
             isLoading = false,
             parsedTechTags = techTags,
             parsedVoiceoverTags = voiceoverTags,
+            parsedSubtitleTags = subtitleTags,
             parsedEpisodeInfo = episodeInfo,
             descriptionText = descriptionText,
             fileEntries = fileEntries,
@@ -1333,6 +1353,7 @@ object TorrentSearchService {
         result: TorrentSearchResult,
         techTags: List<String>,
         voiceoverTags: List<String>,
+        subtitleTags: List<String>,
         episodeInfo: String?
     ): String {
         val segments = result.title
@@ -1354,7 +1375,10 @@ object TorrentSearchService {
                 appendLine("Видео и звук: ${techTags.joinToString(", ")}")
             }
             if (voiceoverTags.isNotEmpty()) {
-                appendLine("Озвучка / Субтитры: ${voiceoverTags.joinToString(", ")}")
+                appendLine("Озвучка и перевод: ${voiceoverTags.joinToString(", ")}")
+            }
+            if (subtitleTags.isNotEmpty()) {
+                appendLine("Субтитры: ${subtitleTags.joinToString(", ")}")
             }
             appendLine("Трекер: ${result.trackerName}")
             if (result.sizeLabel.isNotBlank()) {

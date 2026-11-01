@@ -638,7 +638,8 @@ enum class SettingsCategory(
     AUDIO("AUDIO", "Аудио и озвучка", "Audio & Voiceover"),
     SUBTITLES("SUBTITLES", "Субтитры (SRT / ASS)", "Subtitles (SRT / ASS)"),
     TORRSERVER("TORRSERVER", "TorrServer и торренты", "TorrServer & Torrents"),
-    STORAGE("STORAGE", "Хранилище и исключения", "Storage & Exclusions");
+    STORAGE("STORAGE", "Хранилище и исключения", "Storage & Exclusions"),
+    DEVICE_INFO("DEVICE_INFO", "Об устройстве и декодерах", "Device Info & Decoders");
 
     fun localizedTitle(isEnglish: Boolean): String = if (isEnglish) titleEn else title
 }
@@ -735,18 +736,24 @@ data class PlayerSettings(
     val minVideoSizeMb: Int = 0,
     val skipDeleteConfirmation: Boolean = false
 ) {
-    val effectiveAnime4KPreset: Anime4KPreset
-        get() = if (anime4kEnabled && anime4kPreset != Anime4KPreset.OFF) {
-            anime4kPreset
-        } else {
-            Anime4KPreset.OFF
-        }
-
     val effectiveFrameInterpolationMode: FrameInterpolationMode
         get() = if (frameInterpolationEnabled && frameInterpolationMode != FrameInterpolationMode.OFF) {
             frameInterpolationMode
         } else {
             FrameInterpolationMode.OFF
+        }
+
+    val isAnime4kAutoDowngradedForMemc: Boolean
+        get() = anime4kEnabled &&
+            effectiveFrameInterpolationMode.isEnabled &&
+            (anime4kPreset == Anime4KPreset.ANIME4K_UPSCALE_CNN ||
+                anime4kPreset == Anime4KPreset.ANIME4K_UPSCALE_CNNX)
+
+    val effectiveAnime4KPreset: Anime4KPreset
+        get() = when {
+            !anime4kEnabled || anime4kPreset == Anime4KPreset.OFF -> Anime4KPreset.OFF
+            isAnime4kAutoDowngradedForMemc -> Anime4KPreset.ANIME4K_FAST
+            else -> anime4kPreset
         }
 }
 

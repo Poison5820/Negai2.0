@@ -107,17 +107,17 @@ fun VerticalGestureHudCard(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        color = Color(0xD80A101A),
-        shape = RoundedCornerShape(20.dp),
+        color = PlayerPopupSheetContainerColor,
+        shape = RoundedCornerShape(14.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)),
         modifier = modifier.testTag("vertical_gesture_hud")
     ) {
         Column(
             modifier = Modifier
-                .width(170.dp)
-                .padding(horizontal = 18.dp, vertical = 14.dp),
+                .width(138.dp)
+                .padding(horizontal = 12.dp, vertical = 9.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             Icon(
                 imageVector = if (hudState.type == GestureHudType.BRIGHTNESS) {
@@ -127,7 +127,7 @@ fun VerticalGestureHudCard(
                 },
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(20.dp)
             )
             Text(
                 text = if (hudState.type == GestureHudType.BRIGHTNESS) {
@@ -135,15 +135,15 @@ fun VerticalGestureHudCard(
                 } else {
                     tr("Громкость ${hudState.percent}%", "Volume ${hudState.percent}%")
                 },
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = Color.White
             )
             LinearProgressIndicator(
                 progress = { (hudState.percent / 100f).coerceIn(0f, 1f) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp)),
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp)),
                 color = MaterialTheme.colorScheme.primary,
                 trackColor = Color.White.copy(alpha = 0.2f)
             )
@@ -157,25 +157,25 @@ fun LongPressSpeedPill(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        color = Color(0xD80A101A),
+        color = PlayerPopupSheetContainerColor,
         shape = RoundedCornerShape(50),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)),
         modifier = modifier.testTag("long_press_speed_pill")
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.FastForward,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(14.dp)
             )
             Text(
                 text = tr("Ускорение ${speed}x", "Speed Boost ${speed}x"),
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                 color = Color.White
             )
         }
@@ -188,22 +188,22 @@ fun ScreenLockFloatingPill(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        color = Color(0xCC0A101A),
+        color = PlayerPopupSheetContainerColor,
         shape = RoundedCornerShape(50),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)),
         modifier = modifier
             .clip(RoundedCornerShape(50))
             .clickable(onClick = onUnlock)
             .testTag("unlock_screen_pill")
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(26.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
@@ -212,13 +212,13 @@ fun ScreenLockFloatingPill(
                     imageVector = Icons.Default.Lock,
                     contentDescription = tr("Разблокировать экран", "Unlock screen"),
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(15.dp)
                 )
             }
             Column {
                 Text(
                     text = tr("Экран заблокирован", "Screen Locked"),
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelMedium,
                     color = Color.White
                 )
                 Text(
@@ -272,15 +272,16 @@ fun PlayerToolsModalSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        containerColor = PlayerPopupSheetContainerColor,
+        scrimColor = PlayerPopupSheetScrimColor
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -289,7 +290,7 @@ fun PlayerToolsModalSheet(
             ) {
                 Text(
                     text = tr("Инструменты просмотра", "Playback Tools"),
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleMedium
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilledTonalButton(

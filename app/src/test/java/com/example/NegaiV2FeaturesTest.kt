@@ -504,6 +504,7 @@ class NegaiV2FeaturesTest {
         val sampleTitle = "Поднятие уровня в одиночку / Solo Leveling [S02E01-13 из 13] (2025) WEB-DL 2160p HEVC HDR10+ Dolby Vision | AniLibria, Студийная Банда, Sub"
         val techTags = com.example.torrent.TorrentSearchResult.extractTechTags(sampleTitle)
         val voiceTags = com.example.torrent.TorrentSearchResult.extractVoiceoverTags(sampleTitle)
+        val subTags = com.example.torrent.TorrentSearchResult.extractSubtitleTags(sampleTitle)
         val epInfo = com.example.torrent.TorrentSearchResult.extractEpisodeInfo(sampleTitle)
 
         assertTrue(techTags.contains("2160P"))
@@ -513,8 +514,58 @@ class NegaiV2FeaturesTest {
         assertTrue(techTags.contains("Dolby Vision"))
         assertTrue(voiceTags.any { it.contains("Anilibria", ignoreCase = true) })
         assertTrue(voiceTags.contains("Студийная Банда"))
-        assertTrue(voiceTags.contains("Субтитры / Sub"))
+        assertFalse(voiceTags.contains("Субтитры / Sub"))
+        assertTrue(subTags.contains("Субтитры / Sub"))
         assertTrue(!epInfo.isNullOrBlank())
     }
+
+    @Test
+    fun v25_preRelease_voiceoverVsSubs_anime4kMemcAutoFast_and_btGamingPreset() {
+        // 1. Voiceover vs subtitles separation for RUS(int), ПМ, MVO, Dub
+        val rusIntTitle = "Магическая битва / Jujutsu Kaisen [TV-2] [23 из 23] [RUS(int), JAP+Sub] [WEBRip 1080p]"
+        val voiceoverTags = com.example.torrent.TorrentSearchResult.extractVoiceoverTags(rusIntTitle)
+        val subtitleTags = com.example.torrent.TorrentSearchResult.extractSubtitleTags(rusIntTitle)
+        assertTrue(voiceoverTags.any { it.contains("RUS", ignoreCase = true) })
+        assertFalse(voiceoverTags.any { it.contains("Субтитры", ignoreCase = true) })
+        assertTrue(subtitleTags.contains("Субтитры / Sub"))
+
+        // 2. Simultaneous Anime4K + Frame Interpolation (MEMC) auto-downgrade to ANIME4K_FAST
+        val heavySettings = PlayerSettings(
+            anime4kEnabled = true,
+            anime4kPreset = com.example.model.Anime4KPreset.ANIME4K_UPSCALE_CNNX,
+            frameInterpolationEnabled = true,
+            frameInterpolationMode = FrameInterpolationMode.MAX_FPS
+        )
+        assertTrue(heavySettings.isAnime4kAutoDowngradedForMemc)
+        assertEquals(com.example.model.Anime4KPreset.ANIME4K_FAST, heavySettings.effectiveAnime4KPreset)
+
+        val nonMemcSettings = heavySettings.copy(
+            frameInterpolationEnabled = false,
+            frameInterpolationMode = FrameInterpolationMode.OFF
+        )
+        assertFalse(nonMemcSettings.isAnime4kAutoDowngradedForMemc)
+        assertEquals(com.example.model.Anime4KPreset.ANIME4K_UPSCALE_CNNX, nonMemcSettings.effectiveAnime4KPreset)
+
+        // 3. Bluetooth Gaming Mode (-45ms) preset takes precedence over cached -150ms HAL mixer report
+        val btRoute = com.example.player.BluetoothAudioRouteState(
+            isBluetoothActive = true,
+            profile = com.example.player.BluetoothAudioProfile.A2DP,
+            deviceName = "TWS Gaming Buds",
+            halOutputLatencyMs = 150,
+            isGamingMode = false,
+            measuredLatencyMs = 150L
+        )
+        val gamingAutoOffset = com.example.player.BluetoothAudioSyncController.computeAutoBluetoothOffsetMs(
+            route = btRoute,
+            autoSyncEnabled = true,
+            userConfiguredA2dpOffsetMs = -45L
+        )
+        assertEquals(-45L, gamingAutoOffset)
+
+        // 4. Device Info category exists in SettingsCategory
+        assertTrue(com.example.model.SettingsCategory.entries.contains(com.example.model.SettingsCategory.DEVICE_INFO))
+    }
 }
+
+
 
