@@ -16,6 +16,7 @@
     <string name="action_saved_torrserver_list">Торренты сервера</string>
     <string name="torrserver_online_badge">TorrServer онлайн</string>
     <string name="torrserver_offline_badge">TorrServer не подключён</string>
+    <string name="toast_magnet_copied_no_app">Внешний торрент-клиент не найден — Magnet-ссылка скопирована</string>
 
     <!-- Library, Storage & Exclusions -->
     <string name="action_grant_storage">Разрешить доступ к хранилищу</string>

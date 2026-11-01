@@ -39,14 +39,19 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderColors
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import com.example.ui.i18n.tr
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -163,9 +168,11 @@ fun ThemedPlayerCenterTransport(
     val rewindIcon = rewindIconForStep(seekStepSeconds)
     val forwardIcon = forwardIconForStep(seekStepSeconds)
     val playPauseIcon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow
-    val playPauseDesc = if (isPlaying) "Пауза" else "Воспроизвести"
-    val rewindDesc = "Перемотать назад на $seekStepSeconds секунд"
-    val forwardDesc = "Перемотать вперёд на $seekStepSeconds секунд"
+    val playPauseDesc = if (isPlaying) tr("Пауза", "Pause") else tr("Воспроизвести", "Play")
+    val rewindDesc = tr("Перемотать назад на $seekStepSeconds с", "Rewind $seekStepSeconds s")
+    val forwardDesc = tr("Перемотать вперёд на $seekStepSeconds с", "Forward $seekStepSeconds s")
+    val prevDesc = tr("Предыдущая серия", "Previous episode")
+    val nextDesc = tr("Следующая серия", "Next episode")
 
     val frostedSideBrush = Brush.verticalGradient(
         listOf(
@@ -185,18 +192,18 @@ fun ThemedPlayerCenterTransport(
             Row(
                 modifier = modifier,
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 TransportButtonBox(
                     onClick = onPreviousEpisode,
                     enabled = hasPlaylist,
-                    contentDescription = "Предыдущая серия",
+                    contentDescription = prevDesc,
                     testTag = "player_prev_episode_button",
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(52.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(44.dp)
                             .background(frostedSideBrush, CircleShape)
                             .border(
                                 1.dp,
@@ -209,7 +216,7 @@ fun ThemedPlayerCenterTransport(
                             imageVector = Icons.Default.SkipPrevious,
                             contentDescription = null,
                             tint = if (hasPlaylist) Color.White else Color.White.copy(alpha = 0.35f),
-                            modifier = Modifier.size(21.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
@@ -219,11 +226,11 @@ fun ThemedPlayerCenterTransport(
                     enabled = true,
                     contentDescription = rewindDesc,
                     testTag = "player_rewind_10_button",
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(54.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(48.dp)
                             .background(frostedSideBrush, CircleShape)
                             .border(1.dp, primary.copy(alpha = 0.42f), CircleShape),
                         contentAlignment = Alignment.Center
@@ -232,7 +239,7 @@ fun ThemedPlayerCenterTransport(
                             imageVector = rewindIcon,
                             contentDescription = null,
                             tint = Color.White,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(25.dp)
                         )
                     }
                 }
@@ -240,7 +247,7 @@ fun ThemedPlayerCenterTransport(
                 Box(contentAlignment = Alignment.Center) {
                     Box(
                         modifier = Modifier
-                            .size(64.dp)
+                            .size(72.dp)
                             .background(
                                 Brush.radialGradient(
                                     colors = listOf(primary.copy(alpha = 0.34f), Color.Transparent)
@@ -254,7 +261,7 @@ fun ThemedPlayerCenterTransport(
                         contentDescription = playPauseDesc,
                         testTag = "player_play_pause_button",
                         modifier = Modifier
-                            .size(54.dp)
+                            .size(60.dp)
                             .background(frostedMainBrush, CircleShape)
                             .border(1.2.dp, Color.White.copy(alpha = 0.55f), CircleShape)
                     ) {
@@ -262,7 +269,7 @@ fun ThemedPlayerCenterTransport(
                             imageVector = playPauseIcon,
                             contentDescription = null,
                             tint = onPrimary,
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(32.dp)
                         )
                     }
                 }
@@ -272,11 +279,11 @@ fun ThemedPlayerCenterTransport(
                     enabled = true,
                     contentDescription = forwardDesc,
                     testTag = "player_forward_10_button",
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(54.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(48.dp)
                             .background(frostedSideBrush, CircleShape)
                             .border(1.dp, primary.copy(alpha = 0.42f), CircleShape),
                         contentAlignment = Alignment.Center
@@ -285,7 +292,7 @@ fun ThemedPlayerCenterTransport(
                             imageVector = forwardIcon,
                             contentDescription = null,
                             tint = Color.White,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(25.dp)
                         )
                     }
                 }
@@ -293,13 +300,13 @@ fun ThemedPlayerCenterTransport(
                 TransportButtonBox(
                     onClick = onNextEpisode,
                     enabled = hasNextEpisode,
-                    contentDescription = "Следующая серия",
+                    contentDescription = nextDesc,
                     testTag = "player_next_episode_button",
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(52.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(44.dp)
                             .background(frostedSideBrush, CircleShape)
                             .border(
                                 1.dp,
@@ -312,7 +319,7 @@ fun ThemedPlayerCenterTransport(
                             imageVector = Icons.Default.SkipNext,
                             contentDescription = null,
                             tint = if (hasNextEpisode) Color.White else Color.White.copy(alpha = 0.35f),
-                            modifier = Modifier.size(21.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
@@ -1249,6 +1256,8 @@ fun ThemedPlayerSeekBar(
     controlsTheme: PlayerControlsTheme,
     positionMs: Long,
     durationMs: Long,
+    bufferedPositionMs: Long = 0L,
+    showBufferedProgress: Boolean = true,
     isScrubbing: Boolean,
     chapters: List<VideoChapter>,
     showChapterMarkers: Boolean,
@@ -1260,6 +1269,7 @@ fun ThemedPlayerSeekBar(
 ) {
     val safeDuration = durationMs.coerceAtLeast(1L)
     val progress = (positionMs.toFloat() / safeDuration.toFloat()).coerceIn(0f, 1f)
+    val bufferedProgress = (bufferedPositionMs.toFloat() / safeDuration.toFloat()).coerceIn(0f, 1f)
 
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
@@ -1269,6 +1279,7 @@ fun ThemedPlayerSeekBar(
     val latestDuration by rememberUpdatedState(safeDuration)
     val latestOnScrubChange by rememberUpdatedState(onScrubChange)
     val latestOnScrubFinished by rememberUpdatedState(onScrubFinished)
+    val seekbarDescription = tr("Полоса перемотки видео", "Video seek bar")
 
     Box(
         modifier = modifier
@@ -1310,7 +1321,7 @@ fun ThemedPlayerSeekBar(
                 )
             }
             .semantics {
-                contentDescription = "Полоса перемотки видео"
+                contentDescription = seekbarDescription
             }
             .testTag("player_seek_slider"),
         contentAlignment = Alignment.Center
@@ -1326,6 +1337,7 @@ fun ThemedPlayerSeekBar(
             val trackWidth = trackEnd - trackStart
             val cy = size.height / 2f
             val activeX = trackStart + trackWidth * progress
+            val bufferedX = trackStart + trackWidth * bufferedProgress
 
             // Optional A-B loop range fractions
             val abStartFrac = abLoopStartMs?.let { (it.toFloat() / safeDuration.toFloat()).coerceIn(0f, 1f) }
@@ -1341,6 +1353,14 @@ fun ThemedPlayerSeekBar(
                         size = Size(trackWidth, h),
                         cornerRadius = r
                     )
+                    if (showBufferedProgress && bufferedX > trackStart) {
+                        drawRoundRect(
+                            color = Color.White.copy(alpha = 0.52f),
+                            topLeft = Offset(trackStart, cy - h / 2f),
+                            size = Size(bufferedX - trackStart, h),
+                            cornerRadius = r
+                        )
+                    }
                     if (activeX > trackStart) {
                         drawRoundRect(
                             color = primary,
@@ -1386,6 +1406,14 @@ fun ThemedPlayerSeekBar(
                         cornerRadius = r,
                         style = Stroke(width = 1.dp.toPx())
                     )
+                    if (showBufferedProgress && bufferedX > trackStart) {
+                        drawRoundRect(
+                            color = Color.White.copy(alpha = 0.34f),
+                            topLeft = Offset(trackStart, cy - h / 2f),
+                            size = Size(bufferedX - trackStart, h),
+                            cornerRadius = r
+                        )
+                    }
                     if (activeX > trackStart + 1f) {
                         drawRoundRect(
                             brush = Brush.horizontalGradient(
@@ -1437,6 +1465,15 @@ fun ThemedPlayerSeekBar(
                         strokeWidth = coreH,
                         cap = StrokeCap.Round
                     )
+                    if (showBufferedProgress && bufferedX > trackStart) {
+                        drawLine(
+                            color = primary.copy(alpha = 0.38f),
+                            start = Offset(trackStart, cy),
+                            end = Offset(bufferedX, cy),
+                            strokeWidth = coreH,
+                            cap = StrokeCap.Round
+                        )
+                    }
                     if (activeX > trackStart) {
                         // Outer neon laser aura
                         drawLine(
@@ -1496,6 +1533,15 @@ fun ThemedPlayerSeekBar(
                         strokeWidth = lineH,
                         cap = StrokeCap.Round
                     )
+                    if (showBufferedProgress && bufferedX > trackStart) {
+                        drawLine(
+                            color = Color.White.copy(alpha = 0.48f),
+                            start = Offset(trackStart, cy),
+                            end = Offset(bufferedX, cy),
+                            strokeWidth = lineH,
+                            cap = StrokeCap.Round
+                        )
+                    }
                     if (activeX > trackStart) {
                         drawLine(
                             color = Color.White,
@@ -1548,6 +1594,14 @@ fun ThemedPlayerSeekBar(
                         cornerRadius = r,
                         style = Stroke(width = 1.dp.toPx())
                     )
+                    if (showBufferedProgress && bufferedX > trackStart) {
+                        drawRoundRect(
+                            color = Color.White.copy(alpha = 0.35f),
+                            topLeft = Offset(trackStart, cy - slotH / 2f),
+                            size = Size(bufferedX - trackStart, slotH),
+                            cornerRadius = r
+                        )
+                    }
                     if (activeX > trackStart) {
                         drawRoundRect(
                             color = primary.copy(alpha = 0.82f),
@@ -1599,6 +1653,15 @@ fun ThemedPlayerSeekBar(
                         strokeWidth = lineH,
                         cap = StrokeCap.Round
                     )
+                    if (showBufferedProgress && bufferedX > trackStart) {
+                        drawLine(
+                            color = Color.White.copy(alpha = 0.45f),
+                            start = Offset(trackStart, cy),
+                            end = Offset(bufferedX, cy),
+                            strokeWidth = lineH,
+                            cap = StrokeCap.Round
+                        )
+                    }
                     if (activeX > trackStart) {
                         drawLine(
                             color = Color.White.copy(alpha = 0.90f),
@@ -1638,6 +1701,14 @@ fun ThemedPlayerSeekBar(
                         size = Size(trackWidth, h),
                         cornerRadius = r
                     )
+                    if (showBufferedProgress && bufferedX > trackStart) {
+                        drawRoundRect(
+                            color = Color.White.copy(alpha = 0.45f),
+                            topLeft = Offset(trackStart, cy - h / 2f),
+                            size = Size(bufferedX - trackStart, h),
+                            cornerRadius = r
+                        )
+                    }
                     if (activeX > trackStart) {
                         drawRoundRect(
                             color = Color.White.copy(alpha = 0.85f),
@@ -1682,6 +1753,15 @@ fun ThemedPlayerSeekBar(
                         strokeWidth = lineH,
                         cap = StrokeCap.Round
                     )
+                    if (showBufferedProgress && bufferedX > trackStart) {
+                        drawLine(
+                            color = Color.White.copy(alpha = 0.45f),
+                            start = Offset(trackStart, cy),
+                            end = Offset(bufferedX, cy),
+                            strokeWidth = lineH,
+                            cap = StrokeCap.Round
+                        )
+                    }
                     if (activeX > trackStart) {
                         drawLine(
                             color = Color.White.copy(alpha = 0.86f),
@@ -1830,6 +1910,8 @@ fun PlayerControlsThemeSelectorSection(
                     controlsTheme = selectedTheme,
                     positionMs = 540_000L,
                     durationMs = 1_440_000L,
+                    bufferedPositionMs = 860_000L,
+                    showBufferedProgress = true,
                     isScrubbing = false,
                     chapters = listOf(
                         VideoChapter(0, tr("Интро", "Intro"), 0L, 90_000L),
@@ -1964,3 +2046,39 @@ fun PlayerControlsThemeSelectorSection(
         }
     }
 }
+
+@Composable
+fun InstantSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+    onValueChangeFinished: (() -> Unit)? = null,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+    steps: Int = 0,
+    colors: SliderColors = SliderDefaults.colors(),
+    enabled: Boolean = true
+) {
+    var draggingValue by remember(value) { mutableFloatStateOf(value) }
+    var isDragging by remember { mutableStateOf(false) }
+
+    val currentDisplayValue = if (isDragging) draggingValue else value
+
+    Slider(
+        value = currentDisplayValue.coerceIn(valueRange.start, valueRange.endInclusive),
+        onValueChange = { newVal ->
+            isDragging = true
+            draggingValue = newVal
+            onValueChange(newVal)
+        },
+        onValueChangeFinished = {
+            isDragging = false
+            onValueChangeFinished?.invoke()
+        },
+        valueRange = valueRange,
+        steps = steps,
+        colors = colors,
+        enabled = enabled,
+        modifier = modifier
+    )
+}
+

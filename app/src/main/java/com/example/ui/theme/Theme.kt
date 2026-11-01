@@ -104,7 +104,7 @@ private val ObsidianDarkScheme = darkColorScheme(
 )
 
 // 4. Daylight Light Theme
-private val KinoLightColorScheme = lightColorScheme(
+private val NegaiLightColorScheme = lightColorScheme(
     primary = DeepCyanLight,
     onPrimary = Color.White,
     primaryContainer = Color(0xFFC4F5FF),
@@ -131,7 +131,7 @@ private val KinoLightColorScheme = lightColorScheme(
     outlineVariant = Color(0xFFD8E0F0)
 )
 
-val KinoShapes = Shapes(
+val NegaiShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
     small = RoundedCornerShape(12.dp),
     medium = RoundedCornerShape(16.dp),
@@ -139,8 +139,10 @@ val KinoShapes = Shapes(
     extraLarge = RoundedCornerShape(28.dp)
 )
 
+val KinoShapes = NegaiShapes
+
 @Composable
-fun Kino4KTheme(
+fun NegaiTheme(
     themeMode: AppThemeMode = AppThemeMode.OLED_BLACK,
     content: @Composable () -> Unit
 ) {
@@ -149,7 +151,7 @@ fun Kino4KTheme(
         AppThemeMode.OLED_BLACK -> PureOledCyanScheme
         AppThemeMode.SAKURA_OLED -> PureOledSakuraScheme
         AppThemeMode.OBSIDIAN_DARK -> ObsidianDarkScheme
-        AppThemeMode.DAYLIGHT_LIGHT -> KinoLightColorScheme
+        AppThemeMode.DAYLIGHT_LIGHT -> NegaiLightColorScheme
         AppThemeMode.DYNAMIC_OLED -> {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 dynamicDarkColorScheme(context).copy(
@@ -180,7 +182,14 @@ fun Kino4KTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = AppTypography,
-        shapes = KinoShapes,
+        shapes = NegaiShapes,
         content = content
     )
 }
+
+@Composable
+fun Kino4KTheme(
+    themeMode: AppThemeMode = AppThemeMode.OLED_BLACK,
+    content: @Composable () -> Unit
+) = NegaiTheme(themeMode = themeMode, content = content)
+

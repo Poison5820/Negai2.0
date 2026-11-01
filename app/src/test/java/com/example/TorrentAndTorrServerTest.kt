@@ -324,7 +324,7 @@ class TorrentAndTorrServerTest {
         }
         assertEquals("Торренты", context.createConfigurationContext(ruConfig).getString(R.string.nav_torrents))
         assertEquals("Torrents", context.createConfigurationContext(enConfig).getString(R.string.nav_torrents))
-        assertTrue(SettingsCategory.entries.contains(SettingsCategory.TORRSERVER))
+        assertTrue(SettingsCategory.entries.contains(SettingsCategory.TORRENTS))
 
         val parsedJson = TorrServerClient.parseTorrentJson(
             json = JSONObject(

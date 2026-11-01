@@ -46,7 +46,7 @@ enum class HomeTab {
     SETTINGS
 }
 
-class KinoViewModel(application: Application) : AndroidViewModel(application) {
+class NegaiViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = LibraryRepository.getInstance(application)
     private val bootSettings: PlayerSettings = repository.preferencesRepository.readBootSettingsSnapshot()
@@ -605,6 +605,12 @@ class KinoViewModel(application: Application) : AndroidViewModel(application) {
     fun setShowChapterMarkersOnTimeline(enabled: Boolean) {
         viewModelScope.launch {
             repository.preferencesRepository.updateShowChapterMarkersOnTimeline(enabled)
+        }
+    }
+
+    fun setShowBufferedProgressOnTimeline(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.preferencesRepository.updateShowBufferedProgressOnTimeline(enabled)
         }
     }
 

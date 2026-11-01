@@ -47,7 +47,7 @@ data class PlaybackProgressEntity(
 )
 
 @Dao
-interface KinoDao {
+interface NegaiDao {
     @Query("SELECT * FROM library_roots ORDER BY addedAt ASC")
     fun observeLibraryRoots(): Flow<List<LibraryRootEntity>>
 
@@ -85,6 +85,8 @@ interface KinoDao {
     suspend fun clearAllProgress()
 }
 
+typealias KinoDao = NegaiDao
+
 @Database(
     entities = [
         LibraryRootEntity::class,
@@ -94,12 +96,13 @@ interface KinoDao {
     version = 2,
     exportSchema = false
 )
-abstract class KinoDatabase : RoomDatabase() {
-    abstract fun kinoDao(): KinoDao
+abstract class NegaiDatabase : RoomDatabase() {
+    abstract fun negaiDao(): NegaiDao
+    fun kinoDao(): NegaiDao = negaiDao()
 
     companion object {
         @Volatile
-        private var instance: KinoDatabase? = null
+        private var instance: NegaiDatabase? = null
 
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -108,12 +111,12 @@ abstract class KinoDatabase : RoomDatabase() {
             }
         }
 
-        fun getInstance(context: Context): KinoDatabase {
+        fun getInstance(context: Context): NegaiDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
                     context.applicationContext,
-                    KinoDatabase::class.java,
-                    "kino4k_local.db"
+                    NegaiDatabase::class.java,
+                    "negai_player_local.db"
                 )
                     .addMigrations(MIGRATION_1_2)
                     .fallbackToDestructiveMigration()
@@ -123,3 +126,5 @@ abstract class KinoDatabase : RoomDatabase() {
         }
     }
 }
+
+typealias KinoDatabase = NegaiDatabase

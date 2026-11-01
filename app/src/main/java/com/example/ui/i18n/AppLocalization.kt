@@ -443,6 +443,7 @@ fun PlayerQuickAction.localizedTitle(isEnglish: Boolean): String = if (!isEnglis
     PlayerQuickAction.ORIENTATION -> "Screen Orientation"
     PlayerQuickAction.PIP -> "Picture-in-Picture (PiP)"
     PlayerQuickAction.LOCK -> "Screen Lock"
+    PlayerQuickAction.FILE_INFO -> "File Information"
     PlayerQuickAction.TOOLS -> "All Tools (More)"
 }
 
@@ -463,6 +464,7 @@ fun PlayerQuickAction.localizedShortTitle(isEnglish: Boolean): String = if (!isE
     PlayerQuickAction.ORIENTATION -> "Rotate"
     PlayerQuickAction.PIP -> "PiP"
     PlayerQuickAction.LOCK -> "Lock"
+    PlayerQuickAction.FILE_INFO -> "Info"
     PlayerQuickAction.TOOLS -> "More"
 }
 
@@ -483,7 +485,15 @@ fun PlayerQuickAction.localizedDescription(isEnglish: Boolean): String = if (!is
     PlayerQuickAction.ORIENTATION -> "Cycle Auto-Video, Landscape, Portrait, or System Sensor"
     PlayerQuickAction.PIP -> "Minimize video into a floating Picture-in-Picture window"
     PlayerQuickAction.LOCK -> "Lock all player controls against accidental touches"
+    PlayerQuickAction.FILE_INFO -> "Detailed technical information on codecs, resolution, audio tracks and subtitles"
     PlayerQuickAction.TOOLS -> "Open the complete player tools & end-of-episode settings sheet"
+}
+
+fun Anime4KPreset.localizedShortLabel(isEnglish: Boolean): String = when (this) {
+    Anime4KPreset.OFF -> if (isEnglish) "Off" else "Выкл"
+    Anime4KPreset.ANIME4K_FAST -> if (isEnglish) "Fast" else "Быстрый"
+    Anime4KPreset.ANIME4K_UPSCALE_CNN -> "CNN"
+    Anime4KPreset.ANIME4K_UPSCALE_CNNX -> "CNNX"
 }
 
 fun QuickBarPreset.localizedTitle(isEnglish: Boolean): String = if (!isEnglish) title else when (this) {

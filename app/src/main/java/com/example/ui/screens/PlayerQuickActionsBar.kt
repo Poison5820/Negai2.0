@@ -42,10 +42,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -73,6 +75,7 @@ import com.example.model.PlayerSettings
 import com.example.model.SleepTimerPreset
 import com.example.model.VideoScaleMode
 import com.example.player.PlaybackRuntimeState
+import com.example.ui.components.InstantSlider
 import com.example.ui.components.ResolutionBadgeChip
 import com.example.ui.components.formatTimeMs
 import com.example.ui.i18n.LocalIsEnglish
@@ -333,8 +336,10 @@ private fun resolveQuickChipVisuals(
         PlayerQuickAction.FRAME_INTERPOLATION -> {
             val activeMemc = settings.effectiveFrameInterpolationMode
             val isOn = activeMemc != FrameInterpolationMode.OFF
+            val badge = if (isOn) activeMemc.localizedBadge(isEnglish) else null
             QuickChipVisualState(
-                accessibilityLabel = if (isEnglish) "Frame Interpolation" else "Интерполяция кадров",
+                accessibilityLabel = if (isEnglish) "Frame Interpolation ${badge ?: "Off"}" else "Интерполяция кадров ${badge ?: "Выкл"}",
+                counterBadge = badge,
                 iconTint = if (isOn) primary else Color.White,
                 containerColor = if (isOn) activePrimaryBg else neutralBg,
                 border = if (isOn) activeBorder else null,
@@ -345,8 +350,10 @@ private fun resolveQuickChipVisuals(
         PlayerQuickAction.ANIME4K -> {
             val activePreset = settings.effectiveAnime4KPreset
             val isOn = activePreset != Anime4KPreset.OFF
+            val badge = if (isOn) activePreset.localizedShortLabel(isEnglish) else null
             QuickChipVisualState(
-                accessibilityLabel = "Anime4K",
+                accessibilityLabel = "Anime4K ${badge ?: if (isEnglish) "Off" else "Выкл"}",
+                counterBadge = badge,
                 iconTint = if (isOn) secondary else Color.White,
                 containerColor = if (isOn) activeSecondaryBg else neutralBg,
                 border = if (isOn) activeBorder else null,
@@ -470,6 +477,15 @@ private fun resolveQuickChipVisuals(
                 testTag = "player_open_tools_sheet_chip"
             )
         }
+
+        PlayerQuickAction.FILE_INFO -> {
+            QuickChipVisualState(
+                accessibilityLabel = if (isEnglish) "File Info" else "Сведения о файле",
+                iconTint = primary,
+                containerColor = neutralBg,
+                testTag = "player_quick_chip_FILE_INFO"
+            )
+        }
     }
 }
 
@@ -497,20 +513,22 @@ internal fun SkipIntroConfigModalSheet(
     var customInputText by remember(skipIntroSeconds) { mutableStateOf(skipIntroSeconds.toString()) }
     val presets = listOf(60, 75, 85, 90, 110, 120)
 
+    val sheetBg = playerPopupSheetContainerColor()
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = PlayerPopupSheetContainerColor,
+        containerColor = sheetBg,
         scrimColor = PlayerPopupSheetScrimColor,
         modifier = Modifier.testTag("skip_intro_config_modal_sheet")
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -587,7 +605,7 @@ internal fun SkipIntroConfigModalSheet(
                 color = MaterialTheme.colorScheme.primary
             )
 
-            Slider(
+            InstantSlider(
                 value = skipIntroSeconds.coerceIn(5, 240).toFloat(),
                 onValueChange = { raw ->
                     val v = raw.roundToInt().coerceIn(5, 240)
@@ -609,14 +627,14 @@ internal fun SkipIntroConfigModalSheet(
                         onUpdateSkipIntroSeconds(next)
                         customInputText = next.toString()
                     },
-                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
                         .weight(1f)
                         .height(36.dp)
                         .testTag("skip_intro_minus_5_btn")
                 ) {
-                    Text(tr("-5 с", "-5s"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                    Text(tr("-5с", "-5s"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
                 OutlinedButton(
                     onClick = {
@@ -624,14 +642,14 @@ internal fun SkipIntroConfigModalSheet(
                         onUpdateSkipIntroSeconds(next)
                         customInputText = next.toString()
                     },
-                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
                         .weight(1f)
                         .height(36.dp)
                         .testTag("skip_intro_minus_1_btn")
                 ) {
-                    Text(tr("-1 с", "-1s"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                    Text(tr("-1с", "-1s"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
                 OutlinedButton(
                     onClick = {
@@ -639,14 +657,14 @@ internal fun SkipIntroConfigModalSheet(
                         onUpdateSkipIntroSeconds(next)
                         customInputText = next.toString()
                     },
-                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
                         .weight(1f)
                         .height(36.dp)
                         .testTag("skip_intro_plus_1_btn")
                 ) {
-                    Text(tr("+1 с", "+1s"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                    Text(tr("+1с", "+1s"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
                 OutlinedButton(
                     onClick = {
@@ -654,14 +672,14 @@ internal fun SkipIntroConfigModalSheet(
                         onUpdateSkipIntroSeconds(next)
                         customInputText = next.toString()
                     },
-                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
                         .weight(1f)
                         .height(36.dp)
                         .testTag("skip_intro_plus_5_btn")
                 ) {
-                    Text(tr("+5 с", "+5s"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                    Text(tr("+5с", "+5s"), style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
             }
 
@@ -703,6 +721,7 @@ internal fun SkipIntroConfigModalSheet(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(tr("Пропустить (+${skipIntroSeconds}с)", "Skip (+${skipIntroSeconds}s)"), style = MaterialTheme.typography.labelMedium)
                 }
+            }
             }
         }
     }

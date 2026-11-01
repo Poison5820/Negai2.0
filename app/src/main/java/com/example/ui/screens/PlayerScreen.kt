@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -148,6 +149,7 @@ private enum class ActivePlayerSheet {
     SLEEP_TIMER,
     SKIP_INTRO_CONFIG,
     TOOLS,
+    FILE_INFO,
     CUSTOMIZE_QUICK_ACTIONS
 }
 
@@ -1091,60 +1093,96 @@ fun PlayerScreen(
                         }
                     }
 
-                    // Grouped compact top-right utility buttons
+                    // Grouped compact top-right utility buttons matching bottom bar button size
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(0.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        IconButton(
-                            onClick = toggleOrientationOneTap,
-                            modifier = Modifier.testTag("player_orientation_button")
+                        Surface(
+                            color = hudPillBg,
+                            shape = RoundedCornerShape(11.dp),
+                            border = hudPillBorder,
+                            modifier = Modifier
+                                .defaultMinSize(minWidth = 38.dp, minHeight = 36.dp)
+                                .clip(RoundedCornerShape(11.dp))
+                                .clickable { toggleOrientationOneTap() }
+                                .testTag("player_orientation_button")
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.ScreenRotation,
-                                contentDescription = tr(
-                                    "Ориентация экрана: ${orientationMode.title}",
-                                    "Screen orientation: ${orientationMode.localizedTitle(true)}"
-                                ),
-                                tint = if (orientationMode != PlayerOrientationMode.AUTO && !accentFreeHud) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    Color.White
-                                }
-                            )
+                            Box(
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ScreenRotation,
+                                    contentDescription = tr(
+                                        "Ориентация экрана: ${orientationMode.title}",
+                                        "Screen orientation: ${orientationMode.localizedTitle(true)}"
+                                    ),
+                                    tint = if (orientationMode != PlayerOrientationMode.AUTO && !accentFreeHud) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        Color.White
+                                    },
+                                    modifier = Modifier.size(19.dp)
+                                )
+                            }
                         }
 
-                        IconButton(
-                            onClick = {
-                                isScreenLocked = true
-                                lockedPillVisible = true
-                                controlsVisible = false
-                            },
-                            modifier = Modifier.testTag("player_lock_button")
+                        Surface(
+                            color = hudPillBg,
+                            shape = RoundedCornerShape(11.dp),
+                            border = hudPillBorder,
+                            modifier = Modifier
+                                .defaultMinSize(minWidth = 38.dp, minHeight = 36.dp)
+                                .clip(RoundedCornerShape(11.dp))
+                                .clickable {
+                                    isScreenLocked = true
+                                    lockedPillVisible = true
+                                    controlsVisible = false
+                                }
+                                .testTag("player_lock_button")
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.LockOpen,
-                                contentDescription = tr(
-                                    "Заблокировать экран от случайных нажатий",
-                                    "Lock screen against accidental touches"
-                                ),
-                                tint = Color.White
-                            )
+                            Box(
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.LockOpen,
+                                    contentDescription = tr(
+                                        "Заблокировать экран от случайных нажатий",
+                                        "Lock screen against accidental touches"
+                                    ),
+                                    tint = Color.White,
+                                    modifier = Modifier.size(19.dp)
+                                )
+                            }
                         }
 
                         if (pipSupported) {
-                            IconButton(
-                                onClick = onEnterPip,
-                                modifier = Modifier.testTag("player_enter_pip_button")
+                            Surface(
+                                color = hudPillBg,
+                                shape = RoundedCornerShape(11.dp),
+                                border = hudPillBorder,
+                                modifier = Modifier
+                                    .defaultMinSize(minWidth = 38.dp, minHeight = 36.dp)
+                                    .clip(RoundedCornerShape(11.dp))
+                                    .clickable { onEnterPip() }
+                                    .testTag("player_enter_pip_button")
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.PictureInPictureAlt,
-                                    contentDescription = tr(
-                                        "Режим Картинка в картинке (PiP)",
-                                        "Picture-in-Picture (PiP) mode"
-                                    ),
-                                    tint = Color.White
-                                )
+                                Box(
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PictureInPictureAlt,
+                                        contentDescription = tr(
+                                            "Режим Картинка в картинке (PiP)",
+                                            "Picture-in-Picture (PiP) mode"
+                                        ),
+                                        tint = Color.White,
+                                        modifier = Modifier.size(19.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -1195,6 +1233,8 @@ fun PlayerScreen(
                         controlsTheme = settings.playerControlsTheme,
                         positionMsFlow = positionMsFlow,
                         durationMs = playbackState.durationMs,
+                        bufferedPositionMs = playbackState.bufferedPositionMs,
+                        showBufferedProgress = settings.showBufferedProgressOnTimeline,
                         chapters = playbackState.chapters,
                         showChapterMarkers = settings.showChapterMarkersOnTimeline,
                         abLoopStartMs = playbackState.abLoopStartMs,
@@ -1254,8 +1294,28 @@ fun PlayerScreen(
                                 PlayerQuickAction.AUDIO -> activeSheet = ActivePlayerSheet.AUDIO
                                 PlayerQuickAction.SUBTITLES -> activeSheet = ActivePlayerSheet.SUBTITLES
                                 PlayerQuickAction.DECODER -> activeSheet = ActivePlayerSheet.DECODER
-                                PlayerQuickAction.FRAME_INTERPOLATION -> activeSheet = ActivePlayerSheet.FRAME_INTERPOLATION
-                                PlayerQuickAction.ANIME4K -> activeSheet = ActivePlayerSheet.ANIME4K
+                                PlayerQuickAction.FRAME_INTERPOLATION -> {
+                                    val currentlyOn = settings.frameInterpolationEnabled && settings.frameInterpolationMode != FrameInterpolationMode.OFF
+                                    if (currentlyOn) {
+                                        onToggleFrameInterpolation(false)
+                                    } else {
+                                        onToggleFrameInterpolation(true)
+                                        if (settings.frameInterpolationMode == FrameInterpolationMode.OFF) {
+                                            onSelectFrameInterpolationMode(FrameInterpolationMode.SMOOTH_60)
+                                        }
+                                    }
+                                }
+                                PlayerQuickAction.ANIME4K -> {
+                                    val currentlyOn = settings.anime4kEnabled && settings.anime4kPreset != Anime4KPreset.OFF
+                                    if (currentlyOn) {
+                                        onToggleAnime4KEnabled(false)
+                                    } else {
+                                        onToggleAnime4KEnabled(true)
+                                        if (settings.anime4kPreset == Anime4KPreset.OFF) {
+                                            onSelectAnime4KPreset(Anime4KPreset.ANIME4K_FAST)
+                                        }
+                                    }
+                                }
                                 PlayerQuickAction.EPISODES -> activeSheet = ActivePlayerSheet.EPISODES
                                 PlayerQuickAction.CHAPTERS -> activeSheet = ActivePlayerSheet.CHAPTERS
                                 PlayerQuickAction.SCALE -> onSelectScaleMode(scaleMode.next())
@@ -1279,12 +1339,16 @@ fun PlayerScreen(
                                     if (pipSupported) onEnterPip()
                                 }
                                 PlayerQuickAction.TOOLS -> activeSheet = ActivePlayerSheet.TOOLS
+                                PlayerQuickAction.FILE_INFO -> activeSheet = ActivePlayerSheet.FILE_INFO
                             }
                         },
                         onLongPressAction = { action ->
                             interactionTick++
-                            if (action == PlayerQuickAction.SKIP_INTRO) {
-                                activeSheet = ActivePlayerSheet.SKIP_INTRO_CONFIG
+                            when (action) {
+                                PlayerQuickAction.SKIP_INTRO -> activeSheet = ActivePlayerSheet.SKIP_INTRO_CONFIG
+                                PlayerQuickAction.ANIME4K -> activeSheet = ActivePlayerSheet.ANIME4K
+                                PlayerQuickAction.FRAME_INTERPOLATION -> activeSheet = ActivePlayerSheet.FRAME_INTERPOLATION
+                                else -> Unit
                             }
                         },
                         onOpenCustomizer = {
@@ -1476,8 +1540,29 @@ fun PlayerScreen(
                         onOpenQuickActionsCustomizer = {
                             activeSheet = ActivePlayerSheet.CUSTOMIZE_QUICK_ACTIONS
                         },
+                        onOpenFileTechnicalInfo = {
+                            activeSheet = ActivePlayerSheet.FILE_INFO
+                        },
                         onDismiss = { activeSheet = ActivePlayerSheet.NONE }
                     )
+                }
+
+                ActivePlayerSheet.FILE_INFO -> {
+                    val currentEp = playbackState.currentEpisode
+                        ?: playbackState.playlist.getOrNull(playbackState.currentEpisodeIndex)
+                    if (currentEp != null) {
+                        val ctx = LocalContext.current
+                        val mediaInfo = remember(currentEp.uri) {
+                            com.example.data.VideoStreamInfoExtractor.extractEpisodeInfo(ctx, currentEp)
+                        }
+                        MediaFileInfoModalSheet(
+                            info = mediaInfo,
+                            onRenameRequest = null,
+                            onDismiss = { activeSheet = ActivePlayerSheet.NONE }
+                        )
+                    } else {
+                        activeSheet = ActivePlayerSheet.NONE
+                    }
                 }
 
                 ActivePlayerSheet.CUSTOMIZE_QUICK_ACTIONS -> QuickActionsCustomizerSheet(
@@ -1520,6 +1605,8 @@ private fun PlayerTimelineSection(
     controlsTheme: PlayerControlsTheme,
     positionMsFlow: StateFlow<Long>,
     durationMs: Long,
+    bufferedPositionMs: Long = 0L,
+    showBufferedProgress: Boolean = true,
     chapters: List<VideoChapter>,
     showChapterMarkers: Boolean,
     abLoopStartMs: Long?,
@@ -1685,6 +1772,8 @@ private fun PlayerTimelineSection(
             controlsTheme = controlsTheme,
             positionMs = displayPos,
             durationMs = durationMs,
+            bufferedPositionMs = bufferedPositionMs,
+            showBufferedProgress = showBufferedProgress,
             isScrubbing = isScrubbing,
             chapters = chapters,
             showChapterMarkers = showChapterMarkers,

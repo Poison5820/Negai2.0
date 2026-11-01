@@ -59,6 +59,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import com.example.ui.components.InstantSlider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -303,7 +304,7 @@ internal fun AppearanceSettingsPage(
             }
         }
 
-        Slider(
+        InstantSlider(
             value = settings.playerUiScalePercent.coerceIn(75, 140).toFloat(),
             onValueChange = { actions.onUpdatePlayerUiScalePercent(it.roundToInt().coerceIn(75, 140)) },
             valueRange = 75f..140f,
@@ -334,7 +335,7 @@ internal fun AppearanceSettingsPage(
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
         )
 
-        Slider(
+        InstantSlider(
             value = settings.controlsAutoHideSeconds.coerceIn(2, 15).toFloat(),
             onValueChange = { actions.onUpdateControlsAutoHideSeconds(it.roundToInt().coerceIn(2, 15)) },
             valueRange = 2f..15f,
@@ -449,7 +450,7 @@ internal fun PlaybackSettingsPage(
     }
 
     SettingsSectionCard(
-        title = tr("Главы на полосе прокрутки", "Chapters on Timeline"),
+        title = tr("Полоса прокрутки (таймлайн)", "Timeline & Seekbar"),
         icon = Icons.Default.Bookmarks
     ) {
         SettingToggleRow(
@@ -457,6 +458,13 @@ internal fun PlaybackSettingsPage(
             checked = settings.showChapterMarkersOnTimeline,
             onCheckedChange = actions.onUpdateShowChapterMarkersOnTimeline,
             testTag = "show_chapter_markers_switch"
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        SettingToggleRow(
+            title = tr("Отображать буферизацию (кеш) серии", "Show Buffered Stream Cache on Timeline"),
+            checked = settings.showBufferedProgressOnTimeline,
+            onCheckedChange = actions.onUpdateShowBufferedProgressOnTimeline,
+            testTag = "show_buffered_progress_switch"
         )
     }
 
@@ -538,7 +546,7 @@ internal fun PlaybackSettingsPage(
                     )
                 }
             }
-            Slider(
+            InstantSlider(
                 value = settings.skipIntroSeconds.coerceIn(5, 240).toFloat(),
                 onValueChange = { actions.onUpdateSkipIntroSeconds(it.roundToInt().coerceIn(5, 240)) },
                 valueRange = 5f..240f,
@@ -944,7 +952,7 @@ internal fun VideoSettingsPage(
                     color = MaterialTheme.colorScheme.primary
                 )
             }
-            Slider(
+            InstantSlider(
                 value = settings.anime4kStrength,
                 onValueChange = actions.onUpdateAnime4KStrength,
                 valueRange = 0.1f..1.5f,
@@ -1013,7 +1021,7 @@ internal fun AudioSettingsPage(
             )
         }
 
-        Slider(
+        InstantSlider(
             value = fineTuneOffsetMs.toFloat(),
             onValueChange = { actions.onUpdateBluetoothAudioOffsetMs(((it / 5f).roundToInt() * 5L).coerceIn(-300L, 300L)) },
             valueRange = -300f..300f,
@@ -1106,7 +1114,7 @@ internal fun AudioSettingsPage(
                 }
             )
         }
-        Slider(
+        InstantSlider(
             value = settings.defaultAudioBoostPercent.toFloat(),
             onValueChange = { actions.onUpdateDefaultAudioBoostPercent(it.roundToInt()) },
             valueRange = 100f..200f,
@@ -1209,6 +1217,14 @@ internal fun SubtitlesSettingsPage(
             }
         }
 
+        InstantSlider(
+            value = settings.subtitleFontSizeSp.coerceIn(12f, 36f),
+            onValueChange = actions.onUpdateSubtitleFontSize,
+            valueRange = 12f..36f,
+            steps = 24,
+            modifier = Modifier.testTag("settings_subtitle_font_size_slider")
+        )
+
         Text(stringResource(R.string.subtitle_color_label), style = MaterialTheme.typography.bodyMedium)
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1238,6 +1254,19 @@ internal fun SubtitlesSettingsPage(
             testTag = "subtitle_bg_switch"
         )
     }
+}
+
+// ============================================================================
+// 5. АУДИО И СУБТИТРЫ (ОБЪЕДИНЕННАЯ СТРАНИЦА) / AUDIO & SUBTITLES
+// ============================================================================
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun AudioAndSubtitlesSettingsPage(
+    settings: PlayerSettings,
+    actions: SettingsActions
+) {
+    AudioSettingsPage(settings = settings, actions = actions)
+    SubtitlesSettingsPage(settings = settings, actions = actions)
 }
 
 @Composable

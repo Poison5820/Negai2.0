@@ -58,6 +58,7 @@ class PlayerPreferencesRepository(private val context: Context) {
         val PLAYBACK_END_MODE = stringPreferencesKey("playback_end_mode")
         val ENABLE_EMBEDDED_CHAPTERS = booleanPreferencesKey("enable_embedded_chapters")
         val SHOW_CHAPTER_MARKERS = booleanPreferencesKey("show_chapter_markers_on_timeline")
+        val SHOW_BUFFERED_PROGRESS = booleanPreferencesKey("show_buffered_progress_on_timeline")
         val SEEK_STEP_SECONDS = intPreferencesKey("seek_step_seconds")
         val DEFAULT_PLAYBACK_SPEED = floatPreferencesKey("default_playback_speed")
         val SHOW_SKIP_INTRO_BUTTON = booleanPreferencesKey("show_skip_intro_button")
@@ -206,6 +207,8 @@ class PlayerPreferencesRepository(private val context: Context) {
             enableEmbeddedChapters = true,
             showChapterMarkersOnTimeline = prefs[Keys.SHOW_CHAPTER_MARKERS]
                 ?: (if (hasBoot && sp.contains("show_chapter_markers")) sp.getBoolean("show_chapter_markers", true) else true),
+            showBufferedProgressOnTimeline = prefs[Keys.SHOW_BUFFERED_PROGRESS]
+                ?: (if (hasBoot && sp.contains("show_buffered_progress")) sp.getBoolean("show_buffered_progress", true) else true),
             seekStepSeconds = (
                 prefs[Keys.SEEK_STEP_SECONDS]
                     ?: (if (hasBoot && sp.contains("seek_step_sec")) sp.getInt("seek_step_sec", 10) else 10)
@@ -482,6 +485,11 @@ class PlayerPreferencesRepository(private val context: Context) {
     suspend fun updateShowChapterMarkersOnTimeline(enabled: Boolean) {
         bootPrefs(context).edit().putBoolean("show_chapter_markers", enabled).apply()
         context.playerDataStore.edit { it[Keys.SHOW_CHAPTER_MARKERS] = enabled }
+    }
+
+    suspend fun updateShowBufferedProgressOnTimeline(enabled: Boolean) {
+        bootPrefs(context).edit().putBoolean("show_buffered_progress", enabled).apply()
+        context.playerDataStore.edit { it[Keys.SHOW_BUFFERED_PROGRESS] = enabled }
     }
 
     suspend fun updateSeekStepSeconds(seconds: Int) {
@@ -803,6 +811,7 @@ class PlayerPreferencesRepository(private val context: Context) {
                 ),
                 enableEmbeddedChapters = true,
                 showChapterMarkersOnTimeline = sp.getBoolean("show_chapter_markers", true),
+                showBufferedProgressOnTimeline = sp.getBoolean("show_buffered_progress", true),
                 seekStepSeconds = sp.getInt("seek_step_sec", 10).coerceIn(3, 60),
                 defaultPlaybackSpeed = sp.getFloat("default_speed", 1.0f).coerceIn(0.25f, 3.0f),
                 showSkipIntroButton = sp.getBoolean("show_skip_intro", true),

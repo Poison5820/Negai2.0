@@ -29,7 +29,7 @@ import kotlinx.coroutines.withContext
 
 class LibraryRepository private constructor(
     private val appContext: Context,
-    private val dao: KinoDao,
+    private val dao: NegaiDao,
     val preferencesRepository: PlayerPreferencesRepository,
     private val scanner: SafMediaScanner
 ) {
@@ -745,10 +745,10 @@ class LibraryRepository private constructor(
             return instance ?: synchronized(this) {
                 instance ?: run {
                     val app = context.applicationContext
-                    val db = KinoDatabase.getInstance(app)
+                    val db = NegaiDatabase.getInstance(app)
                     val prefs = PlayerPreferencesRepository(app)
                     val scanner = SafMediaScanner(app)
-                    LibraryRepository(app, db.kinoDao(), prefs, scanner).also { instance = it }
+                    LibraryRepository(app, db.negaiDao(), prefs, scanner).also { instance = it }
                 }
             }
         }

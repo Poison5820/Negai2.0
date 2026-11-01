@@ -30,19 +30,19 @@ import com.example.player.PipController
 import com.example.player.RefreshRatePlan
 import com.example.torrent.ExternalOpenOutcome
 import com.example.torrent.TorrentIntentHelper
-import com.example.ui.KinoViewModel
+import com.example.ui.NegaiViewModel
 import com.example.ui.i18n.ProvideAppLocalization
 import com.example.ui.screens.FolderDetailScreen
 import com.example.ui.screens.LibraryScreen
 import com.example.ui.screens.PlayerScreen
 import com.example.ui.screens.SettingsActions
 import com.example.ui.screens.TorrentsActions
-import com.example.ui.theme.Kino4KTheme
+import com.example.ui.theme.NegaiTheme
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: KinoViewModel by viewModels()
+    private val viewModel: NegaiViewModel by viewModels()
     private var pipReceiver: BroadcastReceiver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         window.setBackgroundDrawable(ColorDrawable(bootSettings.themeMode.previewBgArgb.toInt()))
         DisplayRefreshRateController.applyWindowRefreshRate(this, bootSettings.highRefreshRateEnabled)
+
 
         pipReceiver = PipController.registerReceiver(
             context = this,
@@ -121,12 +122,12 @@ class MainActivity : ComponentActivity() {
                     fontScale = baseDensity.fontScale * effectiveAppScale
                 )
             }
-            Kino4KTheme(themeMode = settings.themeMode) {
+            NegaiTheme(themeMode = settings.themeMode) {
                 ProvideAppLocalization(appLanguage = settings.appLanguage) {
                     androidx.compose.runtime.CompositionLocalProvider(
                         androidx.compose.ui.platform.LocalDensity provides scaledAppDensity
                     ) {
-                        Kino4KAppRoot(
+                        NegaiAppRoot(
                             viewModel = viewModel,
                             targetDisplayHz = targetDisplayHz,
                             refreshPlan = refreshPlan,
@@ -211,6 +212,8 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.onAppResumed()
+        val s = viewModel.playerSettings.value
+        DisplayRefreshRateController.applyWindowRefreshRate(this, s.highRefreshRateEnabled)
     }
 
     override fun onPause() {
@@ -240,8 +243,8 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Kino4KAppRoot(
-    viewModel: KinoViewModel,
+fun NegaiAppRoot(
+    viewModel: NegaiViewModel,
     targetDisplayHz: Float,
     refreshPlan: RefreshRatePlan = RefreshRatePlan(targetDisplayHz = targetDisplayHz, targetRenderFps = targetDisplayHz),
     onUpdatePipParams: (Boolean, Boolean, Int, Int, Boolean, Int) -> Unit,
@@ -528,6 +531,7 @@ fun Kino4KAppRoot(
                 onUpdatePlaybackEndMode = { viewModel.setPlaybackEndMode(it) },
                 onUpdateEnableEmbeddedChapters = { viewModel.setEnableEmbeddedChapters(it) },
                 onUpdateShowChapterMarkersOnTimeline = { viewModel.setShowChapterMarkersOnTimeline(it) },
+                onUpdateShowBufferedProgressOnTimeline = { viewModel.setShowBufferedProgressOnTimeline(it) },
                 onUpdateSeekStepSeconds = { viewModel.setSeekStepSeconds(it) },
                 onUpdateDefaultPlaybackSpeed = { viewModel.setDefaultPlaybackSpeed(it) },
                 onUpdateShowSkipIntro = { viewModel.setShowSkipIntroButton(it) },

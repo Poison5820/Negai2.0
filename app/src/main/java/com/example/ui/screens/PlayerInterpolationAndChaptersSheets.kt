@@ -38,6 +38,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -47,6 +48,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -97,20 +99,23 @@ fun FrameInterpolationModalSheet(
 ) {
     val isEnglish = LocalIsEnglish.current
     val effectiveMode = if (frameInterpolationEnabled) interpolationMode else FrameInterpolationMode.OFF
+    val sheetBg = playerPopupSheetContainerColor()
+    val cardBg = playerPopupCardColor()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = PlayerPopupSheetContainerColor,
+        containerColor = sheetBg,
         scrimColor = PlayerPopupSheetScrimColor
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -344,6 +349,7 @@ fun FrameInterpolationModalSheet(
                     }
                 }
             }
+            }
         }
     }
 }
@@ -381,19 +387,23 @@ fun EpisodesModalSheet(
         }
     }
 
+    val sheetBg = playerPopupSheetContainerColor()
+    val cardBg = playerPopupCardColor()
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = PlayerPopupSheetContainerColor,
+        containerColor = sheetBg,
         scrimColor = PlayerPopupSheetScrimColor
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 20.dp)
-                .testTag("episodes_modal_sheet"),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 20.dp)
+                    .testTag("episodes_modal_sheet"),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -616,6 +626,7 @@ fun EpisodesModalSheet(
                     }
                 }
             }
+            }
         }
     }
 }
@@ -637,20 +648,22 @@ fun ChaptersModalSheet(
     val activeChapterIndex = remember(chapters, currentPositionMs) {
         findActiveChapterIndex(chapters, currentPositionMs)
     }
+    val sheetBg = playerPopupSheetContainerColor()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = PlayerPopupSheetContainerColor,
+        containerColor = sheetBg,
         scrimColor = PlayerPopupSheetScrimColor
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 20.dp)
-                .testTag("chapters_modal_sheet"),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 20.dp)
+                    .testTag("chapters_modal_sheet"),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -814,6 +827,7 @@ fun ChaptersModalSheet(
                         }
                     }
                 }
+            }
             }
         }
     }

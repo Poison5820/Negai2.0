@@ -113,6 +113,13 @@ enum class PlayerQuickAction(
         shortTitle = "Декодер",
         subtitle = "Выбор аппаратного MediaCodec или программного декодирования (также в верхней панели)"
     ),
+    FILE_INFO(
+        id = "FILE_INFO",
+        title = "Сведения о файле",
+        shortTitle = "Инфо",
+        subtitle = "Технические данные о кодеках, разрешении, звуке и субтитрах",
+        isInstantAction = true
+    ),
     TOOLS(
         id = "TOOLS",
         title = "Все инструменты («Ещё»)",
@@ -140,11 +147,11 @@ enum class QuickBarPreset(
         actions = listOf(
             PlayerQuickAction.AUDIO,
             PlayerQuickAction.SUBTITLES,
-            PlayerQuickAction.EPISODES,
             PlayerQuickAction.SPEED,
             PlayerQuickAction.SCALE,
             PlayerQuickAction.FRAME_INTERPOLATION,
             PlayerQuickAction.ANIME4K,
+            PlayerQuickAction.FILE_INFO,
             PlayerQuickAction.TOOLS
         )
     ),
@@ -154,12 +161,12 @@ enum class QuickBarPreset(
         actions = listOf(
             PlayerQuickAction.AUDIO,
             PlayerQuickAction.SUBTITLES,
-            PlayerQuickAction.EPISODES,
             PlayerQuickAction.SKIP_INTRO,
             PlayerQuickAction.SPEED,
             PlayerQuickAction.SCALE,
             PlayerQuickAction.FRAME_INTERPOLATION,
             PlayerQuickAction.ANIME4K,
+            PlayerQuickAction.FILE_INFO,
             PlayerQuickAction.TOOLS
         )
     ),
@@ -169,8 +176,8 @@ enum class QuickBarPreset(
         actions = listOf(
             PlayerQuickAction.AUDIO,
             PlayerQuickAction.SUBTITLES,
-            PlayerQuickAction.EPISODES,
             PlayerQuickAction.SPEED,
+            PlayerQuickAction.FILE_INFO,
             PlayerQuickAction.TOOLS
         )
     ),
@@ -180,7 +187,6 @@ enum class QuickBarPreset(
         actions = listOf(
             PlayerQuickAction.AUDIO,
             PlayerQuickAction.SUBTITLES,
-            PlayerQuickAction.EPISODES,
             PlayerQuickAction.SPEED,
             PlayerQuickAction.SCALE,
             PlayerQuickAction.FRAME_INTERPOLATION,
@@ -188,6 +194,7 @@ enum class QuickBarPreset(
             PlayerQuickAction.SKIP_INTRO,
             PlayerQuickAction.AB_LOOP,
             PlayerQuickAction.SLEEP_TIMER,
+            PlayerQuickAction.FILE_INFO,
             PlayerQuickAction.TOOLS
         )
     )
@@ -199,7 +206,8 @@ object QuickActionsSerializer {
 
     private val DEPRECATED_BOTTOM_BAR_ACTIONS = setOf(
         PlayerQuickAction.CHAPTERS,
-        PlayerQuickAction.AUDIO_BOOST
+        PlayerQuickAction.AUDIO_BOOST,
+        PlayerQuickAction.EPISODES
     )
 
     val DEFAULT_ACTIONS: List<PlayerQuickAction> = QuickBarPreset.DEFAULT.actions

@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.MotionPhotosOn
@@ -521,6 +522,7 @@ internal fun PlayerQuickAction.icon(): ImageVector = when (this) {
     PlayerQuickAction.ORIENTATION -> Icons.Default.ScreenRotation
     PlayerQuickAction.PIP -> Icons.Default.PictureInPictureAlt
     PlayerQuickAction.LOCK -> Icons.Default.LockOpen
+    PlayerQuickAction.FILE_INFO -> Icons.Default.Info
     PlayerQuickAction.TOOLS -> Icons.Default.Tune
 }
 

@@ -191,7 +191,7 @@ class InterpolationOrientationAndChaptersTest {
         val actions = listOf(
             PlayerQuickAction.FRAME_INTERPOLATION,
             PlayerQuickAction.SPEED,
-            PlayerQuickAction.EPISODES,
+            PlayerQuickAction.FILE_INFO,
             PlayerQuickAction.ANIME4K
         )
         val raw = QuickActionsSerializer.serialize(actions)

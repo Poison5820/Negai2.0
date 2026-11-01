@@ -41,15 +41,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -63,6 +66,7 @@ import com.example.player.AudioDelayProcessor
 import com.example.player.AudioTrackUiOption
 import com.example.player.BluetoothAudioRouteState
 import com.example.player.SubtitleTrackUiOption
+import com.example.ui.components.InstantSlider
 import com.example.ui.components.formatDelaySeconds
 import com.example.ui.i18n.LocalIsEnglish
 import com.example.ui.i18n.localizedDescription
@@ -72,9 +76,29 @@ import com.example.ui.i18n.localizedTitle
 import com.example.ui.i18n.tr
 import kotlin.math.roundToInt
 
-internal val PlayerPopupSheetContainerColor = Color(0xFF0E131F).copy(alpha = 0.65f)
-internal val PlayerPopupSheetScrimColor = Color.Black.copy(alpha = 0.18f)
-internal val PlayerPopupCardColor = Color(0xFF141B29).copy(alpha = 0.65f)
+@Composable
+internal fun playerPopupSheetContainerColor(): Color {
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    return if (isDark) {
+        Color(0xFF0E131F).copy(alpha = 0.85f)
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f)
+    }
+}
+
+@Composable
+internal fun playerPopupCardColor(): Color {
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    return if (isDark) {
+        Color(0xFF141B29).copy(alpha = 0.80f)
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.88f)
+    }
+}
+
+internal val PlayerPopupSheetContainerColor = Color(0xFF0E131F).copy(alpha = 0.75f)
+internal val PlayerPopupSheetScrimColor = Color.Black.copy(alpha = 0.28f)
+internal val PlayerPopupCardColor = Color(0xFF141B29).copy(alpha = 0.75f)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -98,19 +122,22 @@ fun AudioTracksModalSheet(
     onDismiss: () -> Unit
 ) {
     val isEnglish = LocalIsEnglish.current
+    val sheetBg = playerPopupSheetContainerColor()
+    val cardBg = playerPopupCardColor()
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = PlayerPopupSheetContainerColor,
+        containerColor = sheetBg,
         scrimColor = PlayerPopupSheetScrimColor
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -351,7 +378,7 @@ fun AudioTracksModalSheet(
                 ) { Text("+250мс", style = MaterialTheme.typography.labelSmall) }
             }
 
-            Slider(
+            InstantSlider(
                 value = audioDelayMs.toFloat().coerceIn(-5000f, 5000f),
                 onValueChange = { rawMs ->
                     val snappedMs = (rawMs / 50f).roundToInt() * 50L
@@ -393,6 +420,7 @@ fun AudioTracksModalSheet(
                 audioBoostPercent = audioBoostPercent,
                 onSetAudioBoostPercent = onSetAudioBoostPercent
             )
+            }
         }
     }
 }
@@ -413,19 +441,22 @@ fun SubtitleControlModalSheet(
     onDismiss: () -> Unit
 ) {
     val isEnglish = LocalIsEnglish.current
+    val sheetBg = playerPopupSheetContainerColor()
+    val cardBg = playerPopupCardColor()
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = PlayerPopupSheetContainerColor,
+        containerColor = sheetBg,
         scrimColor = PlayerPopupSheetScrimColor
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -567,7 +598,7 @@ fun SubtitleControlModalSheet(
                 ) { Text(tr("+0.5с", "+0.5s"), style = MaterialTheme.typography.labelSmall) }
             }
 
-            Slider(
+            InstantSlider(
                 value = (subtitleDelayMs / 1000f).coerceIn(-10f, 10f),
                 onValueChange = { sec ->
                     val snappedMs = (sec * 10f).roundToInt() * 100L
@@ -592,7 +623,7 @@ fun SubtitleControlModalSheet(
                     color = MaterialTheme.colorScheme.primary
                 )
             }
-            Slider(
+            InstantSlider(
                 value = settings.subtitleFontSizeSp,
                 onValueChange = onSetFontSizeSp,
                 valueRange = 14f..40f,
@@ -644,6 +675,7 @@ fun SubtitleControlModalSheet(
                     onCheckedChange = onSetBackgroundEnabled
                 )
             }
+            }
         }
     }
 }
@@ -662,19 +694,22 @@ fun Anime4KControlModalSheet(
     onDismiss: () -> Unit
 ) {
     val isEnglish = LocalIsEnglish.current
+    val sheetBg = playerPopupSheetContainerColor()
+    val cardBg = playerPopupCardColor()
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = PlayerPopupSheetContainerColor,
+        containerColor = sheetBg,
         scrimColor = PlayerPopupSheetScrimColor
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -822,7 +857,7 @@ fun Anime4KControlModalSheet(
                     color = MaterialTheme.colorScheme.primary
                 )
             }
-            Slider(
+            InstantSlider(
                 value = settings.anime4kStrength,
                 onValueChange = onChangeStrength,
                 enabled = settings.anime4kEnabled,
@@ -863,12 +898,13 @@ fun Anime4KControlModalSheet(
             }
 
             if (splitCompareEnabled && settings.anime4kEnabled) {
-                Slider(
+                InstantSlider(
                     value = splitPosition,
                     onValueChange = onChangeSplitPosition,
                     valueRange = 0.1f..0.9f,
                     modifier = Modifier.testTag("anime4k_split_slider")
                 )
+            }
             }
         }
     }
@@ -886,19 +922,22 @@ fun DecoderAndVideoModalSheet(
     onDismiss: () -> Unit
 ) {
     val isEnglish = LocalIsEnglish.current
+    val sheetBg = playerPopupSheetContainerColor()
+    val cardBg = playerPopupCardColor()
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = PlayerPopupSheetContainerColor,
+        containerColor = sheetBg,
         scrimColor = PlayerPopupSheetScrimColor
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -995,4 +1034,5 @@ fun DecoderAndVideoModalSheet(
             }
         }
     }
+}
 }

@@ -857,21 +857,23 @@ private fun EpisodeRowCard(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    val metaLine = buildString {
-                        episode.dimensionsLabel?.let { dims ->
-                            append(dims)
-                        }
-                        val sizeStr = formatFileSize(episode.sizeBytes)
-                        if (sizeStr.isNotEmpty()) {
-                            if (isNotEmpty()) append(" • ")
-                            append(sizeStr)
-                        }
-                        if (episode.resumePositionMs > 0L && episode.durationMs > 0L) {
-                            if (isNotEmpty()) append(" • ")
-                            append("${formatTimeMs(episode.resumePositionMs)} / ${formatTimeMs(episode.durationMs)}")
-                        } else if (episode.durationMs > 0L) {
-                            if (isNotEmpty()) append(" • ")
-                            append(formatTimeMs(episode.durationMs))
+                    val metaLine = remember(episode.dimensionsLabel, episode.sizeBytes, episode.resumePositionMs, episode.durationMs) {
+                        buildString {
+                            episode.dimensionsLabel?.let { dims ->
+                                append(dims)
+                            }
+                            val sizeStr = formatFileSize(episode.sizeBytes)
+                            if (sizeStr.isNotEmpty()) {
+                                if (isNotEmpty()) append(" • ")
+                                append(sizeStr)
+                            }
+                            if (episode.resumePositionMs > 0L && episode.durationMs > 0L) {
+                                if (isNotEmpty()) append(" • ")
+                                append("${formatTimeMs(episode.resumePositionMs)} / ${formatTimeMs(episode.durationMs)}")
+                            } else if (episode.durationMs > 0L) {
+                                if (isNotEmpty()) append(" • ")
+                                append(formatTimeMs(episode.durationMs))
+                            }
                         }
                     }
                     if (metaLine.isNotEmpty()) {
@@ -937,64 +939,66 @@ private fun EpisodeRowCard(
                                 contentDescription = tr("Меню файла ${episode.cleanTitle}", "File menu ${episode.cleanTitle}")
                             )
                         }
-                        DropdownMenu(
-                            expanded = menuExpanded,
-                            onDismissRequest = { menuExpanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text(tr("Переименовать", "Rename")) },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Edit, contentDescription = null)
-                                },
-                                onClick = {
-                                    menuExpanded = false
-                                    onRename()
-                                },
-                                modifier = Modifier.testTag("rename_episode_menu_item_$index")
-                            )
-                            DropdownMenuItem(
-                                text = { Text(tr("Сведения о файле", "File Info")) },
-                                leadingIcon = {
-                                    Icon(Icons.Outlined.Info, contentDescription = null)
-                                },
-                                onClick = {
-                                    menuExpanded = false
-                                    onShowInfo()
-                                },
-                                modifier = Modifier.testTag("info_episode_menu_item_$index")
-                            )
-                            DropdownMenuItem(
-                                text = { Text(tr("Выбрать", "Select")) },
-                                leadingIcon = {
-                                    Icon(Icons.Outlined.CheckCircle, contentDescription = null)
-                                },
-                                onClick = {
-                                    menuExpanded = false
-                                    onToggleSelect()
-                                },
-                                modifier = Modifier.testTag("select_episode_menu_item_$index")
-                            )
-                            HorizontalDivider()
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = tr("Удалить с накопителя", "Delete from storage"),
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.DeleteForever,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                },
-                                onClick = {
-                                    menuExpanded = false
-                                    onDeleteSingle()
-                                },
-                                modifier = Modifier.testTag("delete_episode_menu_item_$index")
-                            )
+                        if (menuExpanded) {
+                            DropdownMenu(
+                                expanded = true,
+                                onDismissRequest = { menuExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(tr("Переименовать", "Rename")) },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Edit, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onRename()
+                                    },
+                                    modifier = Modifier.testTag("rename_episode_menu_item_$index")
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(tr("Сведения о файле", "File Info")) },
+                                    leadingIcon = {
+                                        Icon(Icons.Outlined.Info, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onShowInfo()
+                                    },
+                                    modifier = Modifier.testTag("info_episode_menu_item_$index")
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(tr("Выбрать", "Select")) },
+                                    leadingIcon = {
+                                        Icon(Icons.Outlined.CheckCircle, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onToggleSelect()
+                                    },
+                                    modifier = Modifier.testTag("select_episode_menu_item_$index")
+                                )
+                                HorizontalDivider()
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = tr("Удалить с накопителя", "Delete from storage"),
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.DeleteForever,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onDeleteSingle()
+                                    },
+                                    modifier = Modifier.testTag("delete_episode_menu_item_$index")
+                                )
+                            }
                         }
                     }
                 }

@@ -74,7 +74,7 @@ data class DetailedMediaFileInfo(
     val subtitleStreams: List<SubtitleStreamTechnicalInfo> = emptyList()
 )
 
-object MediaFileInfoExtractor {
+object VideoStreamInfoExtractor {
 
     fun extractEpisodeInfo(context: Context, episode: EpisodeItem): DetailedMediaFileInfo {
         val localFile = StorageAccessHelper.resolveLocalFileFromUri(context, episode.uri)
@@ -674,3 +674,6 @@ object MediaFileInfoExtractor {
             else runCatching { getFloat(key) }.getOrElse { getInteger(key).toFloat() }
         }.getOrDefault(default)
 }
+
+typealias MediaFileInfoExtractor = VideoStreamInfoExtractor
+

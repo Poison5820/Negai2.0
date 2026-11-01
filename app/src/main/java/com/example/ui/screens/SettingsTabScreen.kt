@@ -94,6 +94,7 @@ data class SettingsActions(
     val onUpdatePlaybackEndMode: (PlaybackEndMode) -> Unit,
     val onUpdateEnableEmbeddedChapters: (Boolean) -> Unit = {},
     val onUpdateShowChapterMarkersOnTimeline: (Boolean) -> Unit = {},
+    val onUpdateShowBufferedProgressOnTimeline: (Boolean) -> Unit = {},
     val onUpdateSeekStepSeconds: (Int) -> Unit,
     val onUpdateDefaultPlaybackSpeed: (Float) -> Unit,
     val onUpdateShowSkipIntro: (Boolean) -> Unit,
@@ -231,27 +232,22 @@ fun SettingsTabContent(
                             actions = actions
                         )
 
-                        SettingsCategory.GESTURES -> GesturesSettingsPage(
+                        SettingsCategory.CONTROLS -> GesturesSettingsPage(
                             settings = settings,
                             actions = actions
                         )
 
-                        SettingsCategory.VIDEO_ANIME4K -> VideoAndAnime4KSettingsPage(
+                        SettingsCategory.ENHANCEMENTS -> VideoAndAnime4KSettingsPage(
                             settings = settings,
                             actions = actions
                         )
 
-                        SettingsCategory.AUDIO -> AudioSettingsPage(
+                        SettingsCategory.AUDIO_AND_SUBTITLES -> AudioAndSubtitlesSettingsPage(
                             settings = settings,
                             actions = actions
                         )
 
-                        SettingsCategory.SUBTITLES -> SubtitlesSettingsPage(
-                            settings = settings,
-                            actions = actions
-                        )
-
-                        SettingsCategory.TORRSERVER -> TorrServerSettingsPage(
+                        SettingsCategory.TORRENTS -> TorrServerSettingsPage(
                             settings = settings,
                             actions = actions
                         )
@@ -393,11 +389,10 @@ private fun SettingsCategoryHub(
 private fun SettingsCategory.icon(): ImageVector = when (this) {
     SettingsCategory.APPEARANCE -> Icons.Default.Palette
     SettingsCategory.PLAYBACK -> Icons.Default.PlayCircleOutline
-    SettingsCategory.GESTURES -> Icons.Default.Swipe
-    SettingsCategory.VIDEO_ANIME4K -> Icons.Default.AutoAwesome
-    SettingsCategory.AUDIO -> Icons.Default.GraphicEq
-    SettingsCategory.SUBTITLES -> Icons.Default.Subtitles
-    SettingsCategory.TORRSERVER -> Icons.Default.Dns
+    SettingsCategory.CONTROLS -> Icons.Default.Swipe
+    SettingsCategory.ENHANCEMENTS -> Icons.Default.AutoAwesome
+    SettingsCategory.AUDIO_AND_SUBTITLES -> Icons.Default.GraphicEq
+    SettingsCategory.TORRENTS -> Icons.Default.Dns
     SettingsCategory.STORAGE -> Icons.Default.Storage
     SettingsCategory.DEVICE_INFO -> Icons.Default.Memory
 }
@@ -424,7 +419,7 @@ private fun categorySummary(
             "$resumeTxt • Шаг ${settings.seekStepSeconds} сек • +${settings.skipIntroSeconds}с Опенинг"
         }
     }
-    SettingsCategory.GESTURES -> {
+    SettingsCategory.CONTROLS -> {
         if (isEnglish) {
             val boostTxt = if (settings.gestureLongPress2x) "Hold ${settings.longPressBoostSpeed}x" else "Hold OFF"
             "$boostTxt • Orientation: ${settings.defaultPlayerOrientation.shortBadge}"
@@ -433,25 +428,20 @@ private fun categorySummary(
             "$boostTxt • Ориентация: ${settings.defaultPlayerOrientation.shortBadge}"
         }
     }
-    SettingsCategory.VIDEO_ANIME4K -> {
+    SettingsCategory.ENHANCEMENTS -> {
         val memc = settings.effectiveFrameInterpolationMode.badgeLabel
         val a4k = if (settings.anime4kEnabled) settings.anime4kPreset.badgeLabel else if (isEnglish) "OFF" else "Выкл"
         "${settings.decoderMode.shortBadge} • $memc • Anime4K: $a4k"
     }
-    SettingsCategory.AUDIO -> {
+    SettingsCategory.AUDIO_AND_SUBTITLES -> {
+        val colorLabel = SubtitleColorPreset.fromArgb(settings.subtitleColorArgb).label
         if (isEnglish) {
-            val autoAud = if (settings.autoBindExternalAudio) "Auto-bind ON" else "Auto-bind OFF"
-            "$autoAud • Auto BT Sync • Boost ${settings.defaultAudioBoostPercent}%"
+            "Auto BT Sync • Boost ${settings.defaultAudioBoostPercent}% • ${settings.subtitleFontSizeSp.roundToInt()} sp • $colorLabel"
         } else {
-            val autoAud = if (settings.autoBindExternalAudio) "Авто-привязка вкл" else "Авто-привязка выкл"
-            "$autoAud • Авто-BT синхр. • Усиление ${settings.defaultAudioBoostPercent}%"
+            "Авто-BT синхр. • Усиление ${settings.defaultAudioBoostPercent}% • ${settings.subtitleFontSizeSp.roundToInt()} sp • $colorLabel"
         }
     }
-    SettingsCategory.SUBTITLES -> {
-        val colorLabel = SubtitleColorPreset.fromArgb(settings.subtitleColorArgb).label
-        "${settings.subtitleFontSizeSp.roundToInt()} sp • $colorLabel • SRT / ASS"
-    }
-    SettingsCategory.TORRSERVER -> {
+    SettingsCategory.TORRENTS -> {
         val indexerHost = settings.torrentIndexerUrl
             .substringBefore(',')
             .trim()

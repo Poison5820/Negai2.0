@@ -37,11 +37,13 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -50,6 +52,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +61,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.model.PlaybackEndMode
+import com.example.ui.components.InstantSlider
 import com.example.model.PlayerControlsTheme
 import com.example.model.PlayerOrientationMode
 import com.example.model.SleepTimerPreset
@@ -266,24 +270,27 @@ fun PlayerToolsModalSheet(
     onUpdateSkipIntroSeconds: (Int) -> Unit = {},
     onLockControls: () -> Unit,
     onOpenQuickActionsCustomizer: () -> Unit = {},
+    onOpenFileTechnicalInfo: (() -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     val isEnglish = LocalIsEnglish.current
     val speeds = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f, 2.5f, 3.0f)
+    val sheetBg = playerPopupSheetContainerColor()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = PlayerPopupSheetContainerColor,
+        containerColor = sheetBg,
         scrimColor = PlayerPopupSheetScrimColor
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -293,7 +300,20 @@ fun PlayerToolsModalSheet(
                     text = tr("Инструменты просмотра", "Playback Tools"),
                     style = MaterialTheme.typography.titleMedium
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (onOpenFileTechnicalInfo != null) {
+                        FilledTonalButton(
+                            onClick = {
+                                onDismiss()
+                                onOpenFileTechnicalInfo()
+                            },
+                            modifier = Modifier.testTag("sheet_open_file_info_button")
+                        ) {
+                            Icon(Icons.Outlined.Info, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(tr("Инфо", "Info"))
+                        }
+                    }
                     FilledTonalButton(
                         onClick = {
                             onDismiss()
@@ -301,8 +321,8 @@ fun PlayerToolsModalSheet(
                         },
                         modifier = Modifier.testTag("sheet_open_quick_actions_customizer")
                     ) {
-                        Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(tr("Кнопки", "Buttons"))
                     }
                     FilledTonalButton(
@@ -312,8 +332,8 @@ fun PlayerToolsModalSheet(
                         },
                         modifier = Modifier.testTag("sheet_lock_controls_button")
                     ) {
-                        Icon(Icons.Default.LockOpen, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(Icons.Default.LockOpen, contentDescription = null, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(tr("Блок", "Lock"))
                     }
                 }
@@ -374,7 +394,7 @@ fun PlayerToolsModalSheet(
                         Text("100%", style = MaterialTheme.typography.labelSmall)
                     }
                 }
-                Slider(
+                InstantSlider(
                     value = playerUiScalePercent.coerceIn(75, 140).toFloat(),
                     onValueChange = { onUpdatePlayerUiScalePercent(it.roundToInt().coerceIn(75, 140)) },
                     valueRange = 75f..140f,
@@ -667,6 +687,7 @@ fun PlayerToolsModalSheet(
                     }
                 }
             }
+            }
         }
     }
 }
@@ -704,7 +725,7 @@ fun AudioBoostControlSection(
                 }
             )
         }
-        Slider(
+        InstantSlider(
             value = audioBoostPercent.toFloat(),
             onValueChange = { onSetAudioBoostPercent(it.roundToInt()) },
             valueRange = 100f..200f,

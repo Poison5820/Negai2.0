@@ -306,11 +306,13 @@ class NegaiV2FeaturesTest {
         val defaultActions = PlayerQuickAction.defaultActions
         assertEquals(PlayerQuickAction.AUDIO, defaultActions[0])
         assertEquals(PlayerQuickAction.SUBTITLES, defaultActions[1])
-        assertEquals(PlayerQuickAction.EPISODES, defaultActions[2])
-        assertEquals(PlayerQuickAction.SPEED, defaultActions[3])
+        assertEquals(PlayerQuickAction.SPEED, defaultActions[2])
+        assertEquals(PlayerQuickAction.SCALE, defaultActions[3])
+        assertFalse(defaultActions.contains(PlayerQuickAction.EPISODES))
         assertFalse(defaultActions.contains(PlayerQuickAction.CHAPTERS))
         assertFalse(defaultActions.contains(PlayerQuickAction.AUDIO_BOOST))
         assertFalse(defaultActions.contains(PlayerQuickAction.DECODER))
+        assertTrue(defaultActions.contains(PlayerQuickAction.FILE_INFO))
 
         // Verify negative audio delay uses MediaClock offset instead of dropping PCM samples
         val processor = com.example.player.AudioDelayProcessor()

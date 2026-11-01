@@ -98,6 +98,7 @@ data class PlaybackRuntimeState(
     val isBuffering: Boolean = false,
     val currentPositionMs: Long = 0L,
     val durationMs: Long = 0L,
+    val bufferedPositionMs: Long = 0L,
     val playbackSpeed: Float = 1.0f,
     val videoWidth: Int = 1280,
     val videoHeight: Int = 720,
@@ -1854,14 +1855,17 @@ class PlayerEngine private constructor(
             emptyList()
         }
 
+        val buffered = player.bufferedPosition.coerceAtLeast(pos)
         if (forceSyncRuntimePosition ||
             dur != currentState.durationMs ||
+            buffered != currentState.bufferedPositionMs ||
             cues != currentState.activeSubtitleCues
         ) {
             _state.update {
                 it.copy(
                     currentPositionMs = pos,
                     durationMs = dur,
+                    bufferedPositionMs = buffered,
                     activeSubtitleCues = cues
                 )
             }

@@ -637,17 +637,26 @@ enum class SettingsCategory(
     val title: String,
     val titleEn: String
 ) {
-    APPEARANCE("APPEARANCE", "Оформление и интерфейс", "Appearance & Interface"),
-    PLAYBACK("PLAYBACK", "Воспроизведение и таймлайн", "Playback & Timeline"),
-    GESTURES("GESTURES", "Жесты и управление", "Gestures & Controls"),
-    VIDEO_ANIME4K("VIDEO_ANIME4K", "Видео, LTPO герцовка, интерполяция и Anime4K", "Video, LTPO Refresh, MEMC & Anime4K"),
-    AUDIO("AUDIO", "Аудио и озвучка", "Audio & Voiceover"),
-    SUBTITLES("SUBTITLES", "Субтитры (SRT / ASS)", "Subtitles (SRT / ASS)"),
-    TORRSERVER("TORRSERVER", "TorrServer и торренты", "TorrServer & Torrents"),
-    STORAGE("STORAGE", "Хранилище и исключения", "Storage & Exclusions"),
-    DEVICE_INFO("DEVICE_INFO", "Об устройстве и декодерах", "Device Info & Decoders");
+    APPEARANCE("APPEARANCE", "Оформление", "Appearance"),
+    PLAYBACK("PLAYBACK", "Воспроизведение", "Playback"),
+    CONTROLS("CONTROLS", "Управление", "Controls"),
+    ENHANCEMENTS("ENHANCEMENTS", "Улучшения", "Enhancements"),
+    AUDIO_AND_SUBTITLES("AUDIO_AND_SUBTITLES", "Аудио и субтитры", "Audio & Subtitles"),
+    TORRENTS("TORRENTS", "Торренты", "Torrents"),
+    STORAGE("STORAGE", "Хранилище", "Storage"),
+    DEVICE_INFO("DEVICE_INFO", "Об устройстве", "About Device");
 
     fun localizedTitle(isEnglish: Boolean): String = if (isEnglish) titleEn else title
+
+    companion object {
+        fun fromId(id: String?): SettingsCategory = when (id?.trim()) {
+            "GESTURES", "CONTROLS" -> CONTROLS
+            "VIDEO_ANIME4K", "ENHANCEMENTS" -> ENHANCEMENTS
+            "AUDIO", "SUBTITLES", "AUDIO_AND_SUBTITLES" -> AUDIO_AND_SUBTITLES
+            "TORRSERVER", "TORRENTS" -> TORRENTS
+            else -> entries.firstOrNull { it.id.equals(id?.trim(), ignoreCase = true) } ?: APPEARANCE
+        }
+    }
 }
 
 @Immutable
@@ -685,6 +694,7 @@ data class PlayerSettings(
     val playbackEndMode: PlaybackEndMode = PlaybackEndMode.AUTO_NEXT,
     val enableEmbeddedChapters: Boolean = true,
     val showChapterMarkersOnTimeline: Boolean = true,
+    val showBufferedProgressOnTimeline: Boolean = true,
     val seekStepSeconds: Int = 10,
     val defaultPlaybackSpeed: Float = 1.0f,
     val showSkipIntroButton: Boolean = true,
