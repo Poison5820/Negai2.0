@@ -1171,6 +1171,205 @@ object TorrentSearchService {
         }
     }
 
+    suspend fun fetchReleaseDetails(
+        result: TorrentSearchResult,
+        enableDoh: Boolean = true
+    ): TorrentReleaseDetails = withContext(Dispatchers.IO) {
+        val httpClient = ResilientTrackerNetwork.client(enableDoh)
+        var descriptionText = ""
+        val fileEntries = mutableListOf<TorrentReleaseFileEntry>()
+        var infoNote: String? = null
+
+        // 1. Try fetching topic HTML if available
+        val rawTopicUrl = result.topicUrl?.trim()?.takeIf { it.startsWith("http", ignoreCase = true) }
+        if (rawTopicUrl != null) {
+            val candidateUrls = buildList {
+                add(rawTopicUrl)
+                // If Rutor topic, add alternate Rutor mirrors for resilience
+                val rutorPath = Regex("""https?://[^/]+(/torrent/\d+.*)""").find(rawTopicUrl)?.groupValues?.getOrNull(1)
+                if (rutorPath != null) {
+                    RUTOR_MIRRORS.forEach { mirror ->
+                        val alt = "${mirror.trimEnd('/')}$rutorPath"
+                        if (alt !in this) add(alt)
+                    }
+                }
+            }
+            for (url in candidateUrls.take(3)) {
+                val outcome = httpGetValidated(url, url, ExpectedResponseKind.HTML, httpClient)
+                if (outcome is MirrorFetchOutcome.Success && outcome.data.isNotBlank()) {
+                    val (parsedDesc, parsedFiles) = parseTopicHtmlDetails(outcome.data)
+                    if (parsedDesc.isNotBlank()) {
+                        descriptionText = parsedDesc
+                    }
+                    if (parsedFiles.isNotEmpty() && fileEntries.isEmpty()) {
+                        fileEntries.addAll(parsedFiles)
+                    }
+                    if (descriptionText.isNotBlank() || fileEntries.isNotEmpty()) {
+                        break
+                    }
+                }
+            }
+        }
+
+        // 2. If fileEntries is still empty and a direct .torrent URL is available, parse file list from .torrent
+        val torrentUrl = result.torrentFileUrl?.trim()?.takeIf { it.startsWith("http", ignoreCase = true) }
+        if (fileEntries.isEmpty() && torrentUrl != null) {
+            runCatching {
+                val req = Request.Builder()
+                    .url(torrentUrl)
+                    .header("User-Agent", ResilientTrackerNetwork.BROWSER_USER_AGENT)
+                    .get()
+                    .build()
+                httpClient.newCall(req).execute().use { resp ->
+                    if (resp.isSuccessful) {
+                        val bytes = resp.body?.bytes()
+                        if (bytes != null && bytes.isNotEmpty() && bytes.size <= 3 * 1024 * 1024) {
+                            val parsed = BencodeTorrentParser.parseTorrentBytes(bytes, result.title)
+                            if (parsed != null && parsed.fileEntries.isNotEmpty()) {
+                                fileEntries.addAll(parsed.fileEntries)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Build structured fallback description if tracker page has no text body or isn't reachable
+        val techTags = TorrentSearchResult.extractTechTags(result.title)
+        val voiceoverTags = TorrentSearchResult.extractVoiceoverTags(result.title)
+        val episodeInfo = TorrentSearchResult.extractEpisodeInfo(result.title)
+
+        if (descriptionText.isBlank()) {
+            descriptionText = buildStructuredReleaseSummary(
+                result = result,
+                techTags = techTags,
+                voiceoverTags = voiceoverTags,
+                episodeInfo = episodeInfo
+            )
+            if (rawTopicUrl == null) {
+                infoNote = "Индексатор предоставил прямую Magnet-ссылку без отдельной веб-страницы описания."
+            }
+        }
+
+        TorrentReleaseDetails(
+            result = result,
+            isLoading = false,
+            parsedTechTags = techTags,
+            parsedVoiceoverTags = voiceoverTags,
+            parsedEpisodeInfo = episodeInfo,
+            descriptionText = descriptionText,
+            fileEntries = fileEntries,
+            infoNote = infoNote
+        )
+    }
+
+    internal fun parseTopicHtmlDetails(html: String): Pair<String, List<TorrentReleaseFileEntry>> {
+        if (html.isBlank()) return "" to emptyList()
+        val cleanedHtml = html
+            .replace(Regex("""(?is)<script[^>]*>.*?</script>"""), "")
+            .replace(Regex("""(?is)<style[^>]*>.*?</style>"""), "")
+
+        val descriptionBlocks = listOf(
+            // Rutor details table
+            Regex("""(?is)<table[^>]+id=["']details["'][^>]*>(.*?)</table>"""),
+            // Nyaa torrent description
+            Regex("""(?is)<div[^>]+id=["']torrent-description["'][^>]*>(.*?)</div>"""),
+            // RuTracker / NNM post body
+            Regex("""(?is)<div[^>]+class=["'][^"']*post_body[^"']*["'][^>]*>(.*?)</div>\s*</td>"""),
+            // BitRu / generic description block
+            Regex("""(?is)<div[^>]+class=["'][^"']*(?:b-description|torrent-info|desc-body)[^"']*["'][^>]*>(.*?)</div>""")
+        )
+
+        var rawBlock = ""
+        for (regex in descriptionBlocks) {
+            val match = regex.find(cleanedHtml)?.groupValues?.getOrNull(1)
+            if (!match.isNullOrBlank() && match.length > 40) {
+                rawBlock = match
+                break
+            }
+        }
+
+        val formattedDesc = if (rawBlock.isNotBlank()) {
+            rawBlock
+                .replace(Regex("""(?i)<br\s*/?>"""), "\n")
+                .replace(Regex("""(?i)</(p|div|tr|li|h[1-6])>"""), "\n")
+                .replace(Regex("""(?i)<li[^>]*>"""), "• ")
+                .replace(Regex("""<[^>]+>"""), " ")
+                .let { cleanHtmlEntities(it) }
+                .lines()
+                .map { it.replace(Regex("""[^\S\r\n]+"""), " ").trim() }
+                .filter { line ->
+                    line.isNotBlank() &&
+                        !line.startsWith("Оценка", ignoreCase = true) &&
+                        !line.startsWith("Спасибо", ignoreCase = true) &&
+                        !line.equals("Свернуть", ignoreCase = true) &&
+                        !line.equals("Развернуть", ignoreCase = true)
+                }
+                .joinToString("\n")
+                .replace(Regex("""\n{3,}"""), "\n\n")
+                .take(4500)
+                .trim()
+        } else {
+            ""
+        }
+
+        // Extract file list from Nyaa or Rutor file table if present in HTML
+        val files = mutableListOf<TorrentReleaseFileEntry>()
+        val fileLineRegex = Regex(
+            """(?i)([^\r\n<>"]+\.(?:mkv|mp4|avi|mov|webm|m2ts|ts|mka|ac3|eac3|dts|flac|aac|mp3|ass|ssa|srt|vtt))\s*(?:\(|\[|-|—|\s)+(\d+(?:[.,]\d+)?\s*(?:TB|TiB|ТБ|GB|GiB|ГБ|MB|MiB|МБ|KB|KiB|КБ))"""
+        )
+        for (m in fileLineRegex.findAll(cleanHtmlEntities(stripHtmlTags(cleanedHtml)))) {
+            val path = m.groupValues[1].trim().trimStart('/', '\\', '•', '-', '*')
+            val sz = m.groupValues[2].trim()
+            if (path.isNotBlank() && files.none { it.path.equals(path, ignoreCase = true) } && files.size < 200) {
+                files.add(TorrentReleaseFileEntry(path = path, sizeLabel = sz))
+            }
+        }
+
+        return formattedDesc to files
+    }
+
+    private fun buildStructuredReleaseSummary(
+        result: TorrentSearchResult,
+        techTags: List<String>,
+        voiceoverTags: List<String>,
+        episodeInfo: String?
+    ): String {
+        val segments = result.title
+            .split(Regex("""\s*(?:/|\||\[|\]|\(|\))\s*"""))
+            .map { it.trim() }
+            .filter { it.length >= 2 }
+
+        return buildString {
+            if (segments.isNotEmpty()) {
+                appendLine("Название: ${segments.first()}")
+                if (segments.size > 1) {
+                    appendLine("Детали из заголовка: ${segments.drop(1).joinToString(" • ")}")
+                }
+            }
+            if (!episodeInfo.isNullOrBlank()) {
+                appendLine("Сезон / Серии: $episodeInfo")
+            }
+            if (techTags.isNotEmpty()) {
+                appendLine("Видео и звук: ${techTags.joinToString(", ")}")
+            }
+            if (voiceoverTags.isNotEmpty()) {
+                appendLine("Озвучка / Субтитры: ${voiceoverTags.joinToString(", ")}")
+            }
+            appendLine("Трекер: ${result.trackerName}")
+            if (result.sizeLabel.isNotBlank()) {
+                appendLine("Размер раздачи: ${result.sizeLabel}")
+            }
+            appendLine("Раздают (сиды): ${result.seeders} • Качают (пиры): ${result.leechers}")
+            if (result.publishedLabel.isNotBlank()) {
+                appendLine("Дата публикации: ${result.publishedLabel}")
+            }
+            if (!result.infoHash.isNullOrBlank()) {
+                append("InfoHash: ${result.infoHash}")
+            }
+        }.trim()
+    }
+
     private fun urlEncode(value: String): String =
         URLEncoder.encode(value, Charsets.UTF_8.name())
 }

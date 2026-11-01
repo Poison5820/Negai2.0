@@ -141,12 +141,10 @@ enum class QuickBarPreset(
             PlayerQuickAction.AUDIO,
             PlayerQuickAction.SUBTITLES,
             PlayerQuickAction.EPISODES,
-            PlayerQuickAction.CHAPTERS,
             PlayerQuickAction.SPEED,
             PlayerQuickAction.SCALE,
             PlayerQuickAction.FRAME_INTERPOLATION,
             PlayerQuickAction.ANIME4K,
-            PlayerQuickAction.AUDIO_BOOST,
             PlayerQuickAction.TOOLS
         )
     ),
@@ -157,7 +155,6 @@ enum class QuickBarPreset(
             PlayerQuickAction.AUDIO,
             PlayerQuickAction.SUBTITLES,
             PlayerQuickAction.EPISODES,
-            PlayerQuickAction.CHAPTERS,
             PlayerQuickAction.SKIP_INTRO,
             PlayerQuickAction.SPEED,
             PlayerQuickAction.SCALE,
@@ -184,12 +181,10 @@ enum class QuickBarPreset(
             PlayerQuickAction.AUDIO,
             PlayerQuickAction.SUBTITLES,
             PlayerQuickAction.EPISODES,
-            PlayerQuickAction.CHAPTERS,
             PlayerQuickAction.SPEED,
             PlayerQuickAction.SCALE,
             PlayerQuickAction.FRAME_INTERPOLATION,
             PlayerQuickAction.ANIME4K,
-            PlayerQuickAction.AUDIO_BOOST,
             PlayerQuickAction.SKIP_INTRO,
             PlayerQuickAction.AB_LOOP,
             PlayerQuickAction.SLEEP_TIMER,
@@ -202,6 +197,11 @@ object QuickActionsSerializer {
 
     private const val EMPTY_SENTINEL = "NONE"
 
+    private val DEPRECATED_BOTTOM_BAR_ACTIONS = setOf(
+        PlayerQuickAction.CHAPTERS,
+        PlayerQuickAction.AUDIO_BOOST
+    )
+
     val DEFAULT_ACTIONS: List<PlayerQuickAction> = QuickBarPreset.DEFAULT.actions
 
     fun parse(raw: String?): List<PlayerQuickAction> {
@@ -211,13 +211,16 @@ object QuickActionsSerializer {
         val parsed = raw
             .split(',')
             .mapNotNull { token -> PlayerQuickAction.fromIdOrNull(token) }
+            .filterNot { it in DEPRECATED_BOTTOM_BAR_ACTIONS }
             .distinct()
 
         return parsed.ifEmpty { DEFAULT_ACTIONS }
     }
 
     fun serialize(actions: List<PlayerQuickAction>): String {
-        val unique = actions.distinct()
+        val unique = actions
+            .filterNot { it in DEPRECATED_BOTTOM_BAR_ACTIONS }
+            .distinct()
         if (unique.isEmpty()) return EMPTY_SENTINEL
         return unique.joinToString(",") { it.id }
     }
@@ -247,7 +250,7 @@ object QuickActionsSerializer {
         actions: List<PlayerQuickAction>,
         action: PlayerQuickAction
     ): List<PlayerQuickAction> {
-        if (action in actions) return actions
+        if (action in DEPRECATED_BOTTOM_BAR_ACTIONS || action in actions) return actions
         return actions + action
     }
 
@@ -258,6 +261,8 @@ object QuickActionsSerializer {
 
     fun availableToAdd(activeActions: List<PlayerQuickAction>): List<PlayerQuickAction> {
         val activeSet = activeActions.toSet()
-        return PlayerQuickAction.entries.filterNot { it in activeSet }
+        return PlayerQuickAction.entries.filterNot {
+            it in activeSet || it in DEPRECATED_BOTTOM_BAR_ACTIONS
+        }
     }
 }

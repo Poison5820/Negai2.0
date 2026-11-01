@@ -17,8 +17,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -69,6 +71,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -88,11 +91,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -140,11 +146,12 @@ private enum class ActivePlayerSheet {
     CHAPTERS,
     AUDIO_BOOST,
     SLEEP_TIMER,
+    SKIP_INTRO_CONFIG,
     TOOLS,
     CUSTOMIZE_QUICK_ACTIONS
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun PlayerScreen(
     playbackState: PlaybackRuntimeState,
@@ -203,6 +210,10 @@ fun PlayerScreen(
     onSelectPlaybackEndMode: (PlaybackEndMode) -> Unit,
     onSelectControlsTheme: (PlayerControlsTheme) -> Unit = {},
     onUpdateQuickActions: (List<PlayerQuickAction>) -> Unit,
+    onUpdateSkipIntroSeconds: (Int) -> Unit = {},
+    onUpdatePlayerUiScalePercent: (Int) -> Unit = {},
+    onUpdatePlayerAutoDpiScale: (Boolean) -> Unit = {},
+    onUpdateControlsAutoHideSeconds: (Int) -> Unit = {},
     onDismissResumeBanner: () -> Unit,
     onRestartFromBeginning: () -> Unit,
     onUiActiveChanged: (Boolean) -> Unit = {}
@@ -254,14 +265,16 @@ fun PlayerScreen(
     val latestOnSeekToMs by rememberUpdatedState(onSeekToMs)
     val latestOnSetTempSpeedBoost by rememberUpdatedState(onSetTempSpeedBoost)
 
-    // Timeline slider scrubbing state
+    // Timeline slider scrubbing & bottom quick bar scrolling state
     var isScrubbing by remember { mutableStateOf(false) }
     var scrubValueMs by remember { mutableFloatStateOf(0f) }
+    var isQuickBarScrolling by remember { mutableStateOf(false) }
 
     val isUiActive = controlsVisible ||
         activeSheet != ActivePlayerSheet.NONE ||
         isScrubbing ||
         isSwipeSeeking ||
+        isQuickBarScrolling ||
         verticalGestureMode != VerticalGestureMode.NONE ||
         playbackState.isTempSpeedBoostActive
 
@@ -319,6 +332,7 @@ fun PlayerScreen(
         }
     }
 
+    val autoHideTimeoutMs = settings.controlsAutoHideSeconds.coerceIn(2, 15) * 1000L
     LaunchedEffect(
         controlsVisible,
         playbackState.isPlaying,
@@ -326,7 +340,9 @@ fun PlayerScreen(
         interactionTick,
         isScrubbing,
         isSwipeSeeking,
-        verticalGestureMode
+        isQuickBarScrolling,
+        verticalGestureMode,
+        autoHideTimeoutMs
     ) {
         if (controlsVisible &&
             !isScreenLocked &&
@@ -334,9 +350,10 @@ fun PlayerScreen(
             activeSheet == ActivePlayerSheet.NONE &&
             !isScrubbing &&
             !isSwipeSeeking &&
+            !isQuickBarScrolling &&
             verticalGestureMode == VerticalGestureMode.NONE
         ) {
-            delay(4200L)
+            delay(autoHideTimeoutMs)
             controlsVisible = false
         }
     }
@@ -916,22 +933,31 @@ fun PlayerScreen(
 
         if (showHud || hudAlphaAnim.value > 0.001f) {
             val isEnglish = LocalIsEnglish.current
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        alpha = hudAlphaAnim.value
-                    }
-                    .background(
-                        Brush.verticalGradient(
-                            0.0f to Color.Black.copy(alpha = 0.82f),
-                            0.28f to Color.Transparent,
-                            0.68f to Color.Transparent,
-                            1.0f to Color.Black.copy(alpha = 0.92f)
+            val baseDensity = LocalDensity.current
+            val effectiveHudScale = rememberPlayerEffectiveScale(settings)
+            val scaledDensity = remember(baseDensity, effectiveHudScale) {
+                Density(
+                    density = baseDensity.density * effectiveHudScale,
+                    fontScale = baseDensity.fontScale * effectiveHudScale
+                )
+            }
+            CompositionLocalProvider(LocalDensity provides scaledDensity) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            alpha = hudAlphaAnim.value
+                        }
+                        .background(
+                            Brush.verticalGradient(
+                                0.0f to Color.Black.copy(alpha = 0.82f),
+                                0.28f to Color.Transparent,
+                                0.68f to Color.Transparent,
+                                1.0f to Color.Black.copy(alpha = 0.92f)
+                            )
                         )
-                    )
-                    .windowInsetsPadding(WindowInsets.displayCutout)
-            ) {
+                        .windowInsetsPadding(WindowInsets.displayCutout)
+                ) {
                 // TOP BAR (compact, grouped controls + direct Episodes/Chapters access)
                 Row(
                     modifier = Modifier
@@ -1259,6 +1285,10 @@ fun PlayerScreen(
                             onSeekByMs(settings.skipIntroSeconds * 1000L)
                             interactionTick++
                         },
+                        onLongPressSkipIntro = {
+                            interactionTick++
+                            activeSheet = ActivePlayerSheet.SKIP_INTRO_CONFIG
+                        },
                         onOpenChaptersSheet = {
                             interactionTick++
                             activeSheet = ActivePlayerSheet.CHAPTERS
@@ -1292,7 +1322,7 @@ fun PlayerScreen(
                                 PlayerQuickAction.EPISODES -> activeSheet = ActivePlayerSheet.EPISODES
                                 PlayerQuickAction.CHAPTERS -> activeSheet = ActivePlayerSheet.CHAPTERS
                                 PlayerQuickAction.SCALE -> onSelectScaleMode(scaleMode.next())
-                                PlayerQuickAction.AUDIO_BOOST -> activeSheet = ActivePlayerSheet.AUDIO_BOOST
+                                PlayerQuickAction.AUDIO_BOOST -> activeSheet = ActivePlayerSheet.AUDIO
                                 PlayerQuickAction.SLEEP_TIMER -> activeSheet = ActivePlayerSheet.SLEEP_TIMER
                                 PlayerQuickAction.AB_LOOP -> {
                                     when {
@@ -1316,12 +1346,26 @@ fun PlayerScreen(
                                 PlayerQuickAction.TOOLS -> activeSheet = ActivePlayerSheet.TOOLS
                             }
                         },
+                        onLongPressAction = { action ->
+                            interactionTick++
+                            if (action == PlayerQuickAction.SKIP_INTRO) {
+                                activeSheet = ActivePlayerSheet.SKIP_INTRO_CONFIG
+                            }
+                        },
                         onOpenCustomizer = {
                             interactionTick++
                             activeSheet = ActivePlayerSheet.CUSTOMIZE_QUICK_ACTIONS
+                        },
+                        onUserInteraction = {
+                            interactionTick++
+                        },
+                        onScrollStateChanged = { scrolling ->
+                            isQuickBarScrolling = scrolling
+                            if (scrolling) interactionTick++
                         }
                     )
                 }
+            }
             }
         }
     }
@@ -1436,6 +1480,16 @@ fun PlayerScreen(
             onDismiss = { activeSheet = ActivePlayerSheet.NONE }
         )
 
+        ActivePlayerSheet.SKIP_INTRO_CONFIG -> SkipIntroConfigModalSheet(
+            skipIntroSeconds = settings.skipIntroSeconds,
+            onUpdateSkipIntroSeconds = onUpdateSkipIntroSeconds,
+            onSkipNow = {
+                onSeekByMs(settings.skipIntroSeconds * 1000L)
+                interactionTick++
+            },
+            onDismiss = { activeSheet = ActivePlayerSheet.NONE }
+        )
+
         ActivePlayerSheet.TOOLS -> {
             val toolsPosMs by positionMsFlow.collectAsStateWithLifecycle()
             PlayerToolsModalSheet(
@@ -1450,6 +1504,10 @@ fun PlayerScreen(
                 playbackEndMode = playbackState.playbackEndMode,
                 controlsTheme = settings.playerControlsTheme,
                 activeOrientationMode = orientationMode,
+                playerUiScalePercent = settings.playerUiScalePercent,
+                playerAutoDpiScale = settings.playerAutoDpiScale,
+                controlsAutoHideSeconds = settings.controlsAutoHideSeconds,
+                skipIntroSeconds = settings.skipIntroSeconds,
                 onSelectSpeed = onSelectSpeed,
                 onSelectScaleMode = onSelectScaleMode,
                 onSetAudioBoostPercent = onSetAudioBoostPercent,
@@ -1460,6 +1518,10 @@ fun PlayerScreen(
                 onSelectPlaybackEndMode = onSelectPlaybackEndMode,
                 onSelectControlsTheme = onSelectControlsTheme,
                 onSelectOrientationMode = { orientationMode = it },
+                onUpdatePlayerUiScalePercent = onUpdatePlayerUiScalePercent,
+                onUpdatePlayerAutoDpiScale = onUpdatePlayerAutoDpiScale,
+                onUpdateControlsAutoHideSeconds = onUpdateControlsAutoHideSeconds,
+                onUpdateSkipIntroSeconds = onUpdateSkipIntroSeconds,
                 onLockControls = {
                     isScreenLocked = true
                     lockedPillVisible = true
@@ -1483,6 +1545,29 @@ fun PlayerScreen(
 }
 
 @Composable
+internal fun rememberPlayerEffectiveScale(settings: PlayerSettings): Float {
+    val config = LocalConfiguration.current
+    val autoDpiFactor = remember(config.smallestScreenWidthDp, config.densityDpi, settings.playerAutoDpiScale) {
+        if (!settings.playerAutoDpiScale) {
+            1.0f
+        } else {
+            val sw = config.smallestScreenWidthDp
+            when {
+                sw <= 0 -> 1.0f
+                sw < 340 -> 0.88f
+                sw < 380 -> 0.94f
+                sw in 380..440 -> 1.0f
+                sw in 441..599 -> 1.06f
+                else -> 1.14f
+            }
+        }
+    }
+    val userScale = (settings.playerUiScalePercent.coerceIn(75, 140) / 100f)
+    return (autoDpiFactor * userScale).coerceIn(0.68f, 1.55f)
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
 private fun PlayerTimelineSection(
     controlsTheme: PlayerControlsTheme,
     positionMsFlow: StateFlow<Long>,
@@ -1501,6 +1586,7 @@ private fun PlayerTimelineSection(
     onScrubFinished: () -> Unit,
     onClearAbLoop: () -> Unit,
     onSkipIntro: () -> Unit,
+    onLongPressSkipIntro: () -> Unit = {},
     onOpenChaptersSheet: () -> Unit,
     onPreviousChapter: () -> Unit,
     onNextChapter: () -> Unit
@@ -1610,8 +1696,9 @@ private fun PlayerTimelineSection(
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
-                                text = activeChapter?.title ?: tr("Главы (${chapters.size})", "Chapters (${chapters.size})"),
+                                text = (activeChapter ?: chapters.first()).title,
                                 style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
                                 color = Color.White,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -1648,7 +1735,10 @@ private fun PlayerTimelineSection(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)),
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .clickable(onClick = onSkipIntro)
+                        .combinedClickable(
+                            onClick = onSkipIntro,
+                            onLongClick = onLongPressSkipIntro
+                        )
                         .testTag("player_skip_intro_button")
                 ) {
                     Row(

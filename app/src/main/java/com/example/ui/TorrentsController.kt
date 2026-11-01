@@ -12,10 +12,13 @@ import com.example.torrent.TorrServerConnectionState
 import com.example.torrent.TorrServerTorrent
 import com.example.torrent.TorrentInspectorState
 import com.example.torrent.TorrentQualityFilter
+import com.example.torrent.TorrentReleaseDetails
+import com.example.torrent.TorrentReleaseFileEntry
 import com.example.torrent.TorrentSearchResult
 import com.example.torrent.TorrentSearchService
 import com.example.torrent.TorrentSortMode
 import com.example.torrent.TorrentTrackerGroup
+import com.example.ui.components.formatFileSize
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -42,6 +45,7 @@ data class TorrentsUiState(
     val recentQueries: List<String> = emptyList(),
     val connectionState: TorrServerConnectionState = TorrServerConnectionState.Idle,
     val inspectorState: TorrentInspectorState = TorrentInspectorState.Hidden,
+    val selectedReleaseDetails: TorrentReleaseDetails? = null,
     val savedServerTorrents: List<TorrServerTorrent> = emptyList(),
     val isLoadingSavedTorrents: Boolean = false
 )
@@ -59,6 +63,7 @@ class TorrentsController(
 
     private var activeSearchJob: Job? = null
     private var activeResolveJob: Job? = null
+    private var activeDetailsJob: Job? = null
 
     fun checkTorrServerConnection() {
         scope.launch {
@@ -452,6 +457,64 @@ class TorrentsController(
     fun dismissInspector() {
         activeResolveJob?.cancel()
         _state.update { it.copy(inspectorState = TorrentInspectorState.Hidden) }
+    }
+
+    fun openReleaseDetails(result: TorrentSearchResult) {
+        activeDetailsJob?.cancel()
+        _state.update {
+            it.copy(
+                selectedReleaseDetails = TorrentReleaseDetails(
+                    result = result,
+                    isLoading = true
+                )
+            )
+        }
+        activeDetailsJob = scope.launch {
+            val s = preferencesRepository.settingsFlow.first()
+            val details = TorrentSearchService.fetchReleaseDetails(
+                result = result,
+                enableDoh = s.enableTrackerDoh
+            )
+            // If fileEntries is still empty and TorrServer already knows this infoHash, enrich from TorrServer
+            val finalFiles = if (details.fileEntries.isNotEmpty() || result.infoHash.isNullOrBlank()) {
+                details.fileEntries
+            } else {
+                val cached = _state.value.savedServerTorrents.firstOrNull {
+                    it.hash.equals(result.infoHash, ignoreCase = true)
+                } ?: TorrServerClient.getTorrent(
+                    rawBaseUrl = s.torrServerUrl,
+                    username = s.torrServerUsername,
+                    password = s.torrServerPassword,
+                    hash = result.infoHash,
+                    fallbackTitle = result.title
+                ).getOrNull()
+
+                cached?.files?.map { f ->
+                    TorrentReleaseFileEntry(
+                        path = f.path.ifBlank { f.fileName },
+                        sizeLabel = formatFileSize(f.lengthBytes)
+                    )
+                }.orEmpty()
+            }
+
+            _state.update { current ->
+                if (current.selectedReleaseDetails?.result?.id == result.id) {
+                    current.copy(
+                        selectedReleaseDetails = details.copy(
+                            isLoading = false,
+                            fileEntries = finalFiles
+                        )
+                    )
+                } else {
+                    current
+                }
+            }
+        }
+    }
+
+    fun dismissReleaseDetails() {
+        activeDetailsJob?.cancel()
+        _state.update { it.copy(selectedReleaseDetails = null) }
     }
 
     fun loadSavedServerTorrents() {

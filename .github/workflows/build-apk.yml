@@ -90,6 +90,54 @@ jobs:
             touch .env
           fi
 
+      - name: Resolve Release Version & Tag (Auto-increment patch if tag exists)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          BASE_VERSION=$(grep -E 'versionName\s*=\s*"[^"]+"' app/build.gradle.kts | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
+          if [ -z "$BASE_VERSION" ]; then
+            BASE_VERSION="2.5"
+          fi
+          BASE_CODE=$(grep -E 'versionCode\s*=\s*[0-9]+' app/build.gradle.kts | head -n 1 | sed -E 's/[^0-9]*([0-9]+).*/\1/')
+          if [ -z "$BASE_CODE" ]; then
+            BASE_CODE="6"
+          fi
+
+          FINAL_VERSION="$BASE_VERSION"
+          FINAL_CODE="$BASE_CODE"
+          FINAL_TAG="v${FINAL_VERSION}"
+
+          if gh release view "$FINAL_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || git rev-parse "$FINAL_TAG" >/dev/null 2>&1; then
+            PATCH=1
+            # Extract major.minor prefix (e.g. 2.5 from 2.5 or 2.5.x)
+            MAJOR_MINOR=$(echo "$BASE_VERSION" | awk -F. '{print $1"."$2}')
+            while [ "$PATCH" -le 500 ]; do
+              CANDIDATE_VER="${MAJOR_MINOR}.${PATCH}"
+              CANDIDATE_TAG="v${CANDIDATE_VER}"
+              if ! gh release view "$CANDIDATE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && ! git rev-parse "$CANDIDATE_TAG" >/dev/null 2>&1; then
+                FINAL_VERSION="$CANDIDATE_VER"
+                FINAL_TAG="$CANDIDATE_TAG"
+                FINAL_CODE=$((BASE_CODE + PATCH))
+                break
+              fi
+              PATCH=$((PATCH + 1))
+            done
+
+            sed -i -E "s/versionName\s*=\s*\"[^\"]+\"/versionName = \"${FINAL_VERSION}\"/" app/build.gradle.kts
+            sed -i -E "s/versionCode\s*=\s*[0-9]+/versionCode = ${FINAL_CODE}/" app/build.gradle.kts
+            if [ -f app/src/main/java/com/example/model/PlayerModels.kt ]; then
+              sed -i -E "s/const val VERSION_NAME = \"[^\"]+\"/const val VERSION_NAME = \"${FINAL_VERSION}\"/" app/src/main/java/com/example/model/PlayerModels.kt
+              sed -i -E "s/const val VERSION_CODE = [0-9]+/const val VERSION_CODE = ${FINAL_CODE}/" app/src/main/java/com/example/model/PlayerModels.kt
+              sed -i -E "s/const val BADGE_TEXT = \"[^\"]+\"/const val BADGE_TEXT = \"${FINAL_TAG}\"/" app/src/main/java/com/example/model/PlayerModels.kt
+              sed -i -E "s/const val RELEASE_TAG = \"[^\"]+\"/const val RELEASE_TAG = \"${FINAL_TAG}\"/" app/src/main/java/com/example/model/PlayerModels.kt
+            fi
+          fi
+
+          echo "RESOLVED_VERSION_NAME=${FINAL_VERSION}" >> "$GITHUB_ENV"
+          echo "RESOLVED_RELEASE_TAG=${FINAL_TAG}" >> "$GITHUB_ENV"
+          echo "Resolved release tag: ${FINAL_TAG} (versionName=${FINAL_VERSION}, versionCode=${FINAL_CODE})"
+
       - name: Build Debug APK
         run: gradle :app:assembleDebug --no-daemon --no-configuration-cache -Pandroid.builder.sdkDownload=true --stacktrace
 
@@ -120,33 +168,18 @@ jobs:
             exit 1
           fi
 
-          VERSION_NAME=$(grep -E 'versionName\s*=\s*"[^"]+"' app/build.gradle.kts | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
-          if [ -z "$VERSION_NAME" ]; then
-            VERSION_NAME="2.2.1"
-          fi
-          # Use clean standard SemVer tag (e.g. v2.2.1) without hyphenated build suffixes so Obtainium
-          # reliably identifies releases and tracks updates against the installed APK's versionName.
-          TAG="v${VERSION_NAME}"
+          TAG="${RESOLVED_RELEASE_TAG:-v2.5}"
           SHORT_SHA="${GITHUB_SHA::7}"
           APK_SIZE=$(du -h negai.apk | cut -f1)
 
-          NOTES=$(printf "### negai %s — Cinema & Anime 4K Player (RU / EN)\n\n[![Get it on Obtainium](https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png)](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/%s)\n\n#### 🇷🇺 Изменения в релизе %s\n- **Высокая герцовка (120 Гц) и мгновенный отклик кнопок (100 мс)**: включена высокая частота экрана в библиотеке, папках и настройках. При вызове кнопок плеера частота экрана моментально повышается до максимума (120 Гц), а появление элементов управления оптимизировано через аппаратный слой без просадок кадров.\n- **Динамическая задержка Bluetooth и Gaming Mode**: авто-синхронизация звука и видео по данным Android HAL в реальном времени. При включении игрового режима на наушниках плеер мгновенно адаптирует смещение; текущая задержка отображается в миллисекундах в меню аудио.\n- **Реалтайм обработка видео**: двухпроходный GLSL-апскейлинг **Anime4K** и **интерполяция кадров (GPU MEMC 60/120/165 FPS)**.\n- **Обновлённый интерфейс и локализация (RU / EN)**: компактные полупрозрачные кнопки управления, раздельные независимые окна **Серий** и **Глав**, переключение языка интерфейса (**Русский / English / Системный**).\n\n#### 🇬🇧 What's New in %s\n- **High Refresh Rate (120Hz) & Instant 100ms HUD**: maximum display refresh rate enabled in library, folders, and settings; instant dynamic 120Hz boost when opening player controls with stutter-free hardware layer transitions.\n- **Dynamic Bluetooth Latency & Gaming Mode Sync**: real-time Android HAL latency tracking with automatic earbud Gaming Mode detection and live millisecond monitor in the Audio menu.\n- **Real-Time Video Pipeline**: **Anime4K** GLSL upscaling and **Frame Interpolation (GPU MEMC 60/120/165 FPS)**.\n- **Bilingual Interface (RU / EN)**: frosted-glass controls, independent **Episodes** and **Chapters** sheets, and live language switching.\n\n---\n- **APK:** \`negai.apk\` (%s)\n- **Build / Commit:** \`#%s\` / \`%s\` (branch \`%s\`)\n- **Direct Download:** [negai.apk](https://github.com/%s/releases/latest/download/negai.apk)" "$TAG" "$GITHUB_REPOSITORY" "$TAG" "$TAG" "$APK_SIZE" "$GITHUB_RUN_NUMBER" "$SHORT_SHA" "$GITHUB_REF_NAME" "$GITHUB_REPOSITORY")
+          NOTES=$(printf "### negai %s — Cinema & Anime 4K Player (RU / EN)\n\n[![Get it on Obtainium](https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png)](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/%s)\n\n#### 🇷🇺 Изменения в релизе %s\n- **Обновлённая панель управления плеером**: кнопки нижней панели переведены на чистые компактные иконки без подписей, возле кнопки серий отображается только счётчик (например, 1/12), а усиление звука объединено внутри меню Аудио.\n- **Кнопка глав над полосой прокрутки и настройка пропуска опенинга**: главы вынесены слева над таймлайном с названием текущей главы (скрываются, если глав нет). Добавлен произвольный интервал пропуска опенинга и быстрая настройка долгим нажатием на кнопку пропуска.\n- **Масштабирование под DPI и таймер скрытия HUD**: добавлен автоучёт DPI экрана с плавным ползунком масштаба (75%%–140%%), настройка времени автоскрытия элементов (2–15 сек) и сброс таймера при прокрутке нижней панели.\n- **Сохранность позиции в PiP и подробности торрент-раздач**: исправлено сохранение позиции при закрытии окна «Картинка в картинке» и смене серий; в поиске торрентов добавлена шторка с полным названием, описанием и списком файлов раздачи.\n\n#### 🇬🇧 What's New in %s\n- **Redesigned Player Quick Bar**: clean icon-only bottom buttons, compact episode counter badge (e.g. 1/12), and unified Audio Boost inside the Audio menu.\n- **Chapters Pill Above Timeline & Custom Skip Intro**: current chapter title button positioned on the left above the seekbar (auto-hidden when no chapters exist); custom Skip Intro intervals with direct long-press configuration.\n- **DPI-Aware UI Scaling & HUD Auto-Hide Timer**: automatic screen DPI scaling with a smooth 75%%–140%% slider, configurable HUD timeout (2–15s), and scroll-aware timer reset.\n- **PiP Position Persistence & Detailed Torrent Info**: reliable position saving when closing PiP or switching episodes, plus a detailed torrent release bottom sheet with full title, description, and file list.\n\n---\n- **APK:** \`negai.apk\` (%s)\n- **Build / Commit:** \`#%s\` / \`%s\` (branch \`%s\`)\n- **Direct Download:** [negai.apk](https://github.com/%s/releases/latest/download/negai.apk)" "$TAG" "$GITHUB_REPOSITORY" "$TAG" "$TAG" "$APK_SIZE" "$GITHUB_RUN_NUMBER" "$SHORT_SHA" "$GITHUB_REF_NAME" "$GITHUB_REPOSITORY")
 
-          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$TAG" negai.apk --clobber --repo "$GITHUB_REPOSITORY"
-            gh release edit "$TAG" \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "negai ${TAG}" \
-              --notes "$NOTES" \
-              --latest
-          else
-            gh release create "$TAG" negai.apk \
-              --repo "$GITHUB_REPOSITORY" \
-              --target "$GITHUB_SHA" \
-              --title "negai ${TAG}" \
-              --notes "$NOTES" \
-              --latest
-          fi
+          gh release create "$TAG" negai.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "negai ${TAG}" \
+            --notes "$NOTES" \
+            --latest
 
           REL_URL=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url -q .url)
           echo "Published GitHub Release: $REL_URL"

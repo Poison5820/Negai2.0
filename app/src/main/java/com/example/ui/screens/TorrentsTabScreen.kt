@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -110,7 +112,9 @@ data class TorrentsActions(
     val onLoadSavedTorrents: () -> Unit,
     val onOpenSavedTorrent: (TorrServerTorrent) -> Unit,
     val onDropSavedCache: (String) -> Unit,
-    val onRemoveSavedTorrent: (String) -> Unit
+    val onRemoveSavedTorrent: (String) -> Unit,
+    val onOpenReleaseDetails: (TorrentSearchResult) -> Unit = {},
+    val onDismissReleaseDetails: () -> Unit = {}
 )
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -133,7 +137,9 @@ fun TorrentsTabContent(
     onOpenSavedTorrent: (TorrServerTorrent) -> Unit,
     onOpenExternalLink: (magnetUri: String, title: String) -> Unit,
     onDropSavedCache: (String) -> Unit,
-    onRemoveSavedTorrent: (String) -> Unit
+    onRemoveSavedTorrent: (String) -> Unit,
+    onOpenReleaseDetails: (TorrentSearchResult) -> Unit = {},
+    onDismissReleaseDetails: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
@@ -473,6 +479,7 @@ fun TorrentsTabContent(
                         item = item,
                         index = index,
                         onWatch = { onWatchResult(item) },
+                        onOpenDetails = { onOpenReleaseDetails(item) },
                         onOpenExternal = { onOpenExternalResult(item) },
                         onCopyMagnet = { magnet -> onCopyMagnet(magnet, item.title) }
                     )
@@ -483,6 +490,16 @@ fun TorrentsTabContent(
         item(key = "torrents_bottom_spacer") {
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+
+    if (state.selectedReleaseDetails != null) {
+        TorrentReleaseDetailsModalSheet(
+            details = state.selectedReleaseDetails,
+            onWatch = onWatchResult,
+            onOpenExternal = onOpenExternalResult,
+            onCopyMagnet = onCopyMagnet,
+            onDismiss = onDismissReleaseDetails
+        )
     }
 
     if (showSavedTorrentsSheet) {
@@ -747,6 +764,7 @@ private fun TorrentResultCard(
     item: TorrentSearchResult,
     index: Int,
     onWatch: () -> Unit,
+    onOpenDetails: () -> Unit,
     onOpenExternal: () -> Unit,
     onCopyMagnet: (String) -> Unit
 ) {
@@ -833,7 +851,18 @@ private fun TorrentResultCard(
                     }
                 }
 
-                if (!item.magnetUri.isNullOrBlank() || !item.topicUrl.isNullOrBlank()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = onOpenDetails,
+                        modifier = Modifier.testTag("torrent_card_details_button_$index")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = tr("Подробнее о раздаче", "Release details"),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
                     Box {
                         IconButton(
                             onClick = { menuExpanded = true },
@@ -848,6 +877,16 @@ private fun TorrentResultCard(
                             expanded = menuExpanded,
                             onDismissRequest = { menuExpanded = false }
                         ) {
+                            DropdownMenuItem(
+                                text = { Text(tr("Подробная информация о раздаче", "Detailed release info")) },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Info, contentDescription = null)
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onOpenDetails()
+                                }
+                            )
                             if (!item.magnetUri.isNullOrBlank()) {
                                 DropdownMenuItem(
                                     text = { Text(tr("Скопировать Magnet-ссылку", "Copy Magnet link")) },
@@ -877,13 +916,28 @@ private fun TorrentResultCard(
                 }
             }
 
-            Text(
-                text = item.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable(onClick = onOpenDetails)
+                    .padding(vertical = 2.dp)
+                    .testTag("torrent_card_title_$index"),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = tr("Нажмите для полного названия и описания ▸", "Tap for full title & release details ▸"),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                )
+            }
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,

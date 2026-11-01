@@ -239,8 +239,8 @@ internal fun AppearanceSettingsPage(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = tr(
-                        "Активно кнопок: ${settings.quickActions.size} из ${PlayerQuickAction.entries.size}",
-                        "Active buttons: ${settings.quickActions.size} of ${PlayerQuickAction.entries.size}"
+                        "Активно кнопок: ${settings.quickActions.size} из ${PlayerQuickAction.entries.size - 2}",
+                        "Active buttons: ${settings.quickActions.size} of ${PlayerQuickAction.entries.size - 2}"
                     ),
                     style = MaterialTheme.typography.titleSmall
                 )
@@ -270,6 +270,111 @@ internal fun AppearanceSettingsPage(
             onUpdateActions = actions.onUpdateQuickActions,
             onDismiss = { showQuickBarCustomizer = false }
         )
+    }
+
+    SettingsSectionCard(
+        title = tr("Масштаб элементов плеера (DPI) и автоскрытие", "Player UI Scale (DPI) & HUD Auto-Hide"),
+        subtitle = tr(
+            "Адаптация размера кнопок и текста под плотность пикселей (DPI) экрана и настройка таймера скрытия элементов",
+            "Adapt player button and text sizes to screen DPI density and configure the HUD auto-hide timer"
+        ),
+        icon = Icons.Default.Tune
+    ) {
+        SettingToggleRow(
+            title = tr("Автоучёт DPI экрана устройства", "Automatic Screen DPI Scaling"),
+            subtitle = tr(
+                "Автоматически подбирать базовый масштаб элементов плеера под физическую ширину и DPI дисплея",
+                "Automatically adjust base player HUD scale according to physical screen width and DPI"
+            ),
+            checked = settings.playerAutoDpiScale,
+            onCheckedChange = actions.onUpdatePlayerAutoDpiScale,
+            testTag = "player_auto_dpi_switch"
+        )
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = tr(
+                    "Масштаб элементов и текста плеера: ${settings.playerUiScalePercent}%",
+                    "Player UI & Text Scale: ${settings.playerUiScalePercent}%"
+                ),
+                style = MaterialTheme.typography.titleSmall
+            )
+            if (settings.playerUiScalePercent != 100) {
+                OutlinedButton(
+                    onClick = { actions.onUpdatePlayerUiScalePercent(100) },
+                    modifier = Modifier.testTag("reset_player_ui_scale_btn")
+                ) {
+                    Text("100%")
+                }
+            }
+        }
+
+        Slider(
+            value = settings.playerUiScalePercent.coerceIn(75, 140).toFloat(),
+            onValueChange = { actions.onUpdatePlayerUiScalePercent(it.roundToInt().coerceIn(75, 140)) },
+            valueRange = 75f..140f,
+            modifier = Modifier.testTag("settings_player_ui_scale_slider")
+        )
+
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf(75, 85, 100, 115, 125, 140).forEach { pct ->
+                FilterChip(
+                    selected = settings.playerUiScalePercent == pct,
+                    onClick = { actions.onUpdatePlayerUiScalePercent(pct) },
+                    label = { Text("$pct%") },
+                    modifier = Modifier.testTag("settings_player_ui_scale_chip_$pct")
+                )
+            }
+        }
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+        Text(
+            text = tr(
+                "Время до скрытия элементов плеера: ${settings.controlsAutoHideSeconds} сек",
+                "Player HUD Controls Auto-Hide Delay: ${settings.controlsAutoHideSeconds} s"
+            ),
+            style = MaterialTheme.typography.titleSmall
+        )
+        Text(
+            text = tr(
+                "При прокрутке нижней панели кнопок или перемещении ползунка таймер автоматически сбрасывается",
+                "Scrolling the bottom button bar or scrubbing the timeline automatically resets the timer"
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Slider(
+            value = settings.controlsAutoHideSeconds.coerceIn(2, 15).toFloat(),
+            onValueChange = { actions.onUpdateControlsAutoHideSeconds(it.roundToInt().coerceIn(2, 15)) },
+            valueRange = 2f..15f,
+            steps = 12,
+            modifier = Modifier.testTag("settings_controls_autohide_slider")
+        )
+
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf(2, 3, 4, 5, 7, 10, 15).forEach { sec ->
+                FilterChip(
+                    selected = settings.controlsAutoHideSeconds == sec,
+                    onClick = { actions.onUpdateControlsAutoHideSeconds(sec) },
+                    label = { Text(tr("$sec сек", "${sec}s")) },
+                    modifier = Modifier.testTag("settings_controls_autohide_chip_$sec")
+                )
+            }
+        }
     }
 
     SettingsSectionCard(
@@ -511,6 +616,14 @@ internal fun PlaybackSettingsPage(
                 ),
                 style = MaterialTheme.typography.titleSmall
             )
+            Text(
+                text = tr(
+                    "Совет: удерживайте кнопку «+${settings.skipIntroSeconds}с Опенинг» прямо в плеере для быстрой настройки произвольного интервала",
+                    "Tip: long-press the '+${settings.skipIntroSeconds}s Intro' button directly in the player to configure any custom interval"
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -522,6 +635,41 @@ internal fun PlaybackSettingsPage(
                         label = { Text(tr("+$sec сек", "+${sec}s")) },
                         modifier = Modifier.testTag("skip_intro_sec_$sec")
                     )
+                }
+            }
+            Slider(
+                value = settings.skipIntroSeconds.coerceIn(5, 240).toFloat(),
+                onValueChange = { actions.onUpdateSkipIntroSeconds(it.roundToInt().coerceIn(5, 240)) },
+                valueRange = 5f..240f,
+                modifier = Modifier.testTag("settings_skip_intro_custom_slider")
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { actions.onUpdateSkipIntroSeconds((settings.skipIntroSeconds - 5).coerceIn(5, 600)) },
+                    modifier = Modifier.weight(1f).testTag("settings_skip_intro_minus_5")
+                ) {
+                    Text(tr("-5 с", "-5s"))
+                }
+                OutlinedButton(
+                    onClick = { actions.onUpdateSkipIntroSeconds((settings.skipIntroSeconds - 1).coerceIn(5, 600)) },
+                    modifier = Modifier.weight(1f).testTag("settings_skip_intro_minus_1")
+                ) {
+                    Text(tr("-1 с", "-1s"))
+                }
+                OutlinedButton(
+                    onClick = { actions.onUpdateSkipIntroSeconds((settings.skipIntroSeconds + 1).coerceIn(5, 600)) },
+                    modifier = Modifier.weight(1f).testTag("settings_skip_intro_plus_1")
+                ) {
+                    Text(tr("+1 с", "+1s"))
+                }
+                OutlinedButton(
+                    onClick = { actions.onUpdateSkipIntroSeconds((settings.skipIntroSeconds + 5).coerceIn(5, 600)) },
+                    modifier = Modifier.weight(1f).testTag("settings_skip_intro_plus_5")
+                ) {
+                    Text(tr("+5 с", "+5s"))
                 }
             }
         }
@@ -1521,11 +1669,22 @@ internal fun StorageSettingsPage(
     SettingsSectionCard(
         title = tr("Обслуживание и сброс", "Maintenance & Reset"),
         subtitle = tr(
-            "Очистка истории просмотра или возврат всех настроек по умолчанию",
-            "Clear watch history or restore all settings to defaults"
+            "Настройки удаления файлов, очистка истории просмотра и возврат настроек по умолчанию",
+            "File deletion preferences, clear watch history, or restore all settings to defaults"
         ),
         icon = Icons.Default.RestartAlt
     ) {
+        SettingToggleRow(
+            title = tr("Запрашивать подтверждение перед удалением", "Ask Confirmation Before Deleting"),
+            subtitle = tr(
+                "Показывать предупреждение перед безвозвратным удалением папок и серий с накопителя",
+                "Show warning dialog before permanently deleting folders and episodes from storage"
+            ),
+            checked = !settings.skipDeleteConfirmation,
+            onCheckedChange = { askConfirm -> actions.onUpdateSkipDeleteConfirmation(!askConfirm) },
+            testTag = "confirm_before_delete_switch"
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)

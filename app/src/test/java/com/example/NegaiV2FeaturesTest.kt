@@ -24,9 +24,9 @@ class NegaiV2FeaturesTest {
 
     @Test
     fun version2BuildConfig_and_frameInterpolationUserFacingLabels() {
-        assertEquals(5, BuildConfig.VERSION_CODE)
-        assertEquals("2.2.1", BuildConfig.VERSION_NAME)
-        assertEquals("v2.2.1", com.example.model.AppVersionInfo.BADGE_TEXT)
+        assertEquals(6, BuildConfig.VERSION_CODE)
+        assertEquals("2.5", BuildConfig.VERSION_NAME)
+        assertEquals("v2.5", com.example.model.AppVersionInfo.BADGE_TEXT)
 
         assertEquals(com.example.model.AppLanguage.SYSTEM, com.example.model.AppLanguage.fromId("system"))
         assertEquals(com.example.model.AppLanguage.RU, com.example.model.AppLanguage.fromId("ru"))
@@ -307,7 +307,9 @@ class NegaiV2FeaturesTest {
         assertEquals(PlayerQuickAction.AUDIO, defaultActions[0])
         assertEquals(PlayerQuickAction.SUBTITLES, defaultActions[1])
         assertEquals(PlayerQuickAction.EPISODES, defaultActions[2])
-        assertEquals(PlayerQuickAction.CHAPTERS, defaultActions[3])
+        assertEquals(PlayerQuickAction.SPEED, defaultActions[3])
+        assertFalse(defaultActions.contains(PlayerQuickAction.CHAPTERS))
+        assertFalse(defaultActions.contains(PlayerQuickAction.AUDIO_BOOST))
         assertFalse(defaultActions.contains(PlayerQuickAction.DECODER))
 
         // Verify negative audio delay uses MediaClock offset instead of dropping PCM samples
@@ -456,4 +458,63 @@ class NegaiV2FeaturesTest {
             tempDir.deleteRecursively()
         }
     }
+
+    @Test
+    fun permanentDeletion_settingsAndRecursiveFolderFileRemoval() {
+        val defaultSettings = PlayerSettings()
+        assertFalse(defaultSettings.skipDeleteConfirmation)
+        val updatedSettings = defaultSettings.copy(skipDeleteConfirmation = true)
+        assertTrue(updatedSettings.skipDeleteConfirmation)
+
+        val tempRoot = Files.createTempDirectory("negai_delete_test").toFile()
+        try {
+            val showFolder = java.io.File(tempRoot, "Solo Leveling").apply { mkdirs() }
+            val ep1File = java.io.File(showFolder, "01.mkv").apply { writeBytes(ByteArray(1024)) }
+            val ep2File = java.io.File(showFolder, "02.mkv").apply { writeBytes(ByteArray(1024)) }
+            val subFolder = java.io.File(showFolder, "Rus Subs").apply { mkdirs() }
+            val subFile = java.io.File(subFolder, "01.ass").apply { writeBytes(ByteArray(256)) }
+
+            assertTrue(ep1File.exists())
+            assertTrue(ep2File.exists())
+            assertTrue(subFile.exists())
+
+            // Delete single file first
+            assertTrue(ep1File.delete())
+            assertFalse(ep1File.exists())
+            assertTrue(ep2File.exists())
+
+            // Delete entire folder recursively
+            assertTrue(showFolder.deleteRecursively())
+            assertFalse(showFolder.exists())
+            assertFalse(ep2File.exists())
+            assertFalse(subFile.exists())
+        } finally {
+            tempRoot.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun v25_dpiUiScale_hudTimeout_customSkipIntro_and_torrentReleaseDetails() {
+        val defaultSettings = PlayerSettings()
+        assertEquals(100, defaultSettings.playerUiScalePercent)
+        assertTrue(defaultSettings.playerAutoDpiScale)
+        assertEquals(4, defaultSettings.controlsAutoHideSeconds)
+        assertEquals(85, defaultSettings.skipIntroSeconds)
+
+        val sampleTitle = "Поднятие уровня в одиночку / Solo Leveling [S02E01-13 из 13] (2025) WEB-DL 2160p HEVC HDR10+ Dolby Vision | AniLibria, Студийная Банда, Sub"
+        val techTags = com.example.torrent.TorrentSearchResult.extractTechTags(sampleTitle)
+        val voiceTags = com.example.torrent.TorrentSearchResult.extractVoiceoverTags(sampleTitle)
+        val epInfo = com.example.torrent.TorrentSearchResult.extractEpisodeInfo(sampleTitle)
+
+        assertTrue(techTags.contains("2160P"))
+        assertTrue(techTags.contains("WEB-DL"))
+        assertTrue(techTags.contains("HEVC / H.265"))
+        assertTrue(techTags.contains("HDR10+"))
+        assertTrue(techTags.contains("Dolby Vision"))
+        assertTrue(voiceTags.any { it.contains("Anilibria", ignoreCase = true) })
+        assertTrue(voiceTags.contains("Студийная Банда"))
+        assertTrue(voiceTags.contains("Субтитры / Sub"))
+        assertTrue(!epInfo.isNullOrBlank())
+    }
 }
+

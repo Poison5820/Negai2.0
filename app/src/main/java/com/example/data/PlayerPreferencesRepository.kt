@@ -47,6 +47,9 @@ class PlayerPreferencesRepository(private val context: Context) {
         val EPISODE_SORT_OPTION = stringPreferencesKey("episode_sort_option")
         val EPISODE_SORT_ASCENDING = booleanPreferencesKey("episode_sort_ascending")
         val PLAYER_QUICK_ACTIONS_V3 = stringPreferencesKey("player_quick_actions_v3")
+        val PLAYER_UI_SCALE_PERCENT = intPreferencesKey("player_ui_scale_percent")
+        val PLAYER_AUTO_DPI_SCALE = booleanPreferencesKey("player_auto_dpi_scale")
+        val CONTROLS_AUTO_HIDE_SECONDS = intPreferencesKey("controls_auto_hide_seconds")
 
         val RESUME_PLAYBACK = booleanPreferencesKey("resume_playback_from_last_pos")
         val LAST_PLAYED_VIDEO_URI = stringPreferencesKey("last_played_video_uri")
@@ -102,6 +105,7 @@ class PlayerPreferencesRepository(private val context: Context) {
         val IGNORE_NOMEDIA_FOLDERS = booleanPreferencesKey("ignore_nomedia_folders")
         val EXCLUDE_CAMERA_AND_SCREENSHOTS = booleanPreferencesKey("exclude_camera_and_screenshots")
         val MIN_VIDEO_SIZE_MB = intPreferencesKey("min_video_size_mb")
+        val SKIP_DELETE_CONFIRMATION = booleanPreferencesKey("skip_delete_confirmation")
     }
 
     val settingsFlow: Flow<PlayerSettings> = context.playerDataStore.data.map { prefs ->
@@ -126,6 +130,9 @@ class PlayerPreferencesRepository(private val context: Context) {
             episodeSortOption = epSortOpt,
             episodeSortAscending = prefs[Keys.EPISODE_SORT_ASCENDING] ?: epSortOpt.defaultAscending,
             quickActions = QuickActionsSerializer.parse(prefs[Keys.PLAYER_QUICK_ACTIONS_V3]),
+            playerUiScalePercent = (prefs[Keys.PLAYER_UI_SCALE_PERCENT] ?: 100).coerceIn(75, 140),
+            playerAutoDpiScale = prefs[Keys.PLAYER_AUTO_DPI_SCALE] ?: true,
+            controlsAutoHideSeconds = (prefs[Keys.CONTROLS_AUTO_HIDE_SECONDS] ?: 4).coerceIn(2, 15),
 
             resumePlayback = prefs[Keys.RESUME_PLAYBACK] ?: true,
             playbackEndMode = PlaybackEndMode.fromId(
@@ -136,7 +143,7 @@ class PlayerPreferencesRepository(private val context: Context) {
             seekStepSeconds = (prefs[Keys.SEEK_STEP_SECONDS] ?: 10).coerceIn(3, 60),
             defaultPlaybackSpeed = (prefs[Keys.DEFAULT_PLAYBACK_SPEED] ?: 1.0f).coerceIn(0.25f, 3.0f),
             showSkipIntroButton = prefs[Keys.SHOW_SKIP_INTRO_BUTTON] ?: true,
-            skipIntroSeconds = (prefs[Keys.SKIP_INTRO_SECONDS] ?: 85).coerceIn(15, 180),
+            skipIntroSeconds = (prefs[Keys.SKIP_INTRO_SECONDS] ?: 85).coerceIn(5, 600),
             autoEnterPip = prefs[Keys.AUTO_ENTER_PIP] ?: true,
             backgroundAudioPlay = prefs[Keys.BACKGROUND_AUDIO_PLAY] ?: false,
 
@@ -191,7 +198,8 @@ class PlayerPreferencesRepository(private val context: Context) {
 
             ignoreNomediaFolders = prefs[Keys.IGNORE_NOMEDIA_FOLDERS] ?: true,
             excludeCameraAndScreenshots = prefs[Keys.EXCLUDE_CAMERA_AND_SCREENSHOTS] ?: false,
-            minVideoSizeMb = (prefs[Keys.MIN_VIDEO_SIZE_MB] ?: 0).coerceIn(0, 500)
+            minVideoSizeMb = (prefs[Keys.MIN_VIDEO_SIZE_MB] ?: 0).coerceIn(0, 500),
+            skipDeleteConfirmation = prefs[Keys.SKIP_DELETE_CONFIRMATION] ?: false
         ).also { snapshot ->
             writeBootSettingsSnapshot(context, snapshot)
         }
@@ -300,6 +308,23 @@ class PlayerPreferencesRepository(private val context: Context) {
         }
     }
 
+    suspend fun updatePlayerUiScalePercent(percent: Int) {
+        val clamped = percent.coerceIn(75, 140)
+        bootPrefs(context).edit().putInt("player_ui_scale", clamped).apply()
+        context.playerDataStore.edit { it[Keys.PLAYER_UI_SCALE_PERCENT] = clamped }
+    }
+
+    suspend fun updatePlayerAutoDpiScale(enabled: Boolean) {
+        bootPrefs(context).edit().putBoolean("player_auto_dpi", enabled).apply()
+        context.playerDataStore.edit { it[Keys.PLAYER_AUTO_DPI_SCALE] = enabled }
+    }
+
+    suspend fun updateControlsAutoHideSeconds(seconds: Int) {
+        val clamped = seconds.coerceIn(2, 15)
+        bootPrefs(context).edit().putInt("controls_hide_sec", clamped).apply()
+        context.playerDataStore.edit { it[Keys.CONTROLS_AUTO_HIDE_SECONDS] = clamped }
+    }
+
     suspend fun updateResumePlayback(enabled: Boolean) {
         context.playerDataStore.edit { it[Keys.RESUME_PLAYBACK] = enabled }
     }
@@ -337,7 +362,9 @@ class PlayerPreferencesRepository(private val context: Context) {
     }
 
     suspend fun updateSkipIntroSeconds(seconds: Int) {
-        context.playerDataStore.edit { it[Keys.SKIP_INTRO_SECONDS] = seconds.coerceIn(15, 180) }
+        val clamped = seconds.coerceIn(5, 600)
+        bootPrefs(context).edit().putInt("skip_intro_sec", clamped).apply()
+        context.playerDataStore.edit { it[Keys.SKIP_INTRO_SECONDS] = clamped }
     }
 
     suspend fun updateAutoEnterPip(enabled: Boolean) {
@@ -487,6 +514,11 @@ class PlayerPreferencesRepository(private val context: Context) {
         context.playerDataStore.edit { it[Keys.MIN_VIDEO_SIZE_MB] = sizeMb.coerceIn(0, 500) }
     }
 
+    suspend fun updateSkipDeleteConfirmation(skip: Boolean) {
+        bootPrefs(context).edit().putBoolean("skip_delete_confirm", skip).apply()
+        context.playerDataStore.edit { it[Keys.SKIP_DELETE_CONFIRMATION] = skip }
+    }
+
     suspend fun updateTorrServerUrl(url: String) {
         val cleaned = url.trim().ifBlank { "http://127.0.0.1:8090" }
         context.playerDataStore.edit { it[Keys.TORRSERVER_URL] = cleaned }
@@ -569,6 +601,10 @@ class PlayerPreferencesRepository(private val context: Context) {
                 episodeSortOption = epSortOpt,
                 episodeSortAscending = sp.getBoolean("ep_sort_asc", epSortOpt.defaultAscending),
                 quickActions = QuickActionsSerializer.parse(sp.getString("quick_actions_v3", null)),
+                playerUiScalePercent = sp.getInt("player_ui_scale", 100).coerceIn(75, 140),
+                playerAutoDpiScale = sp.getBoolean("player_auto_dpi", true),
+                controlsAutoHideSeconds = sp.getInt("controls_hide_sec", 4).coerceIn(2, 15),
+                skipIntroSeconds = sp.getInt("skip_intro_sec", 85).coerceIn(5, 600),
                 defaultPlayerOrientation = PlayerOrientationMode.fromId(
                     sp.getString("orientation", PlayerOrientationMode.VIDEO_ASPECT.id) ?: PlayerOrientationMode.VIDEO_ASPECT.id
                 ),
@@ -587,7 +623,8 @@ class PlayerPreferencesRepository(private val context: Context) {
                 ),
                 bluetoothAudioAutoSync = sp.getBoolean("bt_auto_sync", true),
                 bluetoothAudioOffsetMs = sp.getLong("bt_offset_ms", -150L).coerceIn(-600L, 200L),
-                torrServerUrl = sp.getString("torr_url", "http://127.0.0.1:8090") ?: "http://127.0.0.1:8090"
+                torrServerUrl = sp.getString("torr_url", "http://127.0.0.1:8090") ?: "http://127.0.0.1:8090",
+                skipDeleteConfirmation = sp.getBoolean("skip_delete_confirm", false)
             )
         }
 
@@ -605,6 +642,10 @@ class PlayerPreferencesRepository(private val context: Context) {
                 .putString("ep_sort_opt", s.episodeSortOption.id)
                 .putBoolean("ep_sort_asc", s.episodeSortAscending)
                 .putString("quick_actions_v3", QuickActionsSerializer.serialize(s.quickActions))
+                .putInt("player_ui_scale", s.playerUiScalePercent)
+                .putBoolean("player_auto_dpi", s.playerAutoDpiScale)
+                .putInt("controls_hide_sec", s.controlsAutoHideSeconds)
+                .putInt("skip_intro_sec", s.skipIntroSeconds)
                 .putString("orientation", s.defaultPlayerOrientation.id)
                 .putString("scale_mode", s.defaultScaleMode.id)
                 .putBoolean("high_hz", s.highRefreshRateEnabled)
@@ -616,6 +657,7 @@ class PlayerPreferencesRepository(private val context: Context) {
                 .putBoolean("bt_auto_sync", s.bluetoothAudioAutoSync)
                 .putLong("bt_offset_ms", s.bluetoothAudioOffsetMs)
                 .putString("torr_url", s.torrServerUrl)
+                .putBoolean("skip_delete_confirm", s.skipDeleteConfirmation)
                 .apply()
         }
     }

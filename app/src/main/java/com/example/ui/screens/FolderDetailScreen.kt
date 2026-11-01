@@ -3,8 +3,10 @@ package com.example.ui.screens
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,12 +30,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -41,6 +49,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -50,6 +61,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -60,13 +72,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import com.example.ui.util.VideoThumbnailCache
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import com.example.data.PlaybackResumeHelper
 import com.example.model.EpisodeItem
 import com.example.model.EpisodeSortOption
@@ -74,6 +86,7 @@ import com.example.model.VideoFolderItem
 import com.example.ui.components.ResolutionBadgeChip
 import com.example.ui.components.formatFileSize
 import com.example.ui.components.formatTimeMs
+import com.example.ui.i18n.LocalIsEnglish
 import com.example.ui.i18n.tr
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,6 +96,7 @@ fun FolderDetailScreen(
     showThumbnails: Boolean,
     compactMode: Boolean = true,
     resumePlaybackEnabled: Boolean,
+    skipDeleteConfirmation: Boolean = false,
     sortOption: EpisodeSortOption = EpisodeSortOption.EPISODE_NUMBER,
     sortAscending: Boolean = true,
     onSelectSortOption: (EpisodeSortOption) -> Unit = {},
@@ -90,11 +104,86 @@ fun FolderDetailScreen(
     onToggleSortDirection: () -> Unit = {},
     onBack: () -> Unit,
     onPlayEpisode: (Int) -> Unit,
-    onHideFolder: () -> Unit
+    onHideFolder: () -> Unit,
+    onDeleteFolder: () -> Unit = {},
+    onDeleteEpisodes: (List<EpisodeItem>) -> Unit = {},
+    onSetSkipDeleteConfirmation: (Boolean) -> Unit = {}
 ) {
-    BackHandler(onBack = onBack)
-
     var showEpisodeSortSheet by rememberSaveable { mutableStateOf(false) }
+    var selectedEpisodeUris by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    var pendingDeleteEpisodes by remember { mutableStateOf<List<EpisodeItem>>(emptyList()) }
+    var showDeleteEntireFolderConfirm by rememberSaveable { mutableStateOf(false) }
+
+    val isEnglish = LocalIsEnglish.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+    val isSelectionMode = selectedEpisodeUris.isNotEmpty()
+
+    LaunchedEffect(folder.episodes) {
+        if (selectedEpisodeUris.isNotEmpty()) {
+            val validUris = folder.episodes.map { it.uri }.toSet()
+            val filtered = selectedEpisodeUris.filter { it in validUris }
+            if (filtered.size != selectedEpisodeUris.size) {
+                selectedEpisodeUris = filtered
+            }
+        }
+    }
+
+    BackHandler {
+        if (isSelectionMode) {
+            selectedEpisodeUris = emptyList()
+        } else {
+            onBack()
+        }
+    }
+
+    val toggleEpisodeSelection: (String) -> Unit = { uri ->
+        selectedEpisodeUris = if (uri in selectedEpisodeUris) {
+            selectedEpisodeUris - uri
+        } else {
+            selectedEpisodeUris + uri
+        }
+    }
+
+    val executeEpisodesDelete: (List<EpisodeItem>) -> Unit = { episodesToDelete ->
+        if (episodesToDelete.isNotEmpty()) {
+            val count = episodesToDelete.size
+            val singleTitle = episodesToDelete.firstOrNull()?.cleanTitle.orEmpty()
+            onDeleteEpisodes(episodesToDelete)
+            selectedEpisodeUris = emptyList()
+            coroutineScope.launch {
+                val msg = if (count == 1) {
+                    if (isEnglish) "File \"$singleTitle\" deleted from storage"
+                    else "Файл «$singleTitle» удалён с накопителя"
+                } else {
+                    if (isEnglish) "Deleted files from storage: $count"
+                    else "Удалено файлов с накопителя: $count"
+                }
+                snackbarHostState.showSnackbar(
+                    message = msg,
+                    duration = SnackbarDuration.Short
+                )
+            }
+        }
+    }
+
+    val requestDeleteEpisodes: (List<EpisodeItem>) -> Unit = { episodesToDelete ->
+        if (episodesToDelete.isNotEmpty()) {
+            if (skipDeleteConfirmation) {
+                executeEpisodesDelete(episodesToDelete)
+            } else {
+                pendingDeleteEpisodes = episodesToDelete
+            }
+        }
+    }
+
+    val requestDeleteEntireFolder: () -> Unit = {
+        if (skipDeleteConfirmation) {
+            onDeleteFolder()
+        } else {
+            showDeleteEntireFolderConfirm = true
+        }
+    }
 
     val context = LocalContext.current
     val videoThumbnailLoader = remember(context) {
@@ -131,57 +220,148 @@ fun FolderDetailScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = folder.name,
-                            style = MaterialTheme.typography.titleLarge,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = tr(
-                                "${folder.episodes.size} эп. • ${folder.displayPath}",
-                                "${folder.episodes.size} ep. • ${folder.displayPath}"
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onBack,
-                        modifier = Modifier.testTag("folder_detail_back_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = tr("Назад к списку папок", "Back to folders")
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = onHideFolder,
-                        modifier = Modifier.testTag("folder_detail_hide_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.VisibilityOff,
-                            contentDescription = tr("Добавить папку в исключения", "Exclude folder")
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+            if (isSelectionMode) {
+                val selectedItems = folder.episodes.filter { it.uri in selectedEpisodeUris }
+                val totalSelectedBytes = selectedItems.sumOf { it.sizeBytes }
+                val allSelected = folder.episodes.isNotEmpty() && selectedEpisodeUris.size == folder.episodes.size
+
+                TopAppBar(
+                    navigationIcon = {
+                        IconButton(
+                            onClick = { selectedEpisodeUris = emptyList() },
+                            modifier = Modifier.testTag("close_episode_selection_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = tr("Отменить выбор", "Clear selection")
+                            )
+                        }
+                    },
+                    title = {
+                        Column {
+                            Text(
+                                text = tr(
+                                    "Выбрано файлов: ${selectedEpisodeUris.size}",
+                                    "Selected files: ${selectedEpisodeUris.size}"
+                                ),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.testTag("episode_selection_count_text")
+                            )
+                            val sizeStr = formatFileSize(totalSelectedBytes)
+                            if (totalSelectedBytes > 0L && sizeStr.isNotEmpty()) {
+                                Text(
+                                    text = sizeStr,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                selectedEpisodeUris = if (allSelected) {
+                                    emptyList()
+                                } else {
+                                    folder.episodes.map { it.uri }
+                                }
+                            },
+                            modifier = Modifier.testTag("select_all_episodes_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SelectAll,
+                                contentDescription = tr("Выбрать все файлы", "Select all files"),
+                                tint = if (allSelected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                }
+                            )
+                        }
+                        IconButton(
+                            onClick = { requestDeleteEpisodes(selectedItems) },
+                            modifier = Modifier.testTag("delete_selected_episodes_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = tr("Удалить выбранные файлы", "Delete selected files"),
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    )
                 )
-            )
+            } else {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                text = folder.name,
+                                style = MaterialTheme.typography.titleLarge,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = tr(
+                                    "${folder.episodes.size} эп. • ${folder.displayPath}",
+                                    "${folder.episodes.size} ep. • ${folder.displayPath}"
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(
+                            onClick = onBack,
+                            modifier = Modifier.testTag("folder_detail_back_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = tr("Назад к списку папок", "Back to folders")
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = onHideFolder,
+                            modifier = Modifier.testTag("folder_detail_hide_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.VisibilityOff,
+                                contentDescription = tr("Добавить папку в исключения", "Exclude folder")
+                            )
+                        }
+                        IconButton(
+                            onClick = requestDeleteEntireFolder,
+                            modifier = Modifier.testTag("folder_detail_delete_folder_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DeleteOutline,
+                                contentDescription = tr("Удалить папку с накопителя", "Delete folder from storage"),
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
+                )
+            }
         },
         floatingActionButton = {
-            if (folder.episodes.isNotEmpty()) {
+            if (folder.episodes.isNotEmpty() && !isSelectionMode) {
                 val targetEp = folder.episodes[resumeCandidateIndex]
                 val resumePos = PlaybackResumeHelper.computeResumePositionMs(
                     positionMs = targetEp.resumePositionMs,
@@ -220,6 +400,7 @@ fun FolderDetailScreen(
                 .padding(innerPadding),
             contentAlignment = Alignment.TopCenter
         ) {
+            val selectedSet = remember(selectedEpisodeUris) { selectedEpisodeUris.toSet() }
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -259,13 +440,28 @@ fun FolderDetailScreen(
                     key = { _, ep -> ep.uri },
                     contentType = { _, _ -> "episode_card" }
                 ) { index, episode ->
+                    val isSelected = episode.uri in selectedSet
                     EpisodeRowCard(
                         episode = episode,
                         index = index,
                         showThumbnail = showThumbnails,
                         compactMode = compactMode,
+                        isSelectionMode = isSelectionMode,
+                        isSelected = isSelected,
                         imageLoader = videoThumbnailLoader,
-                        onClick = { onPlayEpisode(index) }
+                        onClick = {
+                            if (isSelectionMode) {
+                                toggleEpisodeSelection(episode.uri)
+                            } else {
+                                onPlayEpisode(index)
+                            }
+                        },
+                        onLongClick = {
+                            toggleEpisodeSelection(episode.uri)
+                        },
+                        onToggleSelect = {
+                            toggleEpisodeSelection(episode.uri)
+                        }
                     )
                 }
             }
@@ -284,6 +480,66 @@ fun FolderDetailScreen(
                 onSetSortDirection(asc)
             },
             onDismiss = { showEpisodeSortSheet = false }
+        )
+    }
+
+    if (showDeleteEntireFolderConfirm) {
+        PermanentDeleteConfirmDialog(
+            title = tr("Удалить папку «${folder.name}»?", "Delete folder \"${folder.name}\"?"),
+            message = tr(
+                "Папка «${folder.name}» и все файлы внутри неё (${folder.episodes.size} видео) будут безвозвратно удалены с накопителя устройства.",
+                "Folder \"${folder.name}\" and all files inside it (${folder.episodes.size} videos) will be permanently deleted from device storage."
+            ),
+            totalSizeBytes = folder.totalSizeBytes,
+            onConfirm = { dontAskAgain ->
+                if (dontAskAgain) {
+                    onSetSkipDeleteConfirmation(true)
+                }
+                showDeleteEntireFolderConfirm = false
+                onDeleteFolder()
+            },
+            onDismiss = {
+                showDeleteEntireFolderConfirm = false
+            }
+        )
+    }
+
+    if (pendingDeleteEpisodes.isNotEmpty()) {
+        val count = pendingDeleteEpisodes.size
+        val totalSize = pendingDeleteEpisodes.sumOf { it.sizeBytes }
+        val singleEp = pendingDeleteEpisodes.firstOrNull()
+        val dialogTitle = if (count == 1 && singleEp != null) {
+            tr("Удалить файл «${singleEp.cleanTitle}»?", "Delete file \"${singleEp.cleanTitle}\"?")
+        } else {
+            tr("Удалить выбранные файлы ($count)?", "Delete selected files ($count)?")
+        }
+        val dialogMessage = if (count == 1 && singleEp != null) {
+            tr(
+                "Видеофайл «${singleEp.fileName}» будет безвозвратно удалён с накопителя устройства.",
+                "Video file \"${singleEp.fileName}\" will be permanently deleted from device storage."
+            )
+        } else {
+            tr(
+                "Выбранные видеофайлы ($count шт.) будут безвозвратно удалены с накопителя устройства.",
+                "The selected video files ($count items) will be permanently deleted from device storage."
+            )
+        }
+
+        PermanentDeleteConfirmDialog(
+            title = dialogTitle,
+            message = dialogMessage,
+            totalSizeBytes = totalSize,
+            onConfirm = { dontAskAgain ->
+                if (dontAskAgain) {
+                    onSetSkipDeleteConfirmation(true)
+                }
+                val targets = pendingDeleteEpisodes
+                pendingDeleteEpisodes = emptyList()
+                executeEpisodesDelete(targets)
+            },
+            onDismiss = {
+                pendingDeleteEpisodes = emptyList()
+            }
         )
     }
 }
@@ -330,15 +586,19 @@ private fun AutoBindSummaryBanner(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 private fun EpisodeRowCard(
     episode: EpisodeItem,
     index: Int,
     showThumbnail: Boolean,
     compactMode: Boolean = true,
+    isSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
     imageLoader: ImageLoader,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
+    onToggleSelect: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val corner = if (compactMode) 15.dp else 18.dp
@@ -346,12 +606,22 @@ private fun EpisodeRowCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(corner))
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
             .testTag("episode_card_$index"),
         shape = RoundedCornerShape(corner),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        border = BorderStroke(
+            width = if (isSelected) 2.dp else 1.dp,
+            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+        ),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
+            } else {
+                MaterialTheme.colorScheme.surfaceContainer
+            }
         )
     ) {
         Column {
@@ -397,13 +667,20 @@ private fun EpisodeRowCard(
                         Box(
                             modifier = Modifier
                                 .size(34.dp)
-                                .background(Color.Black.copy(alpha = 0.62f), CircleShape),
+                                .background(
+                                    if (isSelected) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        Color.Black.copy(alpha = 0.62f)
+                                    },
+                                    CircleShape
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.PlayArrow,
+                                imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.PlayArrow,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -430,13 +707,19 @@ private fun EpisodeRowCard(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(RoundedCornerShape(13.dp))
-                            .background(MaterialTheme.colorScheme.primaryContainer),
+                            .background(
+                                if (isSelected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                }
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.PlayArrow,
+                            imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.PlayArrow,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -539,6 +822,14 @@ private fun EpisodeRowCard(
                             }
                         }
                     }
+                }
+
+                if (isSelectionMode) {
+                    Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = { onToggleSelect() },
+                        modifier = Modifier.testTag("episode_select_checkbox_$index")
+                    )
                 }
             }
 

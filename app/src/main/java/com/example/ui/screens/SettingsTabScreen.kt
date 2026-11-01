@@ -86,6 +86,9 @@ data class SettingsActions(
     val onUpdateShowEpisodesButtonInHud: (Boolean) -> Unit = {},
     val onUpdateShowHudBadges: (Boolean) -> Unit = {},
     val onUpdateQuickActions: (List<PlayerQuickAction>) -> Unit,
+    val onUpdatePlayerUiScalePercent: (Int) -> Unit = {},
+    val onUpdatePlayerAutoDpiScale: (Boolean) -> Unit = {},
+    val onUpdateControlsAutoHideSeconds: (Int) -> Unit = {},
     val onUpdateResumePlayback: (Boolean) -> Unit,
     val onUpdatePlaybackEndMode: (PlaybackEndMode) -> Unit,
     val onUpdateEnableEmbeddedChapters: (Boolean) -> Unit = {},
@@ -130,7 +133,8 @@ data class SettingsActions(
     val onUpdateEnableTrackerDoh: (Boolean) -> Unit = {},
     val onUpdateIgnoreNomediaFolders: (Boolean) -> Unit,
     val onUpdateExcludeCameraAndScreenshots: (Boolean) -> Unit,
-    val onUpdateMinVideoSizeMb: (Int) -> Unit
+    val onUpdateMinVideoSizeMb: (Int) -> Unit,
+    val onUpdateSkipDeleteConfirmation: (Boolean) -> Unit = {}
 )
 
 @Composable

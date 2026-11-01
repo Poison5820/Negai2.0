@@ -245,6 +245,10 @@ fun PlayerToolsModalSheet(
     playbackEndMode: PlaybackEndMode,
     controlsTheme: PlayerControlsTheme = PlayerControlsTheme.CLASSIC_OLED,
     activeOrientationMode: PlayerOrientationMode = PlayerOrientationMode.VIDEO_ASPECT,
+    playerUiScalePercent: Int = 100,
+    playerAutoDpiScale: Boolean = true,
+    controlsAutoHideSeconds: Int = 4,
+    skipIntroSeconds: Int = 85,
     onSelectSpeed: (Float) -> Unit,
     onSelectScaleMode: (VideoScaleMode) -> Unit,
     onSetAudioBoostPercent: (Int) -> Unit,
@@ -255,6 +259,10 @@ fun PlayerToolsModalSheet(
     onSelectPlaybackEndMode: (PlaybackEndMode) -> Unit,
     onSelectControlsTheme: (PlayerControlsTheme) -> Unit = {},
     onSelectOrientationMode: (PlayerOrientationMode) -> Unit = {},
+    onUpdatePlayerUiScalePercent: (Int) -> Unit = {},
+    onUpdatePlayerAutoDpiScale: (Boolean) -> Unit = {},
+    onUpdateControlsAutoHideSeconds: (Int) -> Unit = {},
+    onUpdateSkipIntroSeconds: (Int) -> Unit = {},
     onLockControls: () -> Unit,
     onOpenQuickActionsCustomizer: () -> Unit = {},
     onDismiss: () -> Unit
@@ -329,6 +337,72 @@ fun PlayerToolsModalSheet(
                     onSelectTheme = onSelectControlsTheme,
                     compactChipsOnly = true
                 )
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // 0a. Player UI Scale (75% - 140% + Auto DPI) & HUD Auto-Hide Timeout
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = tr(
+                            "Масштаб интерфейса плеера ($playerUiScalePercent%)",
+                            "Player UI & Text Scale ($playerUiScalePercent%)"
+                        ),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    FilterChip(
+                        selected = playerAutoDpiScale,
+                        onClick = { onUpdatePlayerAutoDpiScale(!playerAutoDpiScale) },
+                        label = { Text(tr("Авто DPI", "Auto DPI")) },
+                        modifier = Modifier.testTag("tools_auto_dpi_chip")
+                    )
+                }
+                Slider(
+                    value = playerUiScalePercent.coerceIn(75, 140).toFloat(),
+                    onValueChange = { onUpdatePlayerUiScalePercent(it.roundToInt().coerceIn(75, 140)) },
+                    valueRange = 75f..140f,
+                    modifier = Modifier.testTag("tools_ui_scale_slider")
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(80, 90, 100, 110, 125, 140).forEach { pct ->
+                        FilterChip(
+                            selected = playerUiScalePercent == pct,
+                            onClick = { onUpdatePlayerUiScalePercent(pct) },
+                            label = { Text("$pct%") },
+                            modifier = Modifier.testTag("tools_ui_scale_chip_$pct")
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = tr(
+                        "Время скрытия кнопок плеера: $controlsAutoHideSeconds сек",
+                        "HUD Controls Auto-Hide: ${controlsAutoHideSeconds}s"
+                    ),
+                    style = MaterialTheme.typography.titleSmall
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(2, 3, 4, 5, 7, 10, 15).forEach { sec ->
+                        FilterChip(
+                            selected = controlsAutoHideSeconds == sec,
+                            onClick = { onUpdateControlsAutoHideSeconds(sec) },
+                            label = { Text(tr("$sec с", "${sec}s")) },
+                            modifier = Modifier.testTag("tools_autohide_chip_$sec")
+                        )
+                    }
+                }
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

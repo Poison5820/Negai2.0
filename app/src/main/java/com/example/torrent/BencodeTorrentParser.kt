@@ -9,7 +9,8 @@ data class ParsedTorrentMetadata(
     val displayName: String,
     val trackers: List<String>,
     val totalLengthBytes: Long,
-    val magnetUri: String
+    val magnetUri: String,
+    val fileEntries: List<TorrentReleaseFileEntry> = emptyList()
 )
 
 object BencodeTorrentParser {
@@ -41,6 +42,7 @@ object BencodeTorrentParser {
             var parsedName: String? = null
             var parsedNameUtf8: String? = null
             var totalLength = 0L
+            val parsedFiles = mutableListOf<TorrentReleaseFileEntry>()
 
             while (cursor.pos < bytes.size && bytes[cursor.pos] != 'e'.code.toByte()) {
                 val key = cursor.readByteStringUtf8() ?: break
@@ -61,7 +63,7 @@ object BencodeTorrentParser {
                                     "name" -> parsedName = cursor.readByteStringUtf8()
                                     "name.utf-8" -> parsedNameUtf8 = cursor.readByteStringUtf8()
                                     "length" -> totalLength += cursor.readInteger() ?: 0L
-                                    "files" -> totalLength += cursor.sumFileLengthsInList()
+                                    "files" -> totalLength += cursor.parseFilesInList(parsedFiles)
                                     else -> cursor.skipElement()
                                 }
                             }
@@ -86,6 +88,14 @@ object BencodeTorrentParser {
             val hashHex = sha1.digest().joinToString("") { "%02x".format(it) }
 
             val name = (parsedNameUtf8 ?: parsedName)?.trim()?.takeIf { it.isNotEmpty() } ?: fallbackName
+            if (parsedFiles.isEmpty() && totalLength > 0L) {
+                parsedFiles.add(
+                    TorrentReleaseFileEntry(
+                        path = name,
+                        sizeLabel = formatBencodeSize(totalLength)
+                    )
+                )
+            }
             val trackers = buildList {
                 announceSingle?.trim()?.takeIf { it.isNotEmpty() }?.let { add(it) }
                 announceList.forEach { tr ->
@@ -103,7 +113,8 @@ object BencodeTorrentParser {
                 displayName = name,
                 trackers = trackers,
                 totalLengthBytes = totalLength,
-                magnetUri = magnet
+                magnetUri = magnet,
+                fileEntries = parsedFiles
             )
         }.getOrNull()
     }
@@ -293,7 +304,7 @@ object BencodeTorrentParser {
             }
         }
 
-        fun sumFileLengthsInList(): Long {
+        fun parseFilesInList(targetFiles: MutableList<TorrentReleaseFileEntry>): Long {
             if (peekChar() != 'l') {
                 skipElement()
                 return 0L
@@ -303,15 +314,31 @@ object BencodeTorrentParser {
             while (pos < data.size && data[pos] != 'e'.code.toByte()) {
                 if (peekChar() == 'd') {
                     pos++
+                    var fileLen = 0L
+                    val pathSegments = mutableListOf<String>()
+                    val utf8Segments = mutableListOf<String>()
                     while (pos < data.size && data[pos] != 'e'.code.toByte()) {
                         val k = readByteStringUtf8() ?: break
-                        if (k == "length") {
-                            sum += readInteger() ?: 0L
-                        } else {
-                            skipElement()
+                        when (k) {
+                            "length" -> fileLen = readInteger() ?: 0L
+                            "path" -> collectStringsInsideElement(pathSegments)
+                            "path.utf-8" -> collectStringsInsideElement(utf8Segments)
+                            else -> skipElement()
                         }
                     }
                     if (pos < data.size && data[pos] == 'e'.code.toByte()) pos++
+                    sum += fileLen
+                    val chosenPath = (if (utf8Segments.isNotEmpty()) utf8Segments else pathSegments)
+                        .filter { it.isNotBlank() && !it.startsWith("_____padding_file") }
+                        .joinToString("/")
+                    if (chosenPath.isNotBlank() && targetFiles.size < 250) {
+                        targetFiles.add(
+                            TorrentReleaseFileEntry(
+                                path = chosenPath,
+                                sizeLabel = formatBencodeSize(fileLen)
+                            )
+                        )
+                    }
                 } else {
                     skipElement()
                 }
@@ -325,6 +352,19 @@ object BencodeTorrentParser {
                 if (data[i] == target) return i
             }
             return -1
+        }
+    }
+
+    private fun formatBencodeSize(bytes: Long): String {
+        if (bytes <= 0L) return ""
+        val kb = 1024.0
+        val mb = kb * 1024.0
+        val gb = mb * 1024.0
+        return when {
+            bytes >= gb -> String.format(Locale.US, "%.2f GB", bytes / gb)
+            bytes >= mb -> String.format(Locale.US, "%.1f MB", bytes / mb)
+            bytes >= kb -> String.format(Locale.US, "%.0f KB", bytes / kb)
+            else -> "$bytes B"
         }
     }
 }

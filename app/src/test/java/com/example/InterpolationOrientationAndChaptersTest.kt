@@ -190,7 +190,7 @@ class InterpolationOrientationAndChaptersTest {
 
         val actions = listOf(
             PlayerQuickAction.FRAME_INTERPOLATION,
-            PlayerQuickAction.CHAPTERS,
+            PlayerQuickAction.SPEED,
             PlayerQuickAction.EPISODES,
             PlayerQuickAction.ANIME4K
         )

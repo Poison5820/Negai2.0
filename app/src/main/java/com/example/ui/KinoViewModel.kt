@@ -246,6 +246,38 @@ class KinoViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun deleteFolders(
+        folders: List<VideoFolderItem>,
+        onComplete: ((Int) -> Unit)? = null
+    ) {
+        if (folders.isEmpty()) return
+        viewModelScope.launch {
+            val deletedIds = folders.map { it.id }.toSet()
+            if (_selectedFolderId.value in deletedIds) {
+                _selectedFolderId.value = null
+            }
+            val count = repository.deleteFolders(folders)
+            onComplete?.invoke(count)
+        }
+    }
+
+    fun deleteEpisodes(
+        folderId: String,
+        episodes: List<EpisodeItem>,
+        onComplete: ((Int) -> Unit)? = null
+    ) {
+        if (episodes.isEmpty()) return
+        viewModelScope.launch {
+            val count = repository.deleteEpisodes(folderId, episodes)
+            if (repository.allFoldersWithHiddenFlagFlow.value.none { it.id == folderId }) {
+                if (_selectedFolderId.value == folderId) {
+                    _selectedFolderId.value = null
+                }
+            }
+            onComplete?.invoke(count)
+        }
+    }
+
     fun clearPlaybackHistory() {
         viewModelScope.launch {
             repository.clearPlaybackHistory()
@@ -503,6 +535,24 @@ class KinoViewModel(application: Application) : AndroidViewModel(application) {
     fun setQuickActions(actions: List<PlayerQuickAction>) {
         viewModelScope.launch {
             repository.preferencesRepository.updateQuickActions(actions)
+        }
+    }
+
+    fun setPlayerUiScalePercent(percent: Int) {
+        viewModelScope.launch {
+            repository.preferencesRepository.updatePlayerUiScalePercent(percent)
+        }
+    }
+
+    fun setPlayerAutoDpiScale(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.preferencesRepository.updatePlayerAutoDpiScale(enabled)
+        }
+    }
+
+    fun setControlsAutoHideSeconds(seconds: Int) {
+        viewModelScope.launch {
+            repository.preferencesRepository.updateControlsAutoHideSeconds(seconds)
         }
     }
 
@@ -770,6 +820,12 @@ class KinoViewModel(application: Application) : AndroidViewModel(application) {
     fun setMinVideoSizeMb(sizeMb: Int) {
         viewModelScope.launch {
             repository.preferencesRepository.updateMinVideoSizeMb(sizeMb)
+        }
+    }
+
+    fun setSkipDeleteConfirmation(skip: Boolean) {
+        viewModelScope.launch {
+            repository.preferencesRepository.updateSkipDeleteConfirmation(skip)
         }
     }
 

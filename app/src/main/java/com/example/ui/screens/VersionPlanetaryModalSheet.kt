@@ -447,7 +447,7 @@ fun VersionPlanetaryModalSheet(
                 }
             }
 
-            // Release v2.2.1 Changelog Card
+            // Release v2.5 Changelog Card
             Surface(
                 color = MaterialTheme.colorScheme.surfaceContainer,
                 shape = RoundedCornerShape(14.dp),
@@ -459,29 +459,31 @@ fun VersionPlanetaryModalSheet(
                     verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     Text(
-                        text = tr("Что нового в релизе v2.2.1", "What's New in Release v2.2.1"),
+                        text = tr("Что нового в релизе v2.5", "What's New in Release v2.5"),
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.primary
                     )
                     val notes = if (isEnglish) {
                         listOf(
-                            "• High refresh rate (120Hz) enabled across library, folders, and settings",
-                            "• Instant dynamic 120Hz boost when touching screen or opening player controls",
-                            "• Ultra-fast 100ms lightweight player HUD appearance without stutters or frame drops",
-                            "• Dynamic Bluetooth latency auto-tracking & earbud Gaming Mode auto-detection",
-                            "• Live hardware latency monitor in Audio Tracks modal sheet",
-                            "• Persistent 200MB video thumbnail disk cache & smooth folder scrolling",
-                            "• Clean SemVer versioning format for 100% Obtainium updater compatibility"
+                            "• Clean icon-only bottom player buttons; episode counter badge (e.g. 1/12) on the Episodes button",
+                            "• Unified Audio Boost control inside the Audio menu",
+                            "• Chapters button moved above the timeline on the left with live chapter title (hidden when no chapters exist)",
+                            "• Custom Skip Intro interval + direct long-press configuration on the Skip Intro button",
+                            "• Automatic screen DPI scaling + smooth 75%–140% player UI & text scale slider",
+                            "• Configurable HUD auto-hide timeout (2–15s) and timer reset while scrolling bottom buttons",
+                            "• Reliable playback position persistence when closing PiP or switching episodes",
+                            "• Detailed torrent release sheet with full untruncated title, description, and file list"
                         )
                     } else {
                         listOf(
-                            "• Высокая герцовка (120 Гц) в библиотеке, папках и настройках",
-                            "• Мгновенный буст герцовки дисплея до максимума (120 Гц) при касании и открытии интерфейса плеера",
-                            "• Мгновенный отклик и лёгкий переход кнопок плеера (100 мс) без просадок кадров",
-                            "• Авто-подстройка задержки Bluetooth и распознавание игрового режима (Gaming Mode) наушников",
-                            "• Отображение измеренной аппаратной задержки в меню аудиодорожек",
-                            "• Постоянный дисковый кэш миниатюр на 200 МБ и устранение фризов прокрутки папок",
-                            "• Чистый формат версий SemVer (v2.2.1) для безошибочного автообновления в Obtainium"
+                            "• Чистые иконки без подписей на нижней панели плеера; возле кнопки серий — только счётчик (например, 1/12)",
+                            "• Усиление звука (DSP) объединено внутри меню Аудио",
+                            "• Кнопка глав вынесена слева над полосой прокрутки с названием текущей главы (скрыта, если глав нет)",
+                            "• Произвольный интервал пропуска опенинга и быстрая настройка долгим нажатием на кнопку пропуска",
+                            "• Автоучёт DPI экрана и плавный ползунок масштаба элементов и текста плеера (75%–140%)",
+                            "• Настройка времени автоскрытия элементов (2–15 сек) и сброс таймера при прокрутке нижних кнопок",
+                            "• Надёжное сохранение позиции в режиме PiP при закрытии окна или переходе к другой серии",
+                            "• Подробная карточка торрент-раздачи с полным названием, описанием и списком файлов"
                         )
                     }
                     notes.forEach { line ->

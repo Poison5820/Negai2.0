@@ -274,6 +274,25 @@ object VideoThumbnailCache {
             }
         } catch (_: Throwable) {}
     }
+
+    fun evictThumbnails(context: Context, videoUris: Collection<String>) {
+        if (videoUris.isEmpty()) return
+        try {
+            val dir = getThumbnailDir(context)
+            val memCache = instance?.memoryCache
+            val sizes = listOf(336 to 198, 372 to 222)
+            for (uri in videoUris) {
+                for ((w, h) in sizes) {
+                    val key = generateKey(uri, DEFAULT_FRAME_MILLIS, w, h)
+                    memCache?.remove(MemoryCache.Key(key))
+                    val file = File(dir, "$key.jpg")
+                    if (file.exists()) {
+                        file.delete()
+                    }
+                }
+            }
+        } catch (_: Throwable) {}
+    }
 }
 
 /**

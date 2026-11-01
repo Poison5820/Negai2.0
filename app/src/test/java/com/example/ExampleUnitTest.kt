@@ -230,11 +230,13 @@ class ExampleUnitTest {
 
     @Test
     fun quickActionsSerializer_supportsAddRemoveReorderAndPersistence() {
-        // Default actions sorted by usefulness (AUDIO, SUBTITLES, EPISODES, CHAPTERS, SPEED, ...), DECODER moved to top bar
+        // Default actions sorted by usefulness (AUDIO, SUBTITLES, EPISODES, SPEED, ...),
+        // CHAPTERS moved above seekbar, AUDIO_BOOST merged into AUDIO, DECODER on top bar
         val defaults = QuickActionsSerializer.parse(null)
         assertTrue(PlayerQuickAction.SPEED in defaults)
         assertTrue(PlayerQuickAction.AUDIO in defaults)
-        assertTrue(PlayerQuickAction.CHAPTERS in defaults)
+        assertTrue(PlayerQuickAction.CHAPTERS !in defaults)
+        assertTrue(PlayerQuickAction.AUDIO_BOOST !in defaults)
         assertTrue(PlayerQuickAction.DECODER !in defaults)
 
         // Add new button (e.g. SLEEP_TIMER) without duplicates
@@ -243,15 +245,15 @@ class ExampleUnitTest {
         assertEquals(PlayerQuickAction.SLEEP_TIMER, withSleep.last())
         assertEquals(withSleep, QuickActionsSerializer.addAction(withSleep, PlayerQuickAction.SLEEP_TIMER))
 
-        // Drag reorder: move CHAPTERS to index 0
-        val chaptersIdx = withSleep.indexOf(PlayerQuickAction.CHAPTERS)
-        val movedToFront = QuickActionsSerializer.moveItem(withSleep, chaptersIdx, 0)
-        assertEquals(PlayerQuickAction.CHAPTERS, movedToFront.first())
+        // Drag reorder: move SPEED to index 0
+        val speedIdx = withSleep.indexOf(PlayerQuickAction.SPEED)
+        val movedToFront = QuickActionsSerializer.moveItem(withSleep, speedIdx, 0)
+        assertEquals(PlayerQuickAction.SPEED, movedToFront.first())
         assertEquals(withSleep.size, movedToFront.size)
 
         // Stepper moveDown & moveUp round-trip
         val steppedDown = QuickActionsSerializer.moveDown(movedToFront, 0)
-        assertEquals(PlayerQuickAction.CHAPTERS, steppedDown[1])
+        assertEquals(PlayerQuickAction.SPEED, steppedDown[1])
         val steppedBackUp = QuickActionsSerializer.moveUp(steppedDown, 1)
         assertEquals(movedToFront, steppedBackUp)
 

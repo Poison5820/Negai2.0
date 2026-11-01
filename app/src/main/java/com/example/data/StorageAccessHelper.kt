@@ -8,8 +8,11 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
+import android.provider.MediaStore
 import android.provider.Settings
 import androidx.core.content.ContextCompat
+import androidx.documentfile.provider.DocumentFile
+import com.example.model.VideoFolderItem
 import java.io.File
 
 data class StorageVolumeRoot(
@@ -181,5 +184,174 @@ object StorageAccessHelper {
             norm.endsWith("/movies/screenshots") ||
             norm.contains("/dcim/camera/") ||
             norm.contains("/pictures/screenshots/")
+    }
+
+    /**
+     * Resolves a raw path, `file://` URI, SAF document/tree URI, or MediaStore URI to a local [File]
+     * when it resides on an accessible filesystem volume.
+     */
+    fun resolveLocalFileFromUri(context: Context, rawUriOrPath: String): File? {
+        if (rawUriOrPath.isBlank()) return null
+        if (rawUriOrPath.startsWith("/")) {
+            return File(rawUriOrPath)
+        }
+        val uri = runCatching { Uri.parse(rawUriOrPath) }.getOrNull() ?: return null
+        val scheme = uri.scheme?.lowercase()
+        if (scheme == "file") {
+            return uri.path?.let { File(it) }
+        }
+        if (scheme == "content") {
+            // 1. SAF Document URI
+            val fromDocId = runCatching {
+                if (DocumentsContract.isDocumentUri(context, uri)) {
+                    val docId = DocumentsContract.getDocumentId(uri)
+                    resolveDocIdToFile(context, docId)
+                } else {
+                    null
+                }
+            }.getOrNull()
+            if (fromDocId != null) return fromDocId
+
+            // 2. SAF Tree URI
+            val fromTree = resolveLocalFileFromTreeUri(context, uri)
+            if (fromTree != null) return fromTree
+
+            // 3. MediaStore content URI
+            if (uri.authority == MediaStore.AUTHORITY) {
+                val fromMediaStore = runCatching {
+                    @Suppress("DEPRECATION")
+                    val projection = buildList {
+                        add(MediaStore.MediaColumns.DATA)
+                        add(MediaStore.MediaColumns.DISPLAY_NAME)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            add(MediaStore.MediaColumns.RELATIVE_PATH)
+                        }
+                    }.toTypedArray()
+                    context.contentResolver.query(uri, projection, null, null, null)?.use { c ->
+                        if (c.moveToFirst()) {
+                            @Suppress("DEPRECATION")
+                            val dataIdx = c.getColumnIndex(MediaStore.MediaColumns.DATA)
+                            if (dataIdx >= 0) {
+                                val dataPath = c.getString(dataIdx)
+                                if (!dataPath.isNullOrBlank()) return@use File(dataPath)
+                            }
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                val relIdx = c.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
+                                val nameIdx = c.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
+                                val rel = if (relIdx >= 0) c.getString(relIdx)?.trim('/') else null
+                                val name = if (nameIdx >= 0) c.getString(nameIdx) else null
+                                if (!rel.isNullOrBlank() && !name.isNullOrBlank()) {
+                                    return@use File("/storage/emulated/0/$rel/$name")
+                                }
+                            }
+                        }
+                        null
+                    }
+                }.getOrNull()
+                if (fromMediaStore != null) return fromMediaStore
+            }
+        }
+        return null
+    }
+
+    private fun resolveDocIdToFile(context: Context, docId: String?): File? {
+        if (docId.isNullOrBlank()) return null
+        val parts = docId.split(":", limit = 2)
+        val volumeId = parts.getOrNull(0).orEmpty()
+        val relPath = parts.getOrNull(1).orEmpty().trim('/')
+        if (volumeId.equals("primary", ignoreCase = true)) {
+            val base = Environment.getExternalStorageDirectory()
+            return if (relPath.isEmpty()) base else File(base, relPath)
+        }
+        val roots = discoverStorageRoots(context)
+        val matchedVolume = roots.firstOrNull {
+            it.rootDir.name.equals(volumeId, ignoreCase = true)
+        }?.rootDir ?: return null
+        return if (relPath.isEmpty()) matchedVolume else File(matchedVolume, relPath)
+    }
+
+    /**
+     * Permanently deletes a single file (video, audio, or subtitle) from storage.
+     */
+    fun deleteSingleMediaUriFromStorage(context: Context, rawUri: String): Boolean {
+        if (rawUri.isBlank()) return false
+        var deleted = false
+
+        // 1. Try direct File deletion first when path is resolvable
+        val localFile = resolveLocalFileFromUri(context, rawUri)
+        if (localFile != null && localFile.exists()) {
+            deleted = runCatching {
+                if (localFile.isDirectory) localFile.deleteRecursively() else localFile.delete()
+            }.getOrDefault(false)
+        }
+
+        // 2. Also clean up via ContentResolver / SAF / MediaStore if applicable
+        val uri = runCatching { Uri.parse(rawUri) }.getOrNull()
+        if (uri != null && uri.scheme.equals("content", ignoreCase = true)) {
+            if (!deleted) {
+                deleted = runCatching {
+                    DocumentsContract.deleteDocument(context.contentResolver, uri)
+                }.getOrDefault(false)
+            }
+            if (!deleted) {
+                deleted = runCatching {
+                    DocumentFile.fromSingleUri(context, uri)?.delete() == true
+                }.getOrDefault(false)
+            }
+            val crDeleted = runCatching {
+                context.contentResolver.delete(uri, null, null) > 0
+            }.getOrDefault(false)
+            if (crDeleted) deleted = true
+        }
+
+        return deleted || (localFile != null && !localFile.exists())
+    }
+
+    /**
+     * Permanently deletes an entire video folder and all its contents from device storage.
+     */
+    fun deleteFolderFromStorage(context: Context, folder: VideoFolderItem): Boolean {
+        var anyDeleted = false
+
+        // 1. Delete all episode files and companion tracks inside the folder
+        for (ep in folder.episodes) {
+            if (deleteSingleMediaUriFromStorage(context, ep.uri)) {
+                anyDeleted = true
+            }
+            for (audio in ep.autoAudioTracks) {
+                deleteSingleMediaUriFromStorage(context, audio.uri)
+            }
+            for (sub in ep.autoSubtitleTracks) {
+                deleteSingleMediaUriFromStorage(context, sub.uri)
+            }
+        }
+
+        // 2. Delete the physical directory recursively if resolvable to a local File
+        val localDir = resolveLocalFileFromUri(context, folder.id)
+            ?: folder.episodes.firstOrNull()?.let { resolveLocalFileFromUri(context, it.uri)?.parentFile }
+
+        if (localDir != null && localDir.exists() && localDir.isDirectory) {
+            val dirRemoved = runCatching { localDir.deleteRecursively() }.getOrDefault(false)
+            if (dirRemoved || !localDir.exists()) {
+                anyDeleted = true
+            }
+        }
+
+        // 3. Also attempt SAF Document / Tree deletion if the folder ID is a content:// URI
+        if (folder.id.startsWith("content://", ignoreCase = true)) {
+            val folderUri = runCatching { Uri.parse(folder.id) }.getOrNull()
+            if (folderUri != null) {
+                val safDeleted = runCatching {
+                    DocumentsContract.deleteDocument(context.contentResolver, folderUri)
+                }.getOrDefault(false) || runCatching {
+                    DocumentFile.fromTreeUri(context, folderUri)?.delete() == true
+                }.getOrDefault(false) || runCatching {
+                    DocumentFile.fromSingleUri(context, folderUri)?.delete() == true
+                }.getOrDefault(false)
+                if (safDeleted) anyDeleted = true
+            }
+        }
+
+        return anyDeleted
     }
 }

@@ -86,8 +86,11 @@ fun QuickActionsCustomizerSheet(
     onDismiss: () -> Unit
 ) {
     val isEnglish = LocalIsEnglish.current
-    val activeList = selectedActions.distinct().ifEmpty { PlayerQuickAction.defaultActions }
-    val availableToAdd = PlayerQuickAction.entries.filter { it !in activeList }
+    val activeList = selectedActions
+        .filterNot { it == PlayerQuickAction.CHAPTERS || it == PlayerQuickAction.AUDIO_BOOST }
+        .distinct()
+        .ifEmpty { PlayerQuickAction.defaultActions }
+    val availableToAdd = com.example.model.QuickActionsSerializer.availableToAdd(activeList)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,

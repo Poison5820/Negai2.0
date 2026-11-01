@@ -148,8 +148,107 @@ data class TorrentSearchResult(
             }
             return if (parts.isEmpty()) null else parts.joinToString(" • ")
         }
+
+        private val TECH_TOKEN_REGEXES = listOf(
+            Regex("""(?i)\b(2160p|4k|uhd|1080p|1080i|720p|480p)\b""") to { m: String -> m.uppercase(Locale.ROOT) },
+            Regex("""(?i)\b(bdremux|remux|blu-?ray|bdrip|web-?dl|webrip|hdrip|tvrip|dvb)\b""") to { m: String ->
+                when (m.lowercase(Locale.ROOT).replace("-", "")) {
+                    "bdremux", "remux" -> "BDRemux"
+                    "bluray" -> "Blu-Ray"
+                    "bdrip" -> "BDRip"
+                    "webdl" -> "WEB-DL"
+                    "webrip" -> "WEBRip"
+                    "hdrip" -> "HDRip"
+                    else -> m.uppercase(Locale.ROOT)
+                }
+            },
+            Regex("""(?i)\b(hevc|x265|h\.?265|av1|avc|x264|h\.?264)\b""") to { m: String ->
+                when (m.lowercase(Locale.ROOT).replace(".", "")) {
+                    "hevc", "x265", "h265" -> "HEVC / H.265"
+                    "avc", "x264", "h264" -> "AVC / H.264"
+                    "av1" -> "AV1"
+                    else -> m.uppercase(Locale.ROOT)
+                }
+            },
+            Regex("""(?i)\b(dolby\s*vision|dovi|hdr10\+|hdr10|hdr|10-?bit|8-?bit)(?![\p{L}\p{N}])""") to { m: String ->
+                val l = m.lowercase(Locale.ROOT)
+                when {
+                    l.contains("dolby") || l == "dovi" -> "Dolby Vision"
+                    l == "hdr10+" -> "HDR10+"
+                    l.startsWith("hdr") -> m.uppercase(Locale.ROOT)
+                    l.contains("10") -> "10-bit"
+                    else -> "8-bit"
+                }
+            },
+            Regex("""(?i)\b(truehd|atmos|dts-?hd(?:\s*ma)?|dts|ddp?\s*5\.1|ac-?3|eac-?3|flac|aac|opus|mp3)\b""") to { m: String ->
+                m.uppercase(Locale.ROOT).replace(Regex("""\s+"""), " ")
+            }
+        )
+
+        private val VOICEOVER_REGEX = Regex(
+            """(?iu)(?<![\p{L}\p{N}])(anilibria|anidub|studio\s*band|студийная\s*банда|crunchyroll|wakanim|shiza|jam|sovetromantica|anicake|animedia|yakuji|kansai|hdrezka|резка|red\s*head\s*sound|rhs|jaskier|яскьер|lostfilm|лостфильм|кубик\s*в\s*кубе|kubik|tvshows|newstudio|baibako|alexfilm|coldfilm|omskbird|pifagor|пифагор|дубляж|dub|mvo|dvo|avo|sub|субтитры|original)(?![\p{L}\p{N}])"""
+        )
+
+        private val EPISODE_INFO_REGEX = Regex(
+            """(?iu)(\bS\d{1,2}(?:E\d{1,3}(?:-E?\d{1,3})?)?\b|\[\d{1,3}\s*(?:из|of|-)\s*\d{1,3}[^\]]*\]|\(\d{1,3}\s*(?:из|of|-)\s*\d{1,3}[^)]*\)|(?<![\p{L}\p{N}])\d{1,2}\s*сезон(?![\p{L}\p{N}])|(?<![\p{L}\p{N}])\d{1,3}\s*сери[ияй](?![\p{L}\p{N}]))"""
+        )
+
+        fun extractTechTags(title: String): List<String> {
+            val found = linkedSetOf<String>()
+            for ((regex, formatter) in TECH_TOKEN_REGEXES) {
+                for (match in regex.findAll(title)) {
+                    found.add(formatter(match.value))
+                }
+            }
+            return found.toList()
+        }
+
+        fun extractVoiceoverTags(title: String): List<String> {
+            val found = linkedSetOf<String>()
+            for (match in VOICEOVER_REGEX.findAll(title)) {
+                val raw = match.value.trim().replace(Regex("""\s+"""), " ")
+                val normalized = when (raw.lowercase(Locale.forLanguageTag("ru"))) {
+                    "дубляж", "dub" -> "Дубляж / Dub"
+                    "субтитры", "sub" -> "Субтитры / Sub"
+                    "студийная банда", "studio band" -> "Студийная Банда"
+                    "кубик в кубе", "kubik" -> "Кубик в Кубе"
+                    "резка", "hdrezka" -> "HDRezka"
+                    "лостфильм", "lostfilm" -> "LostFilm"
+                    "яскьер", "jaskier" -> "Jaskier"
+                    "пифагор", "pifagor" -> "Пифагор"
+                    else -> raw.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+                }
+                found.add(normalized)
+            }
+            return found.toList()
+        }
+
+        fun extractEpisodeInfo(title: String): String? {
+            val matches = EPISODE_INFO_REGEX.findAll(title)
+                .map { it.value.trim('[', ']', '(', ')', ' ') }
+                .filter { it.isNotBlank() }
+                .distinct()
+                .toList()
+            return if (matches.isEmpty()) null else matches.joinToString(" • ")
+        }
     }
 }
+
+data class TorrentReleaseFileEntry(
+    val path: String,
+    val sizeLabel: String = ""
+)
+
+data class TorrentReleaseDetails(
+    val result: TorrentSearchResult,
+    val isLoading: Boolean = false,
+    val parsedTechTags: List<String> = TorrentSearchResult.extractTechTags(result.title),
+    val parsedVoiceoverTags: List<String> = TorrentSearchResult.extractVoiceoverTags(result.title),
+    val parsedEpisodeInfo: String? = TorrentSearchResult.extractEpisodeInfo(result.title),
+    val descriptionText: String = "",
+    val fileEntries: List<TorrentReleaseFileEntry> = emptyList(),
+    val infoNote: String? = null
+)
 
 data class TorrServerFileEntry(
     val id: Int,

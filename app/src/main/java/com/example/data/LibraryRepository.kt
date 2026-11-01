@@ -7,6 +7,7 @@ import androidx.documentfile.provider.DocumentFile
 import com.example.model.EpisodeItem
 import com.example.model.PlayerSettings
 import com.example.model.VideoFolderItem
+import com.example.ui.util.VideoThumbnailCache
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -305,11 +306,20 @@ class LibraryRepository private constructor(
     }
 
     suspend fun addSafFolderTree(treeUri: Uri) {
-        runCatching {
+        val rwRegistered = runCatching {
             appContext.contentResolver.takePersistableUriPermission(
                 treeUri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             )
+            true
+        }.getOrDefault(false)
+        if (!rwRegistered) {
+            runCatching {
+                appContext.contentResolver.takePersistableUriPermission(
+                    treeUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            }
         }
         val doc = DocumentFile.fromTreeUri(appContext, treeUri)
         val displayName = doc?.name?.takeIf { it.isNotBlank() }
@@ -381,6 +391,123 @@ class LibraryRepository private constructor(
         dao.clearAllProgress()
         preferencesRepository.clearLastPlayedVideoUri()
         _lastPlayedFile.value = null
+    }
+
+    /**
+     * Permanently deletes the specified folders and all their files from device storage,
+     * cleans up playback progress & cached thumbnails, and updates the in-memory library immediately.
+     */
+    suspend fun deleteFolders(foldersToDelete: List<VideoFolderItem>): Int = withContext(Dispatchers.IO) {
+        if (foldersToDelete.isEmpty()) return@withContext 0
+
+        val targetIds = foldersToDelete.map { it.id }.toSet()
+        val targetLocalPaths = foldersToDelete.mapNotNull {
+            StorageAccessHelper.normalizeLocalPathKey(it.id)
+        }
+        val currentScanned = _allScannedFolders.value
+
+        // Include any nested subfolders that reside inside the deleted parent directories
+        val allAffectedFolders = currentScanned.filter { candidate ->
+            if (candidate.id in targetIds) {
+                true
+            } else {
+                val candPath = StorageAccessHelper.normalizeLocalPathKey(candidate.id)
+                candPath != null && targetLocalPaths.any { parentPath ->
+                    candPath == parentPath || candPath.startsWith("$parentPath/")
+                }
+            }
+        }.ifEmpty { foldersToDelete }
+
+        val affectedIds = allAffectedFolders.map { it.id }.toSet()
+        val allDeletedEpisodeUris = mutableListOf<String>()
+
+        for (folder in allAffectedFolders) {
+            StorageAccessHelper.deleteFolderFromStorage(appContext, folder)
+            for (ep in folder.episodes) {
+                allDeletedEpisodeUris.add(ep.uri)
+                dao.deleteProgress(ep.uri)
+            }
+            dao.unhideFolder(folder.id)
+            dao.deleteLibraryRoot(folder.id)
+        }
+
+        VideoThumbnailCache.evictThumbnails(appContext, allDeletedEpisodeUris)
+
+        val updatedFolders = currentScanned.filterNot { it.id in affectedIds }
+        _allScannedFolders.value = updatedFolders
+        FolderLibraryCache.write(appContext, updatedFolders)
+        checkAndGetValidLastPlayed()
+
+        allAffectedFolders.size
+    }
+
+    /**
+     * Permanently deletes the specified episodes from device storage and updates their parent folder.
+     * If all episodes in the folder are deleted, removes the empty folder as well.
+     */
+    suspend fun deleteEpisodes(
+        folderId: String,
+        episodesToDelete: List<EpisodeItem>
+    ): Int = withContext(Dispatchers.IO) {
+        if (episodesToDelete.isEmpty()) return@withContext 0
+
+        val targetUris = episodesToDelete.map { it.uri }.toSet()
+        for (ep in episodesToDelete) {
+            StorageAccessHelper.deleteSingleMediaUriFromStorage(appContext, ep.uri)
+            dao.deleteProgress(ep.uri)
+        }
+
+        VideoThumbnailCache.evictThumbnails(appContext, targetUris)
+
+        val currentScanned = _allScannedFolders.value
+        val updatedFolders = mutableListOf<VideoFolderItem>()
+
+        for (folder in currentScanned) {
+            if (folder.id != folderId) {
+                updatedFolders.add(folder)
+                continue
+            }
+
+            val remainingEpisodes = folder.episodes.filterNot { it.uri in targetUris }
+            if (remainingEpisodes.isEmpty()) {
+                // If no video episodes remain, also remove the directory on disk if it is now empty
+                val localDir = StorageAccessHelper.resolveLocalFileFromUri(appContext, folder.id)
+                if (localDir != null && localDir.exists() && localDir.isDirectory) {
+                    val remainingFiles = localDir.listFiles()
+                    if (remainingFiles != null && remainingFiles.isEmpty()) {
+                        runCatching { localDir.delete() }
+                    }
+                }
+                dao.unhideFolder(folder.id)
+            } else {
+                val watched = remainingEpisodes.count { ep ->
+                    ep.durationMs > 0L && ep.progressFraction >= 0.85f
+                }
+                val totalAudio = remainingEpisodes.sumOf { it.autoAudioTracks.size }
+                val totalSubs = remainingEpisodes.sumOf { it.autoSubtitleTracks.size }
+                val totalBytes = remainingEpisodes.sumOf { it.sizeBytes }
+                val lastMod = remainingEpisodes.maxOfOrNull { it.lastModified } ?: 0L
+                val lastPlay = remainingEpisodes.maxOfOrNull { it.lastPlayedAt } ?: 0L
+
+                updatedFolders.add(
+                    folder.copy(
+                        episodes = remainingEpisodes,
+                        totalAutoAudioCount = totalAudio,
+                        totalAutoSubCount = totalSubs,
+                        watchedCount = watched,
+                        totalSizeBytes = totalBytes,
+                        lastModified = lastMod,
+                        lastPlayedAt = lastPlay
+                    )
+                )
+            }
+        }
+
+        _allScannedFolders.value = updatedFolders
+        FolderLibraryCache.write(appContext, updatedFolders)
+        checkAndGetValidLastPlayed()
+
+        episodesToDelete.size
     }
 
     suspend fun savePlaybackProgress(

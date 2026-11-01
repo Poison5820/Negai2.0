@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.AspectRatio
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlaylistPlay
@@ -38,8 +39,10 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
@@ -72,6 +75,7 @@ import com.example.model.EpisodeSortOption
 import com.example.model.FolderSortOption
 import com.example.model.PlayerControlsTheme
 import com.example.ui.components.PlayerControlsThemeSelectorSection
+import com.example.ui.components.formatFileSize
 import com.example.ui.i18n.LocalIsEnglish
 import com.example.ui.i18n.localizedActiveBadge
 import com.example.ui.i18n.localizedActiveHint
@@ -869,3 +873,120 @@ internal fun OpenStreamUrlDialog(
         }
     )
 }
+
+@Composable
+internal fun PermanentDeleteConfirmDialog(
+    title: String,
+    message: String,
+    totalSizeBytes: Long = 0L,
+    onConfirm: (dontAskAgain: Boolean) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var dontAskAgain by rememberSaveable { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = Icons.Default.DeleteForever,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(30.dp)
+            )
+        },
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                val sizeFormatted = formatFileSize(totalSizeBytes)
+                if (totalSizeBytes > 0L && sizeFormatted.isNotEmpty()) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.45f),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Storage,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = tr(
+                                    "Будет освобождено на накопителе: $sizeFormatted",
+                                    "Storage space to be freed: $sizeFormatted"
+                                ),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { dontAskAgain = !dontAskAgain }
+                        .testTag("delete_dont_ask_again_row")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Checkbox(
+                            checked = dontAskAgain,
+                            onCheckedChange = { dontAskAgain = it },
+                            modifier = Modifier.testTag("delete_dont_ask_again_checkbox")
+                        )
+                        Text(
+                            text = tr("Больше не показывать это уведомление", "Don't show this confirmation again"),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(dontAskAgain) },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                ),
+                modifier = Modifier.testTag("confirm_permanent_delete_button")
+            ) {
+                Text(tr("Удалить навсегда", "Delete Forever"))
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.testTag("cancel_permanent_delete_button")
+            ) {
+                Text(tr("Отмена", "Cancel"))
+            }
+        }
+    )
+}
+

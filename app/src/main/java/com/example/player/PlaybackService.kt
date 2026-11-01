@@ -54,17 +54,29 @@ class PlaybackService : MediaSessionService() {
     private fun wrapForEpisodeNotification(exoPlayer: ExoPlayer): Player {
         return object : ForwardingPlayer(exoPlayer) {
             override fun seekToPrevious() {
-                if (hasPreviousMediaItem()) {
-                    seekToPreviousMediaItem()
-                } else {
-                    seekTo(0L)
-                }
+                engine.playPreviousEpisode()
+            }
+
+            override fun seekToPreviousMediaItem() {
+                engine.playPreviousEpisode()
             }
 
             override fun seekToNext() {
-                if (hasNextMediaItem()) {
-                    seekToNextMediaItem()
-                }
+                engine.playNextEpisode()
+            }
+
+            override fun seekToNextMediaItem() {
+                engine.playNextEpisode()
+            }
+
+            override fun pause() {
+                super.pause()
+                engine.persistCurrentProgress()
+            }
+
+            override fun stop() {
+                engine.persistCurrentProgress()
+                super.stop()
             }
 
             override fun getAvailableCommands(): Player.Commands {

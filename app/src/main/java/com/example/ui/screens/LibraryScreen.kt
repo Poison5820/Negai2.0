@@ -3,8 +3,10 @@ package com.example.ui.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,9 +35,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GraphicEq
@@ -46,9 +51,11 @@ import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.VideoFile
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.History
@@ -59,11 +66,13 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -85,6 +94,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -118,6 +128,7 @@ import com.example.ui.HomeTab
 import com.example.ui.TorrentsUiState
 import com.example.ui.components.LastPlayedFileButton
 import com.example.ui.components.formatFileSize
+import com.example.ui.i18n.LocalIsEnglish
 import com.example.ui.i18n.tr
 import com.example.ui.theme.NegaiBrandFontFamily
 import kotlinx.coroutines.launch
@@ -149,6 +160,8 @@ fun LibraryScreen(
     onOpenFolder: (VideoFolderItem) -> Unit,
     onHideFolder: (VideoFolderItem) -> Unit,
     onUnhideFolder: (String) -> Unit,
+    onDeleteFolders: (List<VideoFolderItem>) -> Unit = {},
+    onSetSkipDeleteConfirmation: (Boolean) -> Unit = {},
     onResumeRecent: (PlaybackProgressEntity) -> Unit,
     onOpenLastPlayed: ((() -> Unit)?) -> Unit,
     onSelectFolderSortOption: (FolderSortOption) -> Unit,
@@ -157,6 +170,7 @@ fun LibraryScreen(
     settingsActions: SettingsActions
 ) {
     val context = LocalContext.current
+    val isEnglish = LocalIsEnglish.current
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val missingLastPlayedMessage = stringResource(R.string.last_played_missing_snackbar)
@@ -169,8 +183,71 @@ fun LibraryScreen(
     var showManualTorrentDialog by rememberSaveable { mutableStateOf(false) }
     var showTorrServerConfigDialog by rememberSaveable { mutableStateOf(false) }
 
-    BackHandler(enabled = currentTab != HomeTab.FOLDERS) {
-        onSelectTab(HomeTab.FOLDERS)
+    var selectedFolderIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    var pendingDeleteFolders by remember { mutableStateOf<List<VideoFolderItem>>(emptyList()) }
+
+    val isFolderSelectionMode = currentTab == HomeTab.FOLDERS && selectedFolderIds.isNotEmpty()
+
+    LaunchedEffect(visibleFolders, currentTab) {
+        if (currentTab != HomeTab.FOLDERS) {
+            if (selectedFolderIds.isNotEmpty()) {
+                selectedFolderIds = emptyList()
+            }
+        } else if (selectedFolderIds.isNotEmpty()) {
+            val validIds = visibleFolders.map { it.id }.toSet()
+            val filtered = selectedFolderIds.filter { it in validIds }
+            if (filtered.size != selectedFolderIds.size) {
+                selectedFolderIds = filtered
+            }
+        }
+    }
+
+    BackHandler(enabled = isFolderSelectionMode || currentTab != HomeTab.FOLDERS) {
+        if (isFolderSelectionMode) {
+            selectedFolderIds = emptyList()
+        } else {
+            onSelectTab(HomeTab.FOLDERS)
+        }
+    }
+
+    val executeFoldersDelete: (List<VideoFolderItem>) -> Unit = { foldersToDelete ->
+        if (foldersToDelete.isNotEmpty()) {
+            val count = foldersToDelete.size
+            val singleName = foldersToDelete.firstOrNull()?.name.orEmpty()
+            onDeleteFolders(foldersToDelete)
+            selectedFolderIds = emptyList()
+            coroutineScope.launch {
+                val msg = if (count == 1) {
+                    if (isEnglish) "Folder \"$singleName\" deleted from storage"
+                    else "Папка «$singleName» удалена с накопителя"
+                } else {
+                    if (isEnglish) "Deleted folders from storage: $count"
+                    else "Удалено папок с накопителя: $count"
+                }
+                snackbarHostState.showSnackbar(
+                    message = msg,
+                    duration = SnackbarDuration.Short
+                )
+            }
+        }
+    }
+
+    val requestDeleteFolders: (List<VideoFolderItem>) -> Unit = { foldersToDelete ->
+        if (foldersToDelete.isNotEmpty()) {
+            if (settings.skipDeleteConfirmation) {
+                executeFoldersDelete(foldersToDelete)
+            } else {
+                pendingDeleteFolders = foldersToDelete
+            }
+        }
+    }
+
+    val toggleFolderSelection: (String) -> Unit = { folderId ->
+        selectedFolderIds = if (folderId in selectedFolderIds) {
+            selectedFolderIds - folderId
+        } else {
+            selectedFolderIds + folderId
+        }
     }
 
     val openExternalTorrentWithFeedback: (String?, String?, String) -> Unit = { magnetUri, torrentUrl, title ->
@@ -246,108 +323,191 @@ fun LibraryScreen(
             contentWindowInsets = WindowInsets.safeDrawing,
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
-                TopAppBar(
-                    title = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = "negai",
-                                style = MaterialTheme.typography.headlineSmall.copy(
-                                    fontFamily = NegaiBrandFontFamily,
-                                    fontWeight = FontWeight.SemiBold,
-                                    letterSpacing = 1.2.sp
-                                ),
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                            Surface(
-                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                shape = RoundedCornerShape(8.dp),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { showVersionPlanetarySheet = true }
-                                    .testTag("app_version_badge")
+                if (isFolderSelectionMode) {
+                    val selectedItems = visibleFolders.filter { it.id in selectedFolderIds }
+                    val totalSelectedSize = selectedItems.sumOf { it.totalSizeBytes }
+                    val allSelected = visibleFolders.isNotEmpty() && selectedFolderIds.size == visibleFolders.size
+
+                    TopAppBar(
+                        navigationIcon = {
+                            IconButton(
+                                onClick = { selectedFolderIds = emptyList() },
+                                modifier = Modifier.testTag("close_folder_selection_button")
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(5.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primary)
-                                    )
-                                    Text(
-                                        text = AppVersionInfo.BADGE_TEXT,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-                            if (settings.effectiveFrameInterpolationMode != FrameInterpolationMode.OFF) {
-                                Surface(
-                                    color = MaterialTheme.colorScheme.tertiaryContainer,
-                                    shape = RoundedCornerShape(7.dp)
-                                ) {
-                                    Text(
-                                        text = settings.effectiveFrameInterpolationMode.badgeLabel,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
-                            if (settings.effectiveAnime4KPreset != Anime4KPreset.OFF) {
-                                Surface(
-                                    color = MaterialTheme.colorScheme.secondaryContainer,
-                                    shape = RoundedCornerShape(7.dp)
-                                ) {
-                                    Text(
-                                        text = settings.effectiveAnime4KPreset.badgeLabel,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
-                        }
-                    },
-                    actions = {
-                        IconButton(
-                            onClick = { showQuickThemeSheet = true },
-                            modifier = Modifier.testTag("top_bar_theme_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Palette,
-                                contentDescription = "Темы оформления и кнопок плеера"
-                            )
-                        }
-                        IconButton(
-                            onClick = onRescan,
-                            modifier = Modifier.testTag("rescan_library_button")
-                        ) {
-                            if (isScanning) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
                                 Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = "Обновить библиотеку"
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = tr("Отменить выбор", "Clear selection")
                                 )
                             }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background
+                        },
+                        title = {
+                            Column {
+                                Text(
+                                    text = tr(
+                                        "Выбрано папок: ${selectedFolderIds.size}",
+                                        "Selected folders: ${selectedFolderIds.size}"
+                                    ),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.testTag("folder_selection_count_text")
+                                )
+                                val sizeStr = formatFileSize(totalSelectedSize)
+                                if (totalSelectedSize > 0L && sizeStr.isNotEmpty()) {
+                                    Text(
+                                        text = tr(
+                                            "${selectedItems.sumOf { it.episodes.size }} видео • $sizeStr",
+                                            "${selectedItems.sumOf { it.episodes.size }} videos • $sizeStr"
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        },
+                        actions = {
+                            IconButton(
+                                onClick = {
+                                    selectedFolderIds = if (allSelected) {
+                                        emptyList()
+                                    } else {
+                                        visibleFolders.map { it.id }
+                                    }
+                                },
+                                modifier = Modifier.testTag("select_all_folders_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.SelectAll,
+                                    contentDescription = tr("Выбрать все папки", "Select all folders"),
+                                    tint = if (allSelected) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    }
+                                )
+                            }
+                            IconButton(
+                                onClick = { requestDeleteFolders(selectedItems) },
+                                modifier = Modifier.testTag("delete_selected_folders_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = tr("Удалить выбранные папки", "Delete selected folders"),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        )
                     )
-                )
+                } else {
+                    TopAppBar(
+                        title = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "negai",
+                                    style = MaterialTheme.typography.headlineSmall.copy(
+                                        fontFamily = NegaiBrandFontFamily,
+                                        fontWeight = FontWeight.SemiBold,
+                                        letterSpacing = 1.2.sp
+                                    ),
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    shape = RoundedCornerShape(8.dp),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { showVersionPlanetarySheet = true }
+                                        .testTag("app_version_badge")
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(5.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.primary)
+                                        )
+                                        Text(
+                                            text = AppVersionInfo.BADGE_TEXT,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                                if (settings.effectiveFrameInterpolationMode != FrameInterpolationMode.OFF) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                                        shape = RoundedCornerShape(7.dp)
+                                    ) {
+                                        Text(
+                                            text = settings.effectiveFrameInterpolationMode.badgeLabel,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                                if (settings.effectiveAnime4KPreset != Anime4KPreset.OFF) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.secondaryContainer,
+                                        shape = RoundedCornerShape(7.dp)
+                                    ) {
+                                        Text(
+                                            text = settings.effectiveAnime4KPreset.badgeLabel,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        actions = {
+                            IconButton(
+                                onClick = { showQuickThemeSheet = true },
+                                modifier = Modifier.testTag("top_bar_theme_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Palette,
+                                    contentDescription = "Темы оформления и кнопок плеера"
+                                )
+                            }
+                            IconButton(
+                                onClick = onRescan,
+                                modifier = Modifier.testTag("rescan_library_button")
+                            ) {
+                                if (isScanning) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = "Обновить библиотеку"
+                                    )
+                                }
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.background
+                        )
+                    )
+                }
             },
             bottomBar = {
                 if (!isWideScreen) {
@@ -476,6 +636,7 @@ fun LibraryScreen(
                     when (currentTab) {
                         HomeTab.FOLDERS -> FoldersTabContent(
                             visibleFolders = visibleFolders,
+                            selectedFolderIds = selectedFolderIds.toSet(),
                             hiddenCount = hiddenFolders.size,
                             lastPlayedFile = lastPlayedFile,
                             resumePlaybackEnabled = settings.resumePlayback,
@@ -495,6 +656,8 @@ fun LibraryScreen(
                             onOpenSortSheet = { showSortSheet = true },
                             onToggleSortDirection = onToggleFolderSortDirection,
                             onOpenFolder = onOpenFolder,
+                            onToggleSelectFolder = { folder -> toggleFolderSelection(folder.id) },
+                            onDeleteSingleFolder = { folder -> requestDeleteFolders(listOf(folder)) },
                             onHideFolder = handleExcludeFolderWithUndo,
                             onOpenLastPlayed = handleOpenLastPlayed
                         )
@@ -533,7 +696,9 @@ fun LibraryScreen(
                                 openExternalTorrentWithFeedback(magnet, null, title)
                             },
                             onDropSavedCache = torrentsActions.onDropSavedCache,
-                            onRemoveSavedTorrent = torrentsActions.onRemoveSavedTorrent
+                            onRemoveSavedTorrent = torrentsActions.onRemoveSavedTorrent,
+                            onOpenReleaseDetails = torrentsActions.onOpenReleaseDetails,
+                            onDismissReleaseDetails = torrentsActions.onDismissReleaseDetails
                         )
 
                         HomeTab.SETTINGS -> SettingsTabContent(
@@ -637,6 +802,46 @@ fun LibraryScreen(
         )
     }
 
+    if (pendingDeleteFolders.isNotEmpty()) {
+        val count = pendingDeleteFolders.size
+        val totalEpisodes = pendingDeleteFolders.sumOf { it.episodes.size }
+        val totalSize = pendingDeleteFolders.sumOf { it.totalSizeBytes }
+        val singleFolder = pendingDeleteFolders.firstOrNull()
+        val dialogTitle = if (count == 1 && singleFolder != null) {
+            tr("Удалить папку «${singleFolder.name}»?", "Delete folder \"${singleFolder.name}\"?")
+        } else {
+            tr("Удалить выбранные папки ($count)?", "Delete selected folders ($count)?")
+        }
+        val dialogMessage = if (count == 1 && singleFolder != null) {
+            tr(
+                "Папка «${singleFolder.name}» и все файлы внутри неё ($totalEpisodes видео) будут безвозвратно удалены с накопителя устройства.",
+                "Folder \"${singleFolder.name}\" and all files inside it ($totalEpisodes videos) will be permanently deleted from device storage."
+            )
+        } else {
+            tr(
+                "Выбранные папки ($count шт., всего $totalEpisodes видео) будут безвозвратно удалены с накопителя устройства вместе со всем содержимым.",
+                "The selected folders ($count folders, $totalEpisodes videos total) and all their contents will be permanently deleted from device storage."
+            )
+        }
+
+        PermanentDeleteConfirmDialog(
+            title = dialogTitle,
+            message = dialogMessage,
+            totalSizeBytes = totalSize,
+            onConfirm = { dontAskAgain ->
+                if (dontAskAgain) {
+                    onSetSkipDeleteConfirmation(true)
+                }
+                val targets = pendingDeleteFolders
+                pendingDeleteFolders = emptyList()
+                executeFoldersDelete(targets)
+            },
+            onDismiss = {
+                pendingDeleteFolders = emptyList()
+            }
+        )
+    }
+
     TorrentInspectorBottomSheet(
         inspectorState = torrentsState.inspectorState,
         onDismiss = torrentsActions.onDismissInspector,
@@ -655,6 +860,7 @@ fun LibraryScreen(
 @Composable
 private fun FoldersTabContent(
     visibleFolders: List<VideoFolderItem>,
+    selectedFolderIds: Set<String> = emptySet(),
     hiddenCount: Int,
     lastPlayedFile: PlaybackProgressEntity?,
     resumePlaybackEnabled: Boolean,
@@ -674,9 +880,12 @@ private fun FoldersTabContent(
     onOpenSortSheet: () -> Unit,
     onToggleSortDirection: () -> Unit,
     onOpenFolder: (VideoFolderItem) -> Unit,
+    onToggleSelectFolder: (VideoFolderItem) -> Unit = {},
+    onDeleteSingleFolder: (VideoFolderItem) -> Unit = {},
     onHideFolder: (VideoFolderItem) -> Unit,
     onOpenLastPlayed: () -> Unit
 ) {
+    val isSelectionMode = selectedFolderIds.isNotEmpty()
     LazyColumn(
         modifier = Modifier
             .fillMaxWidth()
@@ -903,11 +1112,25 @@ private fun FoldersTabContent(
                 items = visibleFolders,
                 key = { _, f -> f.id }
             ) { index, folder ->
+                val isSelected = folder.id in selectedFolderIds
                 VideoFolderCard(
                     folder = folder,
                     index = index,
                     compactMode = compactMode,
-                    onClick = { onOpenFolder(folder) },
+                    isSelectionMode = isSelectionMode,
+                    isSelected = isSelected,
+                    onClick = {
+                        if (isSelectionMode) {
+                            onToggleSelectFolder(folder)
+                        } else {
+                            onOpenFolder(folder)
+                        }
+                    },
+                    onLongClick = {
+                        onToggleSelectFolder(folder)
+                    },
+                    onSelect = { onToggleSelectFolder(folder) },
+                    onDelete = { onDeleteSingleFolder(folder) },
                     onHide = { onHideFolder(folder) }
                 )
             }
@@ -1103,13 +1326,18 @@ private fun StorageStatusEmptyCard(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 private fun VideoFolderCard(
     folder: VideoFolderItem,
     index: Int,
     compactMode: Boolean = true,
+    isSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
     onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
+    onSelect: () -> Unit = {},
+    onDelete: () -> Unit = {},
     onHide: () -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -1117,14 +1345,24 @@ private fun VideoFolderCard(
 
     Card(
         shape = RoundedCornerShape(cardCorner),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        border = BorderStroke(
+            width = if (isSelected) 2.dp else 1.dp,
+            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+        ),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
+            } else {
+                MaterialTheme.colorScheme.surfaceContainer
+            }
         ),
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(cardCorner))
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
             .testTag("folder_card_$index")
     ) {
         Column(
@@ -1142,19 +1380,28 @@ private fun VideoFolderCard(
                         .size(if (compactMode) 44.dp else 54.dp)
                         .clip(RoundedCornerShape(if (compactMode) 12.dp else 15.dp))
                         .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primaryContainer,
-                                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.75f)
+                            if (isSelected) {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                                    )
                                 )
-                            )
+                            } else {
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primaryContainer,
+                                        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.75f)
+                                    )
+                                )
+                            }
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Movie,
+                        imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.Movie,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(if (compactMode) 22.dp else 26.dp)
                     )
                 }
@@ -1167,7 +1414,7 @@ private fun VideoFolderCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     val folderMeta = buildString {
-                        append("${folder.episodes.size} видео")
+                        append(tr("${folder.episodes.size} видео", "${folder.episodes.size} videos"))
                         val sizeLabel = formatFileSize(folder.totalSizeBytes)
                         if (sizeLabel.isNotEmpty()) {
                             append(" • ")
@@ -1185,31 +1432,71 @@ private fun VideoFolderCard(
                     )
                 }
 
-                Box {
-                    IconButton(
-                        onClick = { menuExpanded = true },
-                        modifier = Modifier.testTag("folder_menu_button_$index")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "Меню папки ${folder.name}"
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("В исключения") },
-                            leadingIcon = {
-                                Icon(Icons.Outlined.VisibilityOff, contentDescription = null)
-                            },
-                            onClick = {
-                                menuExpanded = false
-                                onHide()
-                            },
-                            modifier = Modifier.testTag("hide_folder_menu_item_$index")
-                        )
+                if (isSelectionMode) {
+                    Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = { onSelect() },
+                        modifier = Modifier.testTag("folder_select_checkbox_$index")
+                    )
+                } else {
+                    Box {
+                        IconButton(
+                            onClick = { menuExpanded = true },
+                            modifier = Modifier.testTag("folder_menu_button_$index")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = tr("Меню папки ${folder.name}", "Folder menu ${folder.name}")
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(tr("Выбрать", "Select")) },
+                                leadingIcon = {
+                                    Icon(Icons.Outlined.CheckCircle, contentDescription = null)
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onSelect()
+                                },
+                                modifier = Modifier.testTag("select_folder_menu_item_$index")
+                            )
+                            DropdownMenuItem(
+                                text = { Text(tr("В исключения", "Exclude")) },
+                                leadingIcon = {
+                                    Icon(Icons.Outlined.VisibilityOff, contentDescription = null)
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onHide()
+                                },
+                                modifier = Modifier.testTag("hide_folder_menu_item_$index")
+                            )
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = tr("Удалить с накопителя", "Delete from storage"),
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.DeleteForever,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onDelete()
+                                },
+                                modifier = Modifier.testTag("delete_folder_menu_item_$index")
+                            )
+                        }
                     }
                 }
             }

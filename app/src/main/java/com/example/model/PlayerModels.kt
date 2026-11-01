@@ -583,10 +583,10 @@ enum class SleepTimerPreset(
 }
 
 object AppVersionInfo {
-    const val VERSION_NAME = "2.2.1"
-    const val VERSION_CODE = 5
-    const val BADGE_TEXT = "v2.2.1"
-    const val RELEASE_TAG = "v2.2.1"
+    const val VERSION_NAME = "2.5"
+    const val VERSION_CODE = 6
+    const val BADGE_TEXT = "v2.5"
+    const val RELEASE_TAG = "v2.5"
 }
 
 enum class AppLanguage(
@@ -669,6 +669,9 @@ data class PlayerSettings(
     val episodeSortOption: EpisodeSortOption = EpisodeSortOption.EPISODE_NUMBER,
     val episodeSortAscending: Boolean = true,
     val quickActions: List<PlayerQuickAction> = QuickActionsSerializer.DEFAULT_ACTIONS,
+    val playerUiScalePercent: Int = 100,
+    val playerAutoDpiScale: Boolean = true,
+    val controlsAutoHideSeconds: Int = 4,
 
     // Playback, Chapters & Timeline
     val resumePlayback: Boolean = true,
@@ -729,7 +732,8 @@ data class PlayerSettings(
     // Storage & Exclusions
     val ignoreNomediaFolders: Boolean = true,
     val excludeCameraAndScreenshots: Boolean = false,
-    val minVideoSizeMb: Int = 0
+    val minVideoSizeMb: Int = 0,
+    val skipDeleteConfirmation: Boolean = false
 ) {
     val effectiveAnime4KPreset: Anime4KPreset
         get() = if (anime4kEnabled && anime4kPreset != Anime4KPreset.OFF) {

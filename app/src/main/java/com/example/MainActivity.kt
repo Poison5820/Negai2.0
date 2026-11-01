@@ -183,7 +183,17 @@ class MainActivity : ComponentActivity() {
         newConfig: Configuration
     ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        viewModel.playerEngine.persistCurrentProgress()
         viewModel.onPipModeChanged(isInPictureInPictureMode)
+        if (!isInPictureInPictureMode &&
+            !lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
+        ) {
+            if (!viewModel.playerSettings.value.backgroundAudioPlay) {
+                viewModel.playerEngine.pauseAndPersist()
+            } else {
+                viewModel.playerEngine.persistCurrentProgress()
+            }
+        }
     }
 
     override fun onResume() {
@@ -447,6 +457,10 @@ fun Kino4KAppRoot(
                 onSelectPlaybackEndMode = { mode -> viewModel.setPlaybackEndMode(mode) },
                 onSelectControlsTheme = { theme -> viewModel.setPlayerControlsTheme(theme) },
                 onUpdateQuickActions = { actions -> viewModel.setQuickActions(actions) },
+                onUpdateSkipIntroSeconds = { sec -> viewModel.setSkipIntroSeconds(sec) },
+                onUpdatePlayerUiScalePercent = { pct -> viewModel.setPlayerUiScalePercent(pct) },
+                onUpdatePlayerAutoDpiScale = { enabled -> viewModel.setPlayerAutoDpiScale(enabled) },
+                onUpdateControlsAutoHideSeconds = { sec -> viewModel.setControlsAutoHideSeconds(sec) },
                 onDismissResumeBanner = { viewModel.dismissResumeBanner() },
                 onRestartFromBeginning = { viewModel.restartEpisodeFromBeginning() },
                 onUiActiveChanged = { active -> viewModel.setPlayerUiActive(active) }
@@ -462,12 +476,16 @@ fun Kino4KAppRoot(
                 resumePlaybackEnabled = settings.resumePlayback,
                 sortOption = settings.episodeSortOption,
                 sortAscending = settings.episodeSortAscending,
+                skipDeleteConfirmation = settings.skipDeleteConfirmation,
                 onSelectSortOption = { viewModel.selectEpisodeSortOption(it) },
                 onSetSortDirection = { viewModel.setEpisodeSortDirection(it) },
                 onToggleSortDirection = { viewModel.toggleEpisodeSortDirection() },
                 onBack = { viewModel.closeFolderDetail() },
                 onPlayEpisode = { index -> viewModel.playFolderPlaylist(activeFolder, index) },
-                onHideFolder = { viewModel.hideFolder(activeFolder) }
+                onHideFolder = { viewModel.hideFolder(activeFolder) },
+                onDeleteFolder = { viewModel.deleteFolders(listOf(activeFolder)) },
+                onDeleteEpisodes = { episodes -> viewModel.deleteEpisodes(activeFolder.id, episodes) },
+                onSetSkipDeleteConfirmation = { viewModel.setSkipDeleteConfirmation(it) }
             )
         }
 
@@ -488,6 +506,9 @@ fun Kino4KAppRoot(
                 onUpdateShowEpisodeThumbnails = { viewModel.setShowEpisodeThumbnails(it) },
                 onUpdateShowEpisodesButtonInHud = { viewModel.setShowEpisodesButtonInHud(it) },
                 onUpdateShowHudBadges = { viewModel.setShowHudBadges(it) },
+                onUpdatePlayerUiScalePercent = { viewModel.setPlayerUiScalePercent(it) },
+                onUpdatePlayerAutoDpiScale = { viewModel.setPlayerAutoDpiScale(it) },
+                onUpdateControlsAutoHideSeconds = { viewModel.setControlsAutoHideSeconds(it) },
                 onUpdateQuickActions = { viewModel.setQuickActions(it) },
                 onUpdateResumePlayback = { viewModel.setResumePlayback(it) },
                 onUpdatePlaybackEndMode = { viewModel.setPlaybackEndMode(it) },
@@ -533,7 +554,8 @@ fun Kino4KAppRoot(
                 onUpdateEnableTrackerDoh = { viewModel.setEnableTrackerDoh(it) },
                 onUpdateIgnoreNomediaFolders = { viewModel.setIgnoreNomediaFolders(it) },
                 onUpdateExcludeCameraAndScreenshots = { viewModel.setExcludeCameraAndScreenshots(it) },
-                onUpdateMinVideoSizeMb = { viewModel.setMinVideoSizeMb(it) }
+                onUpdateMinVideoSizeMb = { viewModel.setMinVideoSizeMb(it) },
+                onUpdateSkipDeleteConfirmation = { viewModel.setSkipDeleteConfirmation(it) }
             )
 
             val torrentsActions = TorrentsActions(
@@ -579,6 +601,12 @@ fun Kino4KAppRoot(
                 },
                 onRemoveSavedTorrent = { hash ->
                     viewModel.torrentsController.removeSavedServerTorrent(hash)
+                },
+                onOpenReleaseDetails = { result ->
+                    viewModel.torrentsController.openReleaseDetails(result)
+                },
+                onDismissReleaseDetails = {
+                    viewModel.torrentsController.dismissReleaseDetails()
                 }
             )
 
@@ -607,6 +635,8 @@ fun Kino4KAppRoot(
                 onOpenFolder = { viewModel.openFolder(it.id) },
                 onHideFolder = { viewModel.hideFolder(it) },
                 onUnhideFolder = { viewModel.unhideFolder(it) },
+                onDeleteFolders = { folders -> viewModel.deleteFolders(folders) },
+                onSetSkipDeleteConfirmation = { viewModel.setSkipDeleteConfirmation(it) },
                 onResumeRecent = { viewModel.resumeRecentItem(it) },
                 onOpenLastPlayed = { onMissing -> viewModel.openLastPlayedFile(onMissing) },
                 onSelectFolderSortOption = { viewModel.selectFolderSortOption(it) },

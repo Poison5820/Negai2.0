@@ -1,14 +1,18 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -16,18 +20,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalButton
@@ -36,15 +41,27 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.model.Anime4KPreset
@@ -69,8 +86,10 @@ import kotlin.math.roundToInt
 
 /**
  * Dynamic, customizable bottom quick-actions bar in the video player HUD.
- * Renders the user's chosen buttons in exact order plus a compact trailing customize button.
+ * All buttons are clean icon-only pills except EPISODES, which displays the episode counter (e.g. 1/12).
+ * Scrolling or touching the bar resets and holds the HUD auto-hide timer.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun PlayerQuickActionsBar(
     quickActions: List<PlayerQuickAction>,
@@ -80,17 +99,52 @@ internal fun PlayerQuickActionsBar(
     orientationMode: PlayerOrientationMode,
     pipSupported: Boolean,
     onTriggerAction: (PlayerQuickAction) -> Unit,
+    onLongPressAction: (PlayerQuickAction) -> Unit = {},
     onOpenCustomizer: () -> Unit,
+    onUserInteraction: () -> Unit = {},
+    onScrollStateChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val visibleActions = quickActions.filter { action ->
-        action != PlayerQuickAction.PIP || pipSupported
+    val visibleActions = remember(quickActions, pipSupported) {
+        quickActions.filter { action ->
+            action != PlayerQuickAction.CHAPTERS &&
+                action != PlayerQuickAction.AUDIO_BOOST &&
+                (action != PlayerQuickAction.PIP || pipSupported)
+        }
+    }
+
+    val listState = rememberLazyListState()
+    LaunchedEffect(listState.isScrollInProgress) {
+        onScrollStateChanged(listState.isScrollInProgress)
+        if (listState.isScrollInProgress) {
+            onUserInteraction()
+        }
+    }
+    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
+        if (listState.isScrollInProgress) {
+            onUserInteraction()
+        }
     }
 
     val chipGap = if (settings.compactUiMode) 6.dp else 8.dp
+    val buttonShape = RoundedCornerShape(12.dp)
+    val accentFree = settings.playerControlsTheme.isAccentFree
+    val frameless = settings.playerControlsTheme.isFrameless
+
     LazyRow(
+        state = listState,
         modifier = modifier
             .fillMaxWidth()
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        if (event.changes.any { it.pressed || it.previousPressed }) {
+                            onUserInteraction()
+                        }
+                    }
+                }
+            }
             .testTag("player_quick_actions_row"),
         horizontalArrangement = Arrangement.spacedBy(chipGap, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
@@ -108,73 +162,97 @@ internal fun PlayerQuickActionsBar(
                 orientationMode = orientationMode
             )
 
-            AssistChip(
-                onClick = { onTriggerAction(action) },
-                label = {
-                    Text(
-                        text = chipState.label,
-                        color = Color.White,
-                        maxLines = 1
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = action.iconVector(),
-                        contentDescription = null,
-                        tint = chipState.iconTint,
-                        modifier = Modifier.size(17.dp)
-                    )
-                },
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = chipState.containerColor
-                ),
-                border = null,
+            Surface(
+                color = chipState.containerColor,
+                shape = buttonShape,
+                border = chipState.border,
                 modifier = Modifier
                     .animateItem()
+                    .defaultMinSize(minWidth = 42.dp, minHeight = 36.dp)
+                    .clip(buttonShape)
+                    .combinedClickable(
+                        onClick = {
+                            onUserInteraction()
+                            onTriggerAction(action)
+                        },
+                        onLongClick = {
+                            onUserInteraction()
+                            onLongPressAction(action)
+                        }
+                    )
+                    .semantics { contentDescription = chipState.accessibilityLabel }
                     .testTag(chipState.testTag)
-            )
+            ) {
+                Row(
+                    modifier = Modifier.padding(
+                        horizontal = if (chipState.counterBadge != null) 10.dp else 11.dp,
+                        vertical = 8.dp
+                    ),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Icon(
+                        imageVector = action.iconVector(),
+                        contentDescription = chipState.accessibilityLabel,
+                        tint = chipState.iconTint,
+                        modifier = Modifier.size(19.dp)
+                    )
+                    if (chipState.counterBadge != null) {
+                        Text(
+                            text = chipState.counterBadge,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
         }
 
         item(key = "customize_quick_actions_btn") {
-            val accentFree = settings.playerControlsTheme.isAccentFree
-            val frameless = settings.playerControlsTheme.isFrameless
-            AssistChip(
-                onClick = onOpenCustomizer,
-                label = {
-                    Text(
-                        text = if (visibleActions.isEmpty()) tr("Настроить кнопки", "Customize buttons") else tr("Кнопки", "Buttons"),
-                        color = Color.White,
-                        maxLines = 1
-                    )
-                },
-                leadingIcon = {
+            val customizeDesc = tr("Настроить быстрые клавиши плеера", "Customize player quick actions")
+            val customizeBorder = when {
+                frameless -> null
+                accentFree -> BorderStroke(1.dp, Color.White.copy(alpha = 0.24f))
+                else -> BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f))
+            }
+            Surface(
+                color = if (frameless) Color.Transparent else Color.White.copy(alpha = 0.14f),
+                shape = buttonShape,
+                border = customizeBorder,
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 42.dp, minHeight = 36.dp)
+                    .clip(buttonShape)
+                    .clickable {
+                        onUserInteraction()
+                        onOpenCustomizer()
+                    }
+                    .semantics { contentDescription = customizeDesc }
+                    .testTag("player_customize_quick_actions_button")
+            ) {
+                Box(
+                    modifier = Modifier.padding(horizontal = 11.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
-                        contentDescription = tr("Настроить быстрые клавиши плеера", "Customize player quick actions"),
+                        contentDescription = customizeDesc,
                         tint = if (accentFree) Color.White.copy(alpha = 0.88f) else MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(17.dp)
+                        modifier = Modifier.size(18.dp)
                     )
-                },
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = if (frameless) Color.Transparent else Color.White.copy(alpha = 0.14f)
-                ),
-                border = if (frameless) {
-                    null
-                } else if (accentFree) {
-                    BorderStroke(1.dp, Color.White.copy(alpha = 0.24f))
-                } else {
-                    BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f))
-                },
-                modifier = Modifier.testTag("player_customize_quick_actions_button")
-            )
+                }
+            }
         }
     }
 }
 
 private data class QuickChipVisualState(
-    val label: String,
+    val accessibilityLabel: String,
+    val counterBadge: String? = null,
     val iconTint: Color,
     val containerColor: Color,
+    val border: BorderStroke? = null,
     val testTag: String
 )
 
@@ -193,46 +271,41 @@ private fun resolveQuickChipVisuals(
     val secondary = if (accentFree) Color.White.copy(alpha = 0.90f) else MaterialTheme.colorScheme.secondary
     val activePrimaryBg = when {
         frameless -> Color.Transparent
-        accentFree -> Color.White.copy(alpha = 0.20f)
+        accentFree -> Color.White.copy(alpha = 0.22f)
         else -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f)
     }
     val activeSecondaryBg = when {
         frameless -> Color.Transparent
-        accentFree -> Color.White.copy(alpha = 0.20f)
+        accentFree -> Color.White.copy(alpha = 0.22f)
         else -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.78f)
     }
     val neutralBg = if (frameless) Color.Transparent else Color.White.copy(alpha = 0.12f)
+    val activeBorder = when {
+        frameless -> null
+        accentFree -> BorderStroke(1.dp, Color.White.copy(alpha = 0.35f))
+        else -> BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f))
+    }
 
     return when (action) {
         PlayerQuickAction.SPEED -> {
             val isModified = abs(playbackState.playbackSpeed - 1.0f) >= 0.02f
             val speedStr = formatPlaybackSpeedLabel(playbackState.playbackSpeed)
             QuickChipVisualState(
-                label = if (isEnglish) "Speed • $speedStr" else "Скорость • $speedStr",
+                accessibilityLabel = if (isEnglish) "Speed $speedStr" else "Скорость $speedStr",
                 iconTint = if (isModified) primary else Color.White,
                 containerColor = if (isModified) activePrimaryBg else neutralBg,
+                border = if (isModified) activeBorder else null,
                 testTag = "player_quick_chip_SPEED"
             )
         }
 
         PlayerQuickAction.AUDIO -> {
-            val unit = if (isEnglish) "ms" else "мс"
-            val delaySuffix = when {
-                playbackState.audioDelayMs > 0L -> " • +${playbackState.audioDelayMs}$unit"
-                playbackState.audioDelayMs < 0L -> " • ${playbackState.audioDelayMs}$unit"
-                else -> ""
-            }
-            val boostSuffix = if (playbackState.audioBoostPercent > 100) {
-                " • ${playbackState.audioBoostPercent}%"
-            } else {
-                ""
-            }
             val modified = playbackState.audioDelayMs != 0L || playbackState.audioBoostPercent > 100
-            val prefix = if (isEnglish) "Audio" else "Аудио"
             QuickChipVisualState(
-                label = "$prefix (${playbackState.audioTrackOptions.size})$delaySuffix$boostSuffix",
+                accessibilityLabel = if (isEnglish) "Audio & Boost" else "Аудио и усиление",
                 iconTint = primary,
                 containerColor = if (modified) activePrimaryBg else neutralBg,
+                border = if (modified) activeBorder else null,
                 testTag = "player_open_audio_sheet_chip"
             )
         }
@@ -240,20 +313,17 @@ private fun resolveQuickChipVisuals(
         PlayerQuickAction.SUBTITLES -> {
             val subActive = playbackState.selectedSubtitleId != "off"
             QuickChipVisualState(
-                label = if (isEnglish) {
-                    if (subActive) "Subtitles • ON" else "Subtitles"
-                } else {
-                    if (subActive) "Субтитры • Вкл" else "Субтитры"
-                },
+                accessibilityLabel = if (isEnglish) "Subtitles" else "Субтитры",
                 iconTint = if (subActive) primary else Color.White,
                 containerColor = if (subActive) activePrimaryBg else neutralBg,
+                border = if (subActive) activeBorder else null,
                 testTag = "player_open_subtitles_sheet_chip"
             )
         }
 
         PlayerQuickAction.DECODER -> {
             QuickChipVisualState(
-                label = (if (isEnglish) "Decoder • " else "Декодер • ") + playbackState.activeDecoderMode.shortBadge,
+                accessibilityLabel = (if (isEnglish) "Decoder " else "Декодер ") + playbackState.activeDecoderMode.shortBadge,
                 iconTint = primary,
                 containerColor = neutralBg,
                 testTag = "player_open_decoder_sheet_chip"
@@ -264,13 +334,10 @@ private fun resolveQuickChipVisuals(
             val activeMemc = settings.effectiveFrameInterpolationMode
             val isOn = activeMemc != FrameInterpolationMode.OFF
             QuickChipVisualState(
-                label = if (isEnglish) {
-                    if (isOn) "Smooth • ${activeMemc.badgeLabel}" else "Smooth • OFF"
-                } else {
-                    if (isOn) "Плавность • ${activeMemc.badgeLabel}" else "Плавность • Выкл"
-                },
+                accessibilityLabel = if (isEnglish) "Frame Interpolation" else "Интерполяция кадров",
                 iconTint = if (isOn) primary else Color.White,
                 containerColor = if (isOn) activePrimaryBg else neutralBg,
+                border = if (isOn) activeBorder else null,
                 testTag = "player_quick_chip_FRAME_INTERPOLATION"
             )
         }
@@ -279,9 +346,10 @@ private fun resolveQuickChipVisuals(
             val activePreset = settings.effectiveAnime4KPreset
             val isOn = activePreset != Anime4KPreset.OFF
             QuickChipVisualState(
-                label = if (isOn) "Anime4K • ${activePreset.badgeLabel}" else if (isEnglish) "Anime4K • OFF" else "Anime4K • Выкл",
+                accessibilityLabel = "Anime4K",
                 iconTint = if (isOn) secondary else Color.White,
                 containerColor = if (isOn) activeSecondaryBg else neutralBg,
+                border = if (isOn) activeBorder else null,
                 testTag = "player_open_anime4k_sheet_chip"
             )
         }
@@ -290,7 +358,8 @@ private fun resolveQuickChipVisuals(
             val total = playbackState.playlist.size.coerceAtLeast(1)
             val currentNum = (playbackState.currentEpisodeIndex + 1).coerceIn(1, total)
             QuickChipVisualState(
-                label = if (isEnglish) "Episodes ($currentNum/$total)" else "Серии ($currentNum/$total)",
+                accessibilityLabel = if (isEnglish) "Episodes $currentNum/$total" else "Серии $currentNum/$total",
+                counterBadge = "$currentNum/$total",
                 iconTint = primary,
                 containerColor = neutralBg,
                 testTag = "player_quick_chip_EPISODES"
@@ -300,11 +369,7 @@ private fun resolveQuickChipVisuals(
         PlayerQuickAction.CHAPTERS -> {
             val chapterCount = playbackState.chapters.size
             QuickChipVisualState(
-                label = if (isEnglish) {
-                    if (chapterCount > 0) "Chapters ($chapterCount)" else "Chapters"
-                } else {
-                    if (chapterCount > 0) "Главы ($chapterCount)" else "Главы"
-                },
+                accessibilityLabel = if (isEnglish) "Chapters ($chapterCount)" else "Главы ($chapterCount)",
                 iconTint = if (chapterCount > 0) primary else Color.White,
                 containerColor = if (chapterCount > 0) activePrimaryBg else neutralBg,
                 testTag = "player_quick_chip_CHAPTERS"
@@ -314,9 +379,10 @@ private fun resolveQuickChipVisuals(
         PlayerQuickAction.SCALE -> {
             val isZoomed = scaleMode != VideoScaleMode.FIT
             QuickChipVisualState(
-                label = scaleMode.localizedShortLabel(isEnglish),
+                accessibilityLabel = scaleMode.localizedShortLabel(isEnglish),
                 iconTint = if (isZoomed) primary else Color.White,
                 containerColor = if (isZoomed) activePrimaryBg else neutralBg,
+                border = if (isZoomed) activeBorder else null,
                 testTag = "player_quick_chip_SCALE"
             )
         }
@@ -324,47 +390,39 @@ private fun resolveQuickChipVisuals(
         PlayerQuickAction.AUDIO_BOOST -> {
             val boosted = playbackState.audioBoostPercent > 100
             QuickChipVisualState(
-                label = if (isEnglish) "Boost • ${playbackState.audioBoostPercent}%" else "Усиление • ${playbackState.audioBoostPercent}%",
+                accessibilityLabel = if (isEnglish) "Audio Boost" else "Усиление звука",
                 iconTint = if (boosted) primary else Color.White,
                 containerColor = if (boosted) activePrimaryBg else neutralBg,
+                border = if (boosted) activeBorder else null,
                 testTag = "player_quick_chip_AUDIO_BOOST"
             )
         }
 
         PlayerQuickAction.SLEEP_TIMER -> {
             val active = playbackState.isSleepTimerActive
-            val text = when {
-                playbackState.sleepTimerPreset.stopAtEndOfEpisode -> if (isEnglish) "Sleep • End of ep." else "Сон • До конца"
-                active -> if (isEnglish) "Sleep • ${formatTimeMs(playbackState.sleepTimerRemainingMs)}" else "Сон • ${formatTimeMs(playbackState.sleepTimerRemainingMs)}"
-                else -> if (isEnglish) "Sleep Timer" else "Таймер сна"
-            }
             QuickChipVisualState(
-                label = text,
+                accessibilityLabel = if (isEnglish) "Sleep Timer" else "Таймер сна",
                 iconTint = if (active) primary else Color.White,
                 containerColor = if (active) activePrimaryBg else neutralBg,
+                border = if (active) activeBorder else null,
                 testTag = "player_quick_chip_SLEEP_TIMER"
             )
         }
 
         PlayerQuickAction.AB_LOOP -> {
             val hasA = playbackState.abLoopStartMs != null
-            val hasB = playbackState.abLoopEndMs != null
-            val text = when {
-                hasA && hasB -> if (isEnglish) "A–B • Loop" else "A–B • Цикл"
-                hasA -> if (isEnglish) "A–B • Set B" else "A–B • Задать B"
-                else -> if (isEnglish) "A–B Loop" else "Повтор A–B"
-            }
             QuickChipVisualState(
-                label = text,
+                accessibilityLabel = if (isEnglish) "A–B Loop" else "Повтор A–B",
                 iconTint = if (hasA) primary else Color.White,
                 containerColor = if (hasA) activePrimaryBg else neutralBg,
+                border = if (hasA) activeBorder else null,
                 testTag = "player_quick_chip_AB_LOOP"
             )
         }
 
         PlayerQuickAction.SKIP_INTRO -> {
             QuickChipVisualState(
-                label = if (isEnglish) "+85s Intro" else "+85с Опенинг",
+                accessibilityLabel = if (isEnglish) "+${settings.skipIntroSeconds}s Intro" else "+${settings.skipIntroSeconds}с Опенинг",
                 iconTint = primary,
                 containerColor = neutralBg,
                 testTag = "player_quick_chip_SKIP_INTRO"
@@ -374,16 +432,17 @@ private fun resolveQuickChipVisuals(
         PlayerQuickAction.ORIENTATION -> {
             val lockedOrient = orientationMode != PlayerOrientationMode.AUTO
             QuickChipVisualState(
-                label = if (isEnglish) "Rotate • ${orientationMode.localizedBadge(true)}" else "Экран • ${orientationMode.shortBadge}",
+                accessibilityLabel = if (isEnglish) "Screen Orientation" else "Ориентация экрана",
                 iconTint = if (lockedOrient) primary else Color.White,
                 containerColor = if (lockedOrient) activePrimaryBg else neutralBg,
+                border = if (lockedOrient) activeBorder else null,
                 testTag = "player_quick_chip_ORIENTATION"
             )
         }
 
         PlayerQuickAction.LOCK -> {
             QuickChipVisualState(
-                label = if (isEnglish) "Lock" else "Блокировка",
+                accessibilityLabel = if (isEnglish) "Lock Screen" else "Блокировка экрана",
                 iconTint = Color.White,
                 containerColor = neutralBg,
                 testTag = "player_quick_chip_LOCK"
@@ -392,7 +451,7 @@ private fun resolveQuickChipVisuals(
 
         PlayerQuickAction.PIP -> {
             QuickChipVisualState(
-                label = "PiP",
+                accessibilityLabel = "PiP",
                 iconTint = primary,
                 containerColor = neutralBg,
                 testTag = "player_quick_chip_PIP"
@@ -403,15 +462,11 @@ private fun resolveQuickChipVisuals(
             val hasActiveTool = playbackState.isSleepTimerActive ||
                 playbackState.isAbLoopActive ||
                 playbackState.audioBoostPercent > 100
-            val toolsLabel = when {
-                playbackState.sleepTimerPreset.stopAtEndOfEpisode -> if (isEnglish) "More • End of ep." else "Ещё • До конца"
-                playbackState.isSleepTimerActive -> if (isEnglish) "More • ${formatTimeMs(playbackState.sleepTimerRemainingMs)}" else "Ещё • ${formatTimeMs(playbackState.sleepTimerRemainingMs)}"
-                else -> if (isEnglish) "More" else "Ещё"
-            }
             QuickChipVisualState(
-                label = toolsLabel,
+                accessibilityLabel = if (isEnglish) "More Tools" else "Все инструменты",
                 iconTint = if (hasActiveTool) primary else Color.White,
                 containerColor = if (hasActiveTool) activePrimaryBg else neutralBg,
+                border = if (hasActiveTool) activeBorder else null,
                 testTag = "player_open_tools_sheet_chip"
             )
         }
@@ -424,6 +479,210 @@ internal fun formatPlaybackSpeedLabel(speed: Float): String {
         String.format(Locale.US, "%.1fx", roundedHundredths / 100f)
     } else {
         String.format(Locale.US, "%.2fx", roundedHundredths / 100f)
+    }
+}
+
+/**
+ * Dedicated Skip Intro Interval configuration bottom sheet opened by long-pressing
+ * the Skip Intro button directly in the player. Supports presets + arbitrary custom intervals.
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+internal fun SkipIntroConfigModalSheet(
+    skipIntroSeconds: Int,
+    onUpdateSkipIntroSeconds: (Int) -> Unit,
+    onSkipNow: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var customInputText by remember(skipIntroSeconds) { mutableStateOf(skipIntroSeconds.toString()) }
+    val presets = listOf(60, 75, 85, 90, 110, 120)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = Modifier.testTag("skip_intro_config_modal_sheet")
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FastForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Column {
+                        Text(
+                            text = tr("Интервал пропуска опенинга", "Skip Intro Interval"),
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        Text(
+                            text = tr(
+                                "Выберите готовый пресет или укажите любое количество секунд",
+                                "Pick a preset or enter any custom duration in seconds"
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        text = tr("+${skipIntroSeconds} с", "+${skipIntroSeconds} s"),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
+
+            // Presets
+            Text(
+                text = tr("Готовые интервалы", "Presets"),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                presets.forEach { sec ->
+                    FilterChip(
+                        selected = skipIntroSeconds == sec,
+                        onClick = {
+                            onUpdateSkipIntroSeconds(sec)
+                            customInputText = sec.toString()
+                        },
+                        label = { Text(tr("+${sec} с", "+${sec}s")) },
+                        modifier = Modifier.testTag("skip_intro_preset_chip_$sec")
+                    )
+                }
+            }
+
+            // Smooth Slider for arbitrary custom value (5s .. 240s) + direct input (5s .. 600s)
+            Text(
+                text = tr("Произвольный интервал (5–600 сек)", "Custom Interval (5–600 sec)"),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Slider(
+                value = skipIntroSeconds.coerceIn(5, 240).toFloat(),
+                onValueChange = { raw ->
+                    val v = raw.roundToInt().coerceIn(5, 240)
+                    onUpdateSkipIntroSeconds(v)
+                    customInputText = v.toString()
+                },
+                valueRange = 5f..240f,
+                modifier = Modifier.testTag("skip_intro_custom_slider")
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        val next = (skipIntroSeconds - 5).coerceIn(5, 600)
+                        onUpdateSkipIntroSeconds(next)
+                        customInputText = next.toString()
+                    },
+                    modifier = Modifier.weight(1f).testTag("skip_intro_minus_5_btn")
+                ) {
+                    Text(tr("-5 с", "-5s"))
+                }
+                OutlinedButton(
+                    onClick = {
+                        val next = (skipIntroSeconds - 1).coerceIn(5, 600)
+                        onUpdateSkipIntroSeconds(next)
+                        customInputText = next.toString()
+                    },
+                    modifier = Modifier.weight(1f).testTag("skip_intro_minus_1_btn")
+                ) {
+                    Text(tr("-1 с", "-1s"))
+                }
+                OutlinedButton(
+                    onClick = {
+                        val next = (skipIntroSeconds + 1).coerceIn(5, 600)
+                        onUpdateSkipIntroSeconds(next)
+                        customInputText = next.toString()
+                    },
+                    modifier = Modifier.weight(1f).testTag("skip_intro_plus_1_btn")
+                ) {
+                    Text(tr("+1 с", "+1s"))
+                }
+                OutlinedButton(
+                    onClick = {
+                        val next = (skipIntroSeconds + 5).coerceIn(5, 600)
+                        onUpdateSkipIntroSeconds(next)
+                        customInputText = next.toString()
+                    },
+                    modifier = Modifier.weight(1f).testTag("skip_intro_plus_5_btn")
+                ) {
+                    Text(tr("+5 с", "+5s"))
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = customInputText,
+                    onValueChange = { text ->
+                        val digits = text.filter { it.isDigit() }.take(3)
+                        customInputText = digits
+                        digits.toIntOrNull()?.let { parsed ->
+                            if (parsed in 5..600) {
+                                onUpdateSkipIntroSeconds(parsed)
+                            }
+                        }
+                    },
+                    label = { Text(tr("Точное значение (сек)", "Exact value (sec)")) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("skip_intro_custom_input")
+                )
+
+                FilledTonalButton(
+                    onClick = {
+                        customInputText.toIntOrNull()?.let { parsed ->
+                            onUpdateSkipIntroSeconds(parsed.coerceIn(5, 600))
+                        }
+                        onSkipNow()
+                        onDismiss()
+                    },
+                    modifier = Modifier.testTag("skip_intro_apply_and_skip_btn")
+                ) {
+                    Icon(Icons.Default.FastForward, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(tr("Пропустить (+${skipIntroSeconds}с)", "Skip (+${skipIntroSeconds}s)"))
+                }
+            }
+        }
     }
 }
 
